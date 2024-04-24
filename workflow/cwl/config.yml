@@ -1,0 +1,49 @@
+
+aggregate_script: 
+  type: File
+  path: scripts/aggregation.py
+
+
+input_model: 
+  type: Directory
+  path: /mnt/data/llama/llama-2-7b
+
+rounds: 2
+
+
+########
+
+train_script_a: 
+  type: File
+  path: libraries/llama-recipes/examples/finetuning.py
+
+dataset_a: "gsarti_clean_mc4_it_dataset"
+dataset_path_a:
+  type: Directory
+  path: dataset
+
+tokenizer_a:
+  type: Directory
+  path: dataset/tokenizer
+
+
+######
+
+train_script_b: 
+  type: File
+  path: libraries/llama-recipes/examples/finetuning.py
+
+dataset_b: "gsarti_clean_mc4_it_dataset"
+dataset_path_b:
+  type: Directory
+  path: dataset
+
+tokenizer_b:
+  type: Directory
+  path: dataset/tokenizer
+
+
+
+
+
+
