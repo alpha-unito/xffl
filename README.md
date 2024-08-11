@@ -2,7 +2,7 @@
 
 ## EuroHPC User Day 2023 - Reproducibility
 
-This file describes all the steps necessary to reproduce the experiments reported by Iacopo Colonnelli during his talk "Cross-Facility Federated Learning" (xFFL) at the EuroHPC user day 2023. If you want to cite XFFL, please use the reference below:
+This file describes all the steps necessary to reproduce the experiments reported by Iacopo Colonnelli during his talk "Cross-Facility Federated Learning" (xFFL) at the EuroHPC user day 2023 and subsequently published in the [conference proceedings](https://dx.doi.org/10.1016/j.procs.2024.07.003). If you want to cite XFFL, please use the reference below:
 
 ```bibtex
 @article{24:eurohpc:xffl,
