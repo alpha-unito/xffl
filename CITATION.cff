@@ -1,0 +1,60 @@
+cff-version: 1.2.0
+message: "If you want to cite XFFL, please refer to the article below."
+authors:
+  - family-names: "Mittone"
+    given-names: "Gianluca"
+    orcid: "https://orcid.org/0000-0002-1887-6911"
+  - family-names: "Mulone"
+    given-names: "Alberto"
+    orcid: "https://orcid.org/0009-0009-2600-613X"
+  - family-names: "Colonnelli"
+    given-names: "Iacopo"
+    orcid: "https://orcid.org/0000-0001-9290-2017"
+title: "Cross-Facility Federated Learning"
+version: 0.1
+url: "https://github.com/alpha-unito/xffl"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Colonnelli"
+      given-names: "Iacopo"
+      orcid: "https://orcid.org/0000-0001-9290-2017"
+    - family-names: "Birke"
+      given-names: "Robert"
+      orcid: "https://orcid.org/0000-0003-1144-3707"
+    - family-names: "Malenza"
+      given-names: "Giulio"
+      orcid: "https://orcid.org/0009-0006-4862-7429"
+    - family-names: "Mittone"
+      given-names: "Gianluca"
+      orcid: "https://orcid.org/0000-0002-1887-6911"
+    - family-names: "Mulone"
+      given-names: "Alberto"
+      orcid: "https://orcid.org/0009-0009-2600-613X"
+    - family-names: "Galjaard"
+      given-names: "Jeroen"
+      orcid: "https://orcid.org/0000-0003-3681-7226"
+    - family-names: "Chen"
+      given-names: "Lydia Y."
+      orcid: "https://orcid.org/0000-0002-4228-6735"
+    - family-names: "Bassini"
+      given-names: "Sanzio"
+    - family-names: "Scipione"
+      given-names: "Gabriella"
+      orcid: "https://orcid.org/0000-0001-7202-9994"
+    - family-names: "Martinovič"
+      given-names: "Jan"
+      orcid: "https://orcid.org/0000-0001-7944-8956"
+    - family-names: "Vondrák"
+      given-names: "Vit"
+      orcid: "https://orcid.org/0000-0002-7940-6323"
+    - family-names: "Aldinucci"
+      given-names: "Marco"
+      orcid: "https://orcid.org/0000-0001-8788-0829"
+  doi: 10.1016/j.procs.2024.07.003
+  journal: "Procedia Computer Science"
+  start: 3
+  end: 12
+  title: "Cross-Facility Federated Learning"
+  volume: 240
+  year: 2024

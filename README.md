@@ -1,13 +1,41 @@
 # Cross-Facility Federated Learning
+
 ## EuroHPC User Day 2023 - Reproducibility
 
-This file describes all the steps necessary to reproduce the experiments reported by Iacopo Colonnelli during his talk "Cross-Facility Federated Learning" (xFFL) at the EuroHPC user day 2023.
+This file describes all the steps necessary to reproduce the experiments reported by Iacopo Colonnelli during his talk "Cross-Facility Federated Learning" (xFFL) at the EuroHPC user day 2023. If you want to cite XFFL, please use the reference below:
 
-
+```bibtex
+@article{24:eurohpc:xffl,
+    title = {Cross-Facility Federated Learning},
+    author = {Iacopo Colonnelli and
+              Robert Birke and
+              Giulio Malenza and
+              Gianluca Mittone and
+              Alberto Mulone and
+              Jeroen Galjaard and
+              Lydia Y. Chen and
+              Sanzio Bassini and
+              Gabriella Scipione and
+              Jan Martinovi\v{c} and
+              Vit Vondr\'{a}k and
+              Marco Aldinucci},
+    doi = {10.1016/j.procs.2024.07.003},
+    issn = {1877-0509},
+    year = {2024},
+    booktitle = {Proceedings of the First EuroHPC user day},
+    journal = {Procedia Computer Science},
+    volume = {240},
+    pages = {3--12},
+    publisher = {Elsevier},
+    address = {Amsterdam, Netherlands},
+    location = {Bruxelles, Belgium},
+}
+```
 
 ## Reproducibility disclaimer
 
 ### Exact reproducibility
+
 The presented results were obtained by experiments run on the Leonardo and Karolina supercomputers in December 2023.
 Infrastructure and software changes applied to the two mentioned supercomputing facilities can potentially lead to different outcomes; please take that into account when reproducing the reported experiments.
 Furthermore, due to their scale, our experiments were run only once; many unpredictable factors (e.g., queue times, HPC current utilisation, intra- and inter-HPC network bandwidth available, et similia) can lead to potentially different outcomes.
@@ -23,12 +51,12 @@ In the proposed experiments, StreamFlow is hosted on a cloud VM physically locat
 However, these considerations do not hinder the validity of the presented work; instead, they constitute an inherent demonstration of the complexity of cross-facility deployments, proving even more the necessity for sophisticated software tools to handle such large-scale distributed computations.
 
 ### Software requirements
+
 python>=3.8\
 streamflow>=0.2.0.dev10\
 torch>=2.2.0\
 llama\
 transformers>=4.34.1
-
 
 ## Reproduce the experiments
 
@@ -39,15 +67,18 @@ The following setup steps must be run on each HPC infrastructure participating i
 #### Automatic
 
 Just clone this repository and run:
-```
+
+```bash
 bash scripts/facility_setup.sh
 ```
+
 This will download the full gsart/clean_mc_it dataset in its tiny version. To modify the default dataset parameters, edit the script. That is it!
 
 #### Manual
 
 As a first step, proceed to create and activate a new Python virtual environment; venv and Conda are usable interchangeably:
-```
+
+```bash
 mkdir facility
 cd facility
 python -m venv xffl
@@ -55,7 +86,8 @@ source xffl/bin/activate
 ```
 
 Then, proceed to install xFFL Python requirements and the modified llama-recipes library:
-```
+
+```bash
 cd ../libraries/llama-recipes/
 pip install -r ../../requirements.txt .
 ```
@@ -67,31 +99,35 @@ pip install .
 --->
 
 Finally, download the desired dataset and tokenise it:
-```
+
+```bash
 cd ../../dataset
 python tokenizer.py gsarti/clean_mc4_it tiny 0 # Leonardo
 python tokenizer.py mc4 cs 0 # Karolina
 ```
-The first command-line parameter indicates the HuggingFace data to download, the second inversion, and the third the number of samples to tokenise to handle the experiments' length (0 equals using the whole dataset).
 
+The first command-line parameter indicates the HuggingFace data to download, the second inversion, and the third the number of samples to tokenise to handle the experiments' length (0 equals using the whole dataset).
 
 ### Step 2: Coordinator setup
 
 The second step in reproducing the experiments is preparing the coordinator. This can be done manually by following the reported commands step-by-step or by running the `coordinator_setup.sh` script on the coordinator machine. Make sure to have a Python interpreter and internet connection available before starting!
 
-#### Automatic 
+#### Automatic
 
 The only prerequisite to auto-install the coordinator software is submitting a Llama 2 access request on the [official Meta website](https://llama.meta.com/llama-downloads/) and receiving a unique custom access URL via email.
 Once that is done, clone this repository and run:
-```
+
+```bash
 bash scripts/coordinator_setup.sh
 ```
+
 prompt the META URL when asked, and download the 7B model. Done!
 
 #### Manual
 
 As a first step, after cloning this repository, proceed to create and activate a new Python virtual environment; venv and Conda are usable interchangeably:
-```
+
+```bash
 mkdir coordinator
 cd coordinator
 python -m venv xffl
@@ -99,12 +135,14 @@ source xffl/bin/activate
 ```
 
 Install then the Python xFFL requirements:
-```
+
+```bash
 pip install -r ../aggregator/requirements.txt
 ```
 
 Proceed then to install the StreamFlow WMS from source to obtain the latest features necessary to support the cross-facility scenario (the pip-available StreamFlow package is currently outdated):
-```
+
+```bash
 git clone --depth 1 https://github.com/alpha-unito/streamflow.git
 cd streamflow
 pip install -r requirements.txt .
@@ -114,7 +152,8 @@ cd ..
 Next, download the LLaMA-2 7B model.
 This step requires submitting a Llama 2 & Llama Chat access request on the [official Meta website](https://llama.meta.com/llama-downloads/) and receiving a unique custom access URL via email.
 Meanwhile, it is necessary to clone and install the official META llama repository:
-```
+
+```bash
 git clone --depth 1 https://github.com/meta-llama/llama.git
 cd llama
 pip install -e .
@@ -124,7 +163,8 @@ cd ..
 ```
 
 Finally, convert the LLaMA-2 7B model to the HuggingFace format:
-```
+
+```bash
 git clone --depth 1 https://github.com/huggingface/transformers.git
 cd transformers
 pip install protobuf
@@ -134,30 +174,28 @@ cd ..
 ```
 
 Optionally, remove all the downloaded repositories:
-```
+
+```bash
 rm -rf llama transformers streamflow
 ```
 
 The coordinator node is ready to deploy the xFFL workload on the HPC infrastructures.
 
-
-
-
 ### Step 3: Experiments launching
-Before launching the experiments, it is necessary to configure the StreamFlow file, which can be found in the `workflow/streamflow.yml` path. The user can define the preferred HPC infrastructures in the `deployments` section. Currently, the Leonardo and Karolina facilities are configured with the author accounts; thus, some changes are necessary. The user must eventually supply certificates or a private SSH key, username and working directory path. Moreover, the paths for each input data, `train_script_*`, `dataset_path_*`, and `tokeniser_*`, must be changed. In general, these paths must refer to the remote location of this repository inside the HPC facility (the directory created in Step 1). It is enough to fix the paths inside the `streamflow.yml` for the execution following this user guide. However, the user can also change the `cwl/config.yml` to customise the input data paths. In the default configuration, the `cwl/config.yml` has the input paths of this repository; thus, the `tokeniser` and `dataset` inputs are inside the `dataset` directory, the `train_script` input is inside the `libraries` directory and so on.
 
+Before launching the experiments, it is necessary to configure the StreamFlow file, which can be found in the `workflow/streamflow.yml` path. The user can define the preferred HPC infrastructures in the `deployments` section. Currently, the Leonardo and Karolina facilities are configured with the author accounts; thus, some changes are necessary. The user must eventually supply certificates or a private SSH key, username and working directory path. Moreover, the paths for each input data, `train_script_*`, `dataset_path_*`, and `tokeniser_*`, must be changed. In general, these paths must refer to the remote location of this repository inside the HPC facility (the directory created in Step 1). It is enough to fix the paths inside the `streamflow.yml` for the execution following this user guide. However, the user can also change the `cwl/config.yml` to customise the input data paths. In the default configuration, the `cwl/config.yml` has the input paths of this repository; thus, the `tokeniser` and `dataset` inputs are inside the `dataset` directory, the `train_script` input is inside the `libraries` directory and so on.
 
 Each HPC facility has its directives on submitting a job. For this reason, the user must define a bash script template to define all these directives. In the repository, it is possible to find the templates to submit on Leonardo and Karolina in the `templates/cineca/leonardo.sh` and `templates/karolina/karo.sh` paths. These templates are already referred to in the streamflow.yml file. An important directive to change is `#SBATCH --account=[PROJECT_NAME]`. The user must write their project name, which has available computational hours. Another essential directive to change can be the number of nodes, e.g. `#SBATCH --nodes=128`, to improve the training model time. In this case, beyond the nodes directive, it is necessary to fix other directives like ntasks, ntasks_per_node, and so on.
 Finally, the workflow execution is ready. The following command starts the run:
-```
+
+```bash
 cd workflow
 streamflow run streamflow.yml
 ```
+
 It is suggested to execute the command in background, using commands such as `screen` or `nohup`.
 
-
-
-## Experiments description 
+## Experiments description
 
 ### General information
 
@@ -189,7 +227,7 @@ Two libraries needed for the execution needed to be modified to support our expe
 
 `Bits&Bytes` is a library for 8-bit quatisation of Deep Neural Networks. Despite not being actively used in this project, this library is deeply embedded in the llama-recipes code, and thus, it has not been removed. It can cause problems at runtime since it searches for paths related to the CUDA deployment. On Leonardo, the library follows a path in the Scratch file system without permission to access it and tries to remove it. Instead of gracefully handling this issue, Bits&Bytes produces an exception and makes the whole computation fail. This is fixed by ignoring this kind of exception (`bitsandbytes/bitsandbytes/cuda_setup/main.py,` function `remove_non_existent_dirs`).
 
-`Llama-recipes` is a repository containing ready-made code to execute Llama-2. Despite being relatively easy to use, some modifications have been applied to obtain the desired behavior. 
+`Llama-recipes` is a repository containing ready-made code to execute Llama-2. Despite being relatively easy to use, some modifications have been applied to obtain the desired behavior.
 
 Firstly, the saving functionalities of a distributed model (FSDP, Fully Sharded Data Parallelism) did not match the expected behavior. By modifying the checkpoint handling logic, this library now handles the saving of a distributed model equivalently as a sequential pre-trained model: the different shards are collected, converted into half-precision, and saved in the command-line specified folder in the same format as HuggingFace pre-trained models (`llama-recipes/src/llama_recipes/config/fsdp.py`, `checkpoint_type: StateDictType = StateDictType.FULL_STATE_DICT`, and `llama-recipes/src/llama_recipes/model_checkpointing/checkpoint_handler.py`, function `save_model_checkpoint`).
 
