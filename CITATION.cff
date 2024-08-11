@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you want to cite XFFL, please refer to the article below."
+message: "If you want to cite xFFL, please refer to the article below."
 authors:
   - family-names: "Mittone"
     given-names: "Gianluca"
@@ -52,7 +52,12 @@ preferred-citation:
       given-names: "Marco"
       orcid: "https://orcid.org/0000-0001-8788-0829"
   doi: 10.1016/j.procs.2024.07.003
+  issn: 1877-0509
   journal: "Procedia Computer Science"
+  publisher:
+    name: Elsevier
+    city: Amsterdam
+    country: NL
   start: 3
   end: 12
   title: "Cross-Facility Federated Learning"

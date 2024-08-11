@@ -1,8 +1,16 @@
 # Cross-Facility Federated Learning
 
+Cross-Facility Federated Learning (xFFL) is an experimental distributed computing methodology designed to explore three main research directions:
+
+1. Using **High Performance Computers** (HPCs) **as an enabling platform** to train and fine-tune foundation AI models;
+2. Exploiting the **aggregated computing power of multiple HPCs simultaneously through a Workflow Management System** (WMS) to solve today's large-scale problems (e.g., training trillion-parameters models);
+3. **Federated Learning** (FL) as a technique for virtually pooling different datasets while keeping each one private to its owner(s).
+
+To our knowledge, xFFL is the first experimental attempt to train a foundation model (e.g. META’s LLaMA) through a cross-facility approach on geographically distant HPCs exploiting WMS and FL techniques to coordinate the distributed learning. Visit the [official xFFL website](https://hpc4ai.unito.it/hpc-federation/) for more information.
+
 ## EuroHPC User Day 2023 - Reproducibility
 
-This file describes all the steps necessary to reproduce the experiments reported by Iacopo Colonnelli during his talk "Cross-Facility Federated Learning" (xFFL) at the EuroHPC user day 2023 and subsequently published in the [conference proceedings](https://dx.doi.org/10.1016/j.procs.2024.07.003). If you want to cite XFFL, please use the reference below:
+This file describes all the steps necessary to reproduce the experiments reported by Iacopo Colonnelli during his talk "Cross-Facility Federated Learning" (xFFL) at the EuroHPC user day 2023 and subsequently published in the [conference proceedings](https://dx.doi.org/10.1016/j.procs.2024.07.003). If you want to cite xFFL, please use the reference below:
 
 ```bibtex
 @article{24:eurohpc:xffl,
