@@ -7,7 +7,6 @@ loralib
 black
 black[jupyter]
 datasets
-fire
 peft
 transformers>=4.34.1
 sentencepiece
