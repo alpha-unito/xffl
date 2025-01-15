@@ -1,5 +1,4 @@
 #!/usr/bin/env streamflow
-
 version: v1.0
 workflows:
   master:
@@ -8,107 +7,199 @@ workflows:
       file: cwl/main.cwl
       settings: cwl/config.yml
     bindings:
-      - step: /loop/train_dataset_a
+      - step: /
         target:
-          - deployment: leonardo
-            service: llama
-      - step: /loop/train_dataset_b
+          deployment: locally
+      - step: /iteration/train_dataset_a
         target:
-          - deployment: leonardo-fratm
-            service: llama
-      - step: /loop/aggregate
+          deployment: leonardo-ssh
+          # service: pragma-script
+      - step: /iteration/train_dataset_b
         target:
-          - deployment: local
-      - port: /train_script_a
+          deployment: lumi-ssh
+          # service: pragma-script
+      - step: /iteration/train_dataset_c
+        target:
+          deployment: marenostrum5-ssh
+          # service: pragma-script
+      - step: /iteration/train_dataset_d
+        target:
+          deployment: meluxina-ssh
+      ### LOCAL ports target ###
+      - port: /model
+        target:
+          deployment: locally
+          workdir: /mnt/data/llama/
+      - port: /tokenizer
+        target:
+          deployment: locally
+          workdir: /mnt/data/llama/
+      ### LEONARDO ports target ###
+      - port: /repository_a
         target:
           deployment: leonardo
-          workdir: /leonardo_scratch/fast/IscrC_HOPE_0/workspace/23_llama_sc24
-      - port: /dataset_path_a
+          workdir: /leonardo_scratch/fast/uToID_bench/
+      ### LUMI ports target ###
+      - port: /repository_b
         target:
-          deployment: leonardo
-          workdir: /leonardo_scratch/fast/IscrC_HOPE_0/workspace/23_llama_sc24
-      - port: /tokenizer_a
+          deployment: lumi
+          workdir: /flash/project_465001371/
+      ### MARENOSTRUM ports target ###
+      - port: /repository_c
         target:
-          deployment: leonardo
-          workdir: /leonardo_scratch/fast/IscrC_HOPE_0/workspace/23_llama_sc24
-      - port: /train_script_b
+          deployment: marenostrum5
+          workdir: /gpfs/scratch/ehpc55
+      ### MELUXINA ports target ###
+      - port: /repository_d
         target:
-          deployment: leonardo-fratm
-          workdir: /leonardo_scratch/fast/IscrC_HOPE_0/workspace/23_llama_sc24
-      - port: /dataset_path_b
-        target:
-          deployment: leonardo-fratm
-          workdir: /leonardo_scratch/fast/IscrC_HOPE_0/workspace/23_llama_sc24
-      - port: /tokenizer_b
-        target:
-          deployment: leonardo-fratm
-          workdir: /leonardo_scratch/fast/IscrC_HOPE_0/workspace/23_llama_sc24
-
+          deployment: meluxina
+          workdir: /project/home/p200594/
+ 
 deployments:
-  local:
-    type: local 
+  locally:
+    type: local
     config: {}
-    workdir: /mnt/data/sf-tmp
+    workdir: /mnt/data/tmp
+
+  ### DEUCALION ###
+  deucalion-ssh:
+    type: ssh
+    config:
+      nodes: 
+        - login.deucalion.macc.fccn.pt
+      username: amulone
+      sshKey: /home/ubuntu/.ssh/meluxina-key/id_ed25519_mlux
+    workdir: /home/amulone/tmp/streamflow/ssh
+  deucalion:
+    type: slurm
+    config:
+      maxConcurrentJobs: 1
+      services: 
+        pragma-script:
+          file: templates/rnca/deucalion.sh
+    wraps: karolina-ssh
+    workdir: /home/amulone/tmp/streamflow/slurm
+
+  ### KAROLINA ### 
   karolina-ssh:
     type: ssh
     config:
       nodes: 
         - karolina.it4i.cz
-      username: it4i-giuliom
-      # sshKey: /home/ubuntu/.ssh/id_rsa
-      checkHostKey: false
-    workdir: /scratch/project/dd-23-58/it4i-giuliom/LLAMA/tmp
+      username: it4i-albertom
+      retryDelay: 60
+      # maxConnections: 1
+      # maxConcurrentSessions: 1
+    workdir: /scratch/project/dd-24-76/tmp/streamflow/ssh
   karolina:
     type: slurm
     config:
+      maxConcurrentJobs: 1
       services: 
-        large-karo-script: 
-          file: templates/karolina/karo.sh
+        pragma-script:
+          file: templates/it4i/karolina.sh
     wraps: karolina-ssh
-    workdir: /scratch/project/dd-23-58/it4i-giuliom/LLAMA/tmp
+    workdir: /scratch/project/dd-24-76/tmp/streamflow/slurm
+
+  ### LEONARDO ###
   leonardo-ssh:
     type: ssh
     config:
       nodes:
         - login.leonardo.cineca.it
       username: amulone1
+      sshKey: /home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa
+      dataTransferConnection: 
+        hostname: data.leonardo.cineca.it
       checkHostKey: false
-      # sshKey: /home/ubuntu/.ssh/id_rsa
-    workdir: /leonardo_scratch/fast/IscrC_HOPE_0/sf-tmp
+      retryDelay: 60
+    workdir: /leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh
   leonardo:
     type: slurm
     config: 
-      maxConcurrentJobs: 2
+      maxConcurrentJobs: 1
       services:
-        llama: 
+        script: 
           file: templates/cineca/leonardo.sh
     wraps: leonardo-ssh
-    workdir: /leonardo_scratch/fast/IscrC_HOPE_0/sf-tmp
-  leonardo-fratm-ssh:
+    workdir: /leonardo_scratch/fast/uToID_bench/tmp/streamflow/slurm
+
+  ### LUMI ###
+  lumi-ssh:
     type: ssh
     config:
       nodes:
-        - login.leonardo.cineca.it
-      username: amulone1
-      checkHostKey: false
-      # sshKey: /home/ubuntu/.ssh/id_rsa
-    workdir: /leonardo_scratch/fast/IscrC_HOPE_0/sf-tmp
-  leonardo-fratm:
+        - lumi.csc.fi
+      username: muloneal
+      retryDelay: 60
+    workdir: /flash/project_465001599/tmp/streamflow/ssh
+  lumi:
     type: slurm
     config: 
-      maxConcurrentJobs: 2
+      maxConcurrentJobs: 1
       services:
-        llama: 
-          file: templates/cineca/leonardo.sh
-    wraps: leonardo-fratm-ssh
-    workdir: /leonardo_scratch/fast/IscrC_HOPE_0/sf-tmp
+        script: 
+          file: templates/lumi/lumi.sh
+    wraps: lumi-ssh
+    workdir: /flash/project_465001599/tmp/streamflow/slurm
 
-
-scheduling:
-  scheduler:
-    type: default
+  ### MARENOSTRUM ### 
+  marenostrum5-ssh:
+    type: ssh
     config:
-      retry_delay: 120
+      nodes:
+        - glogin1.bsc.es
+        - glogin2.bsc.es
+      username: unit248290
+      retryDelay: 30
+    workdir: /gpfs/scratch/ehpc55/tmp/streamflow/ssh
+  marenostrum5:
+    type: slurm
+    config:
+      maxConcurrentJobs: 1
+      services:
+        script: 
+          file: templates/bsc/marenostrum5.sh
+    wraps: marenostrum5-ssh
+    workdir: /gpfs/scratch/ehpc55/tmp/streamflow/slurm
 
-checkpointManager:
-  enabled: False
+  ### MELUXINA ### 
+  meluxina-ssh:
+    type: ssh
+    config:
+      nodes:
+        - login.lxp.lu:8822
+      username: u101524
+      retryDelay: 30
+      sshKey: /home/ubuntu/.ssh/meluxina-key/id_ed25519_mlux
+    workdir: /project/home/p200688/tmp/streamflow/ssh
+  meluxina:
+    type: slurm
+    config:
+      maxConcurrentJobs: 1
+      services:
+        script: 
+          file: templates/lux/meluxina.sh
+    wraps: meluxina-ssh
+    workdir: /project/home/p200688/tmp/streamflow/slurm
+
+### VEGA ### 
+  vega-ssh:
+    type: ssh
+    config:
+      nodes:
+        - login.vega.izum.si
+      username: eualbertom
+      retryDelay: 60
+      sshKey: /home/ubuntu/.ssh/meluxina-key/id_ed25519_mlux
+      totpSecretFile: /home/ubuntu/.ssh/vega/file.txt
+    workdir: /ceph/hpc/home/eualbertom/tmp/streamflow/ssh
+  vega:
+    type: slurm
+    config:
+      maxConcurrentJobs: 1
+      services:
+        script: 
+          file: templates/izum/vega.sh
+    wraps: vega-ssh
+    workdir: /ceph/hpc/home/eualbertom/tmp/streamflow/slurm

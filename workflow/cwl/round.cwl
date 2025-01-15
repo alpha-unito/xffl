@@ -10,55 +10,45 @@ $namespaces:
 $schemas:
  - https://schema.org/version/latest/schemaorg-current-http.rdf
 
-s:author:
-  - class: s:Person
-    s:identifier: https://orcid.org/0000-0001-9290-2017
-    s:email: mailto:iacopo.colonnelli@unito.it
-    s:name: Iacopo Colonnelli
-  - class: s:Person
-    s:identifier: https://orcid.org/0000-0003-1144-3707
-    s:email: mailto:robert.birke@unito.it
-    s:name: Robert Birke
-  - class: s:Person
-    s:identifier: https://orcid.org/0009-0006-4862-7429
-    s:email: mailto:giulio.malenza@unito.it
-    s:name: Giulio Malenza
-  - class: s:Person
-    s:identifier: https://orcid.org/0000-0002-1887-6911
-    s:email: mailto:gianluca.mittone@unito.it
-    s:name: Gianluca Mittone
-  - class: s:Person
-    s:identifier: https://orcid.org/0009-0009-2600-613X
-    s:email: mailto:alberto.mulone@unito.it
-    s:name: Alberto Mulone
-  - class: s:Person
-    s:identifier: https://orcid.org/0000-0001-8788-0829
-    s:email: mailto:marco.aldinucci@unito.it
-    s:name: Marco Aldinucci
-
-
-s:codeRepository: https://github.com/alpha-unito/xffl
-s:dateCreated: "2024-04-20"
-s:license: https://spdx.org/licenses/LGPL-3.0-only
-s:programmingLanguage: Python
-
-
 requirements:
   SubworkflowFeatureRequirement: {}
+  MultipleInputFeatureRequirement: {}
 
 inputs:
-  train_script_a: File
-  train_script_b: File
-  aggregate_script: File
-  dataset_a: string
-  dataset_b: string
-  input_model: Directory
-  tokenizer_a: Directory
-  tokenizer_b: Directory
-  dataset_path_a: Directory
-  dataset_path_b: Directory
+  facility_a: string
+  repository_a: Directory
+  test_samples_a: int
+  train_samples_a: int
+  gpus_per_node_a: int
+
+  facility_b: string
+  repository_b: Directory
+  test_samples_b: int
+  train_samples_b: int
+  gpus_per_node_b: int
+
+  facility_c: string
+  repository_c: Directory
+  test_samples_c: int
+  train_samples_c: int
+  gpus_per_node_c: int
+
+  facility_d: string
+  repository_d: Directory
+  test_samples_d: int
+  train_samples_d: int
+  gpus_per_node_d: int
+
+  script_train: File
+  script_aggregation: File
+
+  model: Directory
+  tokenizer: Directory
+  epochs: int
+  model_basename: string
+
   round: int
-  rounds: int
+  max_rounds: int
 
 outputs:
   output_model:
@@ -67,36 +57,84 @@ outputs:
 
 steps:
   train_dataset_a:
-    run: clt/train.cwl
+    run: clt/train_replica.cwl
     in:
-      train_script: train_script_a
-      dataset: dataset_a
-      dataset_path: dataset_path_a
-      input_model: input_model
-      tokenizer: tokenizer_a
+      script: script_train
+      facility: facility_a
+      train_samples: train_samples_a
+      test_samples: test_samples_a
+      repository: repository_a
+      replica: gpus_per_node_a
+      model: model
+      tokenizer: tokenizer
+      epochs: epochs
+      model_basename: model_basename
+      round: round
     out:
       [ output_model ]
-
 
   train_dataset_b:
     run: clt/train.cwl    
     in:
-      train_script: train_script_b
-      dataset: dataset_b
-      dataset_path: dataset_path_b
-      input_model: input_model
-      tokenizer: tokenizer_b
+      script: script_train
+      facility: facility_b
+      train_samples: train_samples_b
+      test_samples: test_samples_b
+      repository: repository_b
+      model: model
+      tokenizer: tokenizer
+      epochs: epochs
+      model_basename: model_basename
+      round: round
     out:
       [ output_model ]
 
 
+  train_dataset_c:
+    run: clt/train_replica.cwl    
+    in:
+      script: script_train
+      facility: facility_c
+      train_samples: train_samples_c
+      test_samples: test_samples_c
+      repository: repository_c
+      replica: gpus_per_node_c
+      model: model
+      tokenizer: tokenizer
+      epochs: epochs
+      model_basename: model_basename
+      round: round
+    out:
+      [ output_model ]
+  
+  train_dataset_d:
+    run: clt/train_replica.cwl    
+    in:
+      script: script_train
+      facility: facility_d
+      train_samples: train_samples_d
+      test_samples: test_samples_d
+      repository: repository_d
+      replica: gpus_per_node_d
+      model: model
+      tokenizer: tokenizer
+      epochs: epochs
+      model_basename: model_basename
+      round: round
+    out:
+      [ output_model ]
+
   aggregate:
     run: clt/aggregate.cwl
     in:
-      aggregate_script: aggregate_script
-      input_models:
+      model_basename: model_basename
+      round: round 
+      script: script_aggregation
+      models:
         source:
           - train_dataset_a/output_model
           - train_dataset_b/output_model
-    out: 
+          - train_dataset_c/output_model
+          - train_dataset_d/output_model 
+    out:
       [ output_model ]

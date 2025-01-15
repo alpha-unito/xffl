@@ -1,0 +1,39 @@
+Bootstrap: docker
+From: {{ BASE_IMAGE }}
+
+%arguments
+	WORKDIR=$(pwd)
+    REQUIREMENTS_FILE=requirements.txt
+	REQUIREMENTS_FOLDER=requirements
+	LIBRARIES=libraries
+	LLAMA_RECIPES=llama-recipes
+	BASE_IMAGE=nvcr.io/nvidia/pytorch:24.09-py3
+
+%setup
+    mkdir ${APPTAINER_ROOTFS}/{{ REQUIREMENTS_FOLDER }}
+
+%files
+	#{{ WORKDIR }}/{{ REQUIREMENTS_FILE }} /{{ REQUIREMENTS_FOLDER }}/
+	{{ WORKDIR }}/../{{ LIBRARIES }}/{{ LLAMA_RECIPES }} /{{ REQUIREMENTS_FOLDER }}/
+
+%post
+	# System update
+	apt-get update -y && \
+	apt-get upgrade -y && \
+	apt-get autoremove -y && \
+	apt-get clean
+	
+	# llama-recipes installation
+	cd /{{ REQUIREMENTS_FOLDER }}/{{ LLAMA_RECIPES }} && \
+	python3 -m pip install --no-cache-dir .
+
+	# Clean up
+	rm -rf  /{{ REQUIREMENTS_FOLDER }}/
+
+%labels
+    Author gianluca.mittone@unito.it
+    Version v0.0.2
+
+%help
+   HPC-ready container for the xFFL experiments
+   Base image: nvcr.io/nvidia/pytorch:24.04-py3
