@@ -90,13 +90,25 @@ def get_round_cwl() -> MutableMapping[str, Any]:
             }
         },
         "steps": {
+            "merge":{
+                "run":{ 
+                    "class": "ExpressionTool",
+                    "inputs": {},
+                    "outputs":{
+                        "models": "Directory[]"
+                    },
+                    "expression": []
+                },
+                "in": {},
+                "out": ["models"]
+                },
             "aggregate": {
                 "run": "clt/aggregate.cwl",
                 "in": {
                     "model_basename": "model_basename",
                     "round": "round",
                     "script": "script_aggregation",
-                    "models": {"source": []},
+                    "models": "merge/models"
                 },
                 "out": ["output_model"],
             }
@@ -142,13 +154,17 @@ def get_aggregate_step() -> MutableMapping[str, Any]:
     return {
         "cwlVersion": "v1.2",
         "class": "CommandLineTool",
-        "requirements": {"InlineJavascriptRequirement": {}},
+        "requirements": {
+            "InlineJavascriptRequirement": {}, 
+            # todo: create the image llm-aggregator on alphaunito DockerHub
+            # "DockerRequirement": {"dockerPull": "alphaunito/llm-aggregator"}
+        },
         "baseCommand": ["python"],
         "arguments": [
             {
                 "position": 5,
                 "valueFrom": "$(inputs.model_basename)-merged-round$(inputs.round)",
-                "prefix": "-o",
+                "prefix": "--outname",
             }
         ],
         "inputs": {
@@ -156,10 +172,8 @@ def get_aggregate_step() -> MutableMapping[str, Any]:
             "models": {
                 "type": {
                     "type": "array",
-                    "items": {
-                        "type": "Directory",
-                    },
-                    "inputBinding": {"position": 2, "prefix": "-m"},
+                    "items": "Directory",
+                    "inputBinding": {"position": 2, "prefix": "--model"},
                 }
             },
             "model_basename": {"type": "string"},
@@ -175,6 +189,12 @@ def get_aggregate_step() -> MutableMapping[str, Any]:
         },
     }
 
+def get_config() -> MutableMapping[str, Any]:
+    return {
+       "script_train": {
+        "class": "File",
+        "path": "scripts/run.sh"},
+    }
 
 def get_training_step() -> MutableMapping[str, Any]:
     """Get the CWL file standard content for a xFFL application training step
@@ -200,10 +220,10 @@ def get_training_step() -> MutableMapping[str, Any]:
         ],
         "inputs": {
             "script": {"type": "File", "inputBinding": {"position": 1}},
-            "image": {
-                "type": "File",
-                "inputBinding": {"position": 2, "prefix": "--image"},
-            },
+            # "image": {
+            #     "type": "File",
+            #     "inputBinding": {"position": 2, "prefix": "--image"},
+            # },
             "facility": {
                 "type": "string",
                 "inputBinding": {"position": 2, "prefix": "--facility"},
@@ -216,10 +236,10 @@ def get_training_step() -> MutableMapping[str, Any]:
                 "type": "Directory",
                 "inputBinding": {"position": 3, "prefix": "--tokenizer"},
             },
-            "dataset": {
-                "type": "Directory",
-                "inputBinding": {"position": 3, "prefix": "--dataset"},
-            },
+            # "dataset": {
+            #     "type": "Directory",
+            #     "inputBinding": {"position": 3, "prefix": "--dataset"},
+            # },
             "repository": {
                 "type": "Directory",
                 "inputBinding": {"position": 3, "prefix": "--repository"},

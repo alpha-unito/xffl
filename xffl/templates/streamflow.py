@@ -19,7 +19,7 @@ def get_streamflow_config() -> MutableMapping[str, Any]:
                 "type": "cwl",
                 "config": {
                     "file": "cwl/main.cwl",
-                    "settings": "cwl/config.yaml",
+                    "settings": "cwl/config.yml",
                 },
                 "bindings": [],
             }

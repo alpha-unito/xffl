@@ -7,11 +7,14 @@ necessary to run xFFL workloads across different HPCs
 import argparse
 import json
 import os
+import stat
 from pathlib import Path
 
 import yaml
+from templates.sh import get_run_sh, get_aggregate
 from templates.cwl import (
     get_aggregate_step,
+    get_config,
     get_main_cwl,
     get_round_cwl,
     get_training_step,
@@ -49,6 +52,35 @@ def main(args: argparse.Namespace):
     streamflow_config = get_streamflow_config()
     main_cwl = get_main_cwl()
     round_cwl = get_round_cwl()
+    cwl_config = get_config()
+
+
+    # todo: add user interaction
+    # fixme: remove aggregation_script
+    os.makedirs(os.path.join(workdir, "cwl", "data", "model_placeholder"))
+    with open(os.path.join(workdir, "cwl", "data", "model_placeholder", "file.txt"), "w") as fd:
+        fd.write("Hello")
+    os.makedirs(os.path.join(workdir, "cwl", "data", "tokenizer_placeholder"))
+    os.makedirs(os.path.join(workdir, "cwl", "scripts"))
+    with open(os.path.join(workdir, "cwl", "scripts", "aggregation.py"), "w") as fd:
+        fd.write(get_aggregate())
+    cwl_config |= {
+        "model": {
+            "class": "Directory",
+            "path": "data/model_placeholder"
+        },
+        "tokenizer": {
+            "class": "Directory",
+            "path": "data/tokenizer_placeholder"
+        },
+        "model_basename": "ciao",
+        "max_rounds": 2,
+        "epochs": 1,
+        "script_aggregation": {
+            "class": "File",
+            "path": os.path.join(workdir, "cwl", "scripts", "aggregation.py")
+        }
+    }
 
     while insert:
 
@@ -80,7 +112,7 @@ def main(args: argparse.Namespace):
         )
 
         step_config = {
-            "step": f"/training_on_{name}",
+            "step": f"/iteration/training_on_{name}",
             "target": [
                 {"deployment": name, "service": "pragma"},
                 # {
@@ -116,9 +148,23 @@ def main(args: argparse.Namespace):
             f"gpus_per_node_{name}": "int",
         }
         round_cwl["steps"] |= get_workflow_step(name)
-        round_cwl["steps"]["aggregate"]["in"]["models"]["source"].append(
-            f"training_on_{name}/output_model"
-        )
+
+        round_cwl["steps"]["merge"]["in"] |= {name: f"training_on_{name}/output_model"}
+        round_cwl["steps"]["merge"]["run"]["inputs"] |= {name: "Directory"}
+        round_cwl["steps"]["merge"]["run"]["expression"].append(f"inputs.{name}")
+
+        # fixme: insert correct values
+        os.makedirs(os.path.join(workdir, "cwl", "data", f"repository_placeholder_{name}"))
+        cwl_config |= {
+            f"facility_{name}": name, 
+            f"repository_{name}": {
+                "class": "Directory",
+                "path": f"data/repository_placeholder_{name}"
+            },
+            f"test_samples_{name}": 100,
+            f"train_samples_{name}": 100,
+            f"gpus_per_node_{name}": 4,
+        }
 
         deployment_config = {
             f"{name}-ssh": {
@@ -133,6 +179,8 @@ def main(args: argparse.Namespace):
             name: {
                 "type": "slurm",
                 "config": {"services": {"pragma": {"file": slurm_template}}},
+                "wraps": f"{name}-ssh",
+                "workdir": remote_workdir,
             },
         }
 
@@ -154,8 +202,13 @@ def main(args: argparse.Namespace):
         ) in ["y", "yes"]
 
     # YAML exportation
+    ## StreamFlow file
     with open(os.path.join(workdir, "streamflow.yml"), "w") as outfile:
         yaml.dump(streamflow_config, outfile, default_flow_style=False, sort_keys=False)
+    
+    inputs_list = ",".join( round_cwl["steps"]["merge"]["run"]["expression"]) 
+    round_cwl["steps"]["merge"]["run"]["expression"] = "$({'models': [" + inputs_list + "] })"
+    ## CWL files
     os.makedirs(os.path.join(workdir, "cwl", "clt"))
     with open(os.path.join(workdir, "cwl", "main.cwl"), "w") as outfile:
         outfile.write("#!/usr/bin/env cwl-runner\n")
@@ -173,6 +226,22 @@ def main(args: argparse.Namespace):
         yaml.dump(
             get_training_step(), outfile, default_flow_style=False, sort_keys=False
         )
+
+
+    ## CWL config file
+    with open(os.path.join(workdir, "cwl", "config.yml"), "w") as outfile:
+        yaml.dump(
+            cwl_config, outfile, default_flow_style=False, sort_keys=False
+        )
+
+
+    ## Scripts
+    os.makedirs(os.path.join(workdir, "cwl", "scripts"), exist_ok=True)
+    with open(os.path.join(workdir, "cwl", "scripts", "run.sh"), "w") as outfile:
+        outfile.write(get_run_sh())
+    usr_permissions = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+    grp_permissions = stat.S_IRGRP | stat.S_IXGRP
+    os.chmod(os.path.join(workdir, "cwl", "scripts", "run.sh"), usr_permissions | grp_permissions)
 
 
 if __name__ == "__main__":
