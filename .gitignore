@@ -131,3 +131,6 @@ dmypy.json
 
 # StreamFlow
 .streamflow
+
+# OmniGraffle
+*.graffle
