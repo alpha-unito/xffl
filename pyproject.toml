@@ -9,8 +9,8 @@ description = "Cross-Facility Federated Learning"
 keywords = ["federated learning", "cross facility", "cross-facility", "hpc", "cloud", "workflow", "streamflow"]
 
 readme = "README.md"
-license = "LGPL-3.0"
-license-files = ["LICENSE", "LICENSE.LESSER"]
+license = {text = "LGPL-3.0-only"}
+#license-files = ["LICENSE", "LICENSE.LESSER"]
 
 requires-python = ">=3.9"
 
@@ -44,4 +44,12 @@ classifiers = [
 ]
 
 [project.scripts]
-xffl = "xffl:config"
+xffl = "xffl.cli.cli:run"
+
+[tool.setuptools]
+packages = ["xffl"]
+
+[project.urls]
+Homepage = "https://hpc4ai.unito.it/hpc-federation/"
+Repository = "https://github.com/alpha-unito/xffl"
+Issues = "https://github.com/alpha-unito/xffl/issues"

@@ -10,18 +10,19 @@ import os
 from pathlib import Path
 
 import yaml
-from templates.cwl import (
+
+from xffl.templates.cwl import (
     get_aggregate_step,
     get_main_cwl,
     get_round_cwl,
     get_training_step,
     get_workflow_step,
 )
-from templates.streamflow import get_streamflow_config
-from utils import check_input, resolve_path
+from xffl.templates.streamflow import get_streamflow_config
+from xffl.utils import check_input, resolve_path
 
 
-def main(args: argparse.Namespace):
+def create_deployment(args: argparse.Namespace):
     """Gathers from the user all the necessary parameters to generate a valid StreamFlow file for xFFL
 
     :param args: Command line arguments
@@ -175,32 +176,16 @@ def main(args: argparse.Namespace):
         )
 
 
+def main(args: argparse.Namespace):
+    print("*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***\n")
+    create_deployment(args)
+    print("\n*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***")
+
+
 if __name__ == "__main__":
-    print(
-        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration - Start ***\n"
-    )
+    from xffl.cli.parser import config_parser
 
     try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "-w",
-            "--workdir",
-            help="Insert working directory path",
-            type=str,
-            required=True,
-        )
-        parser.add_argument(
-            "-p", "--project", help="Insert a project name", type=str, required=True
-        )
-        parser.add_argument(
-            "-v", "--verbose", help="Increase verbosity level", action="store_true"
-        )
-        args = parser.parse_args()
-        main(args)
+        main(config_parser.parse_args())
     except KeyboardInterrupt:
         print("Unexpected keyboard interrupt")
-    pass
-
-    print(
-        "\n*** Cross-Facility Federated Learning (xFFL) - Guided configuration - End ***"
-    )
