@@ -45,15 +45,15 @@ LLaMA_default_env () {
 
 # Check which GPU architecture is available on the current computing node
 Gpu_detection () {
-    nvidia-smi # Check Nvidia GPU
-    if $? ; then 
+    # Check Nvidia GPU
+    if nvidia-smi > /dev/null ; then 
         export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES		
         GPU_FLAG="--nv" 
         return 0
     fi 
 
-    rocm-smi # Check AMD GPU
-    if $? ; then 
+    # Check AMD GPU
+    if rocm-smi > /dev/null ; then 
         export HIP_VISIBLE_DEVICES=$VISIBLE_DEVICES
         export ROCR_VISIBLE_DEVICES=$VISIBLE_DEVICES		
         GPU_FLAG="--rocm" 
@@ -66,20 +66,20 @@ Gpu_detection () {
 
 # Check which containerization software is available on the current computing node
 Container_platform_detection () {
-    singularity --version  # Check if `singularity` command exists
-    if $? ; then 
+    # Check if `singularity` command exists
+    if singularity --version > /dev/null ; then 
         CONTAINER_PLT="singularity"
         return 0
     fi 
 
-    apptainer --version  # Check if `apptainer` command exists
-    if $? ; then 
+    # Check if `apptainer` command exists
+    if apptainer --version > /dev/null ; then 
         CONTAINER_PLT="apptainer" 
         return 0
     fi 
 
-    docker --version  # Check if `docker` command exists
-    if $? ; then 
+    # Check if `docker` command exists
+    if docker --version > /dev/null ; then 
         CONTAINER_PLT="docker"
         return 0
     fi 

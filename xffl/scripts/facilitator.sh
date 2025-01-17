@@ -29,11 +29,11 @@ source "${FACILITY_SCRIPT}"
 COMMAND="${CONTAINER_PLT} exec \
 	--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
 	--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
-	--mount type=bind,src=${DATASET_FOLDER},dst=/dataset/ \
+	--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
 	--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
-	--home /home/ \
+	--home /code/ \
 	$GPU_FLAG \
 	$IMAGE \
-	/xffl/xffl/scripts/run.sh $*"
+	/code/xffl/scripts/run.sh $*"
 echo "[Rank $RANK] $COMMAND"		
 eval "$COMMAND"
