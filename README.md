@@ -32,11 +32,11 @@ python3 -m pip install -r requirements.txt
 ```
 
 ### Configuration creation
-Execute the `config.py` script to create an xFFL configuration file in a guided way:
+Create an xFFL configuration file in a guided way through the xFFL CLI:
 ```bash
-python3 config.py --w [workdir] --p [project]
+xffl config --w [workdir] --p [project]
 ```
-Where `workdir` is the name of the working directory to create, and `project` is the name of the created deployment.
+Where `workdir` is the name of the working directory to create (defaults to the local directory), and `project` is the name of the created deployment.
 This process will produce a directory containing the necessary StreamFlow and xFFL configuration files and the chosen model.
 
 

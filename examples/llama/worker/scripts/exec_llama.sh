@@ -68,6 +68,11 @@ else
 	fi
 fi
 
+shift;
+
+export HF_DATASETS_OFFLINE=1
+export WANDB_MODE=offline
+
 # Singularity container launch
 echo "${CONTAINER} exec \
 --mount type=bind,src=${ROOT_FOLDER}/,dst=/llama/ \
@@ -76,7 +81,7 @@ $LOCAL_TMPDIR \
 --home /llama/worker/workspace/ \
 $GPU_FLAG \
 ${ROOT_FOLDER}/worker/workspace/worker.sif \
-/llama/worker/scripts/torchrun.sh -h $@"
+/llama/worker/scripts/torchrun.sh $@"
 
 ${CONTAINER} exec \
 	--mount type=bind,src=${ROOT_FOLDER}/,dst=/llama/ \
@@ -85,4 +90,4 @@ ${CONTAINER} exec \
 	--home /llama/worker/workspace/ \
 	$GPU_FLAG \
 	${ROOT_FOLDER}/worker/workspace/worker.sif \
-	/llama/worker/scripts/torchrun.sh -h $@
+	/llama/worker/scripts/torchrun.sh $@

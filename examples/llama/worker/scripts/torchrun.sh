@@ -6,18 +6,16 @@
 Help()
 {
 	# Display Help
-	echo "LLaMA-3 runner script"
+	echo "xFFL runner script"
 	echo
-	echo "Syntax: exec_llama [-h|--hpc] [-m|--model] [-t|--train] [-v|--validation] [-w|--wandb] [-e|--epochs] [-o|--output] [--help]"
+	echo "Syntax: run [-m|--model] [-t|--train] [-v|--validation] [-w|--wandb] [-e|--epochs] [-o|--output] [--help]"
 	echo "options:"
-	echo "-h|--hpc			HPC facility [leonardo/lumi/meluxina]"
-	echo "-m|--model		LLaMA-3 model version [8b/70b]"
+	echo "-m|--model		Path to the model folder"
 	echo "-t|--train		Number of training samples to load"
 	echo "-v|--validation	Number of validation samples to load"
 	echo "-w|--wandb		WandB group name of the run"
 	echo "-e|--epochs		Training epochs"
 	echo "-o|--output		Path to save the model"
-	echo "-t|--tokenizer	Path of tokenizer"
 	echo "-h|--help			Shows this message"
 	echo
 }
@@ -28,11 +26,6 @@ Help()
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
-		-h|--hpc)
-			HPC="$2"
-			shift
-			shift
-			;;
 		-m|--model)
 			MODEL="--model_name $2"
 			MODEL_NAME="$2"
