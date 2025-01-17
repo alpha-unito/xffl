@@ -90,28 +90,26 @@ def get_round_cwl() -> MutableMapping[str, Any]:
             }
         },
         "steps": {
-            "merge":{
-                "run":{ 
+            "merge": {
+                "run": {
                     "class": "ExpressionTool",
                     "inputs": {},
-                    "outputs":{
-                        "models": "Directory[]"
-                    },
-                    "expression": []
+                    "outputs": {"models": "Directory[]"},
+                    "expression": [],
                 },
                 "in": {},
-                "out": ["models"]
-                },
+                "out": ["models"],
+            },
             "aggregate": {
                 "run": "clt/aggregate.cwl",
                 "in": {
                     "model_basename": "model_basename",
                     "round": "round",
                     "script": "script_aggregation",
-                    "models": "merge/models"
+                    "models": "merge/models",
                 },
                 "out": ["output_model"],
-            }
+            },
         },
     }
 
@@ -155,7 +153,7 @@ def get_aggregate_step() -> MutableMapping[str, Any]:
         "cwlVersion": "v1.2",
         "class": "CommandLineTool",
         "requirements": {
-            "InlineJavascriptRequirement": {}, 
+            "InlineJavascriptRequirement": {},
             # todo: create the image llm-aggregator on alphaunito DockerHub
             # "DockerRequirement": {"dockerPull": "alphaunito/llm-aggregator"}
         },
@@ -189,12 +187,12 @@ def get_aggregate_step() -> MutableMapping[str, Any]:
         },
     }
 
+
 def get_config() -> MutableMapping[str, Any]:
     return {
-       "script_train": {
-        "class": "File",
-        "path": "scripts/run.sh"},
+        "script_train": {"class": "File", "path": "scripts/run.sh"},
     }
+
 
 def get_training_step() -> MutableMapping[str, Any]:
     """Get the CWL file standard content for a xFFL application training step

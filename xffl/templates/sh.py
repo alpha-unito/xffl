@@ -1,4 +1,3 @@
-
 def get_run_sh():
     return """#!/bin/sh
 
@@ -96,7 +95,7 @@ exit 0
 
 
 def get_aggregate():
-	return """import argparse
+    return """import argparse
 import math
 import random
 import os

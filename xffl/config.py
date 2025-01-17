@@ -22,7 +22,10 @@ from xffl.templates.cwl import (
 )
 from xffl.templates.sh import get_aggregate, get_run_sh
 from xffl.templates.streamflow import get_streamflow_config
-from xffl.utils import check_input, resolve_path
+from xffl.utils.logging import get_logger
+from xffl.utils.utils import check_input, resolve_path
+
+logger = get_logger("Config")
 
 
 def create_deployment(args: argparse.Namespace):
@@ -185,13 +188,15 @@ def create_deployment(args: argparse.Namespace):
         streamflow_config["workflows"]["xffl"]["bindings"].append(step_config)
         streamflow_config["deployments"] |= deployment_config
 
-        if args.verbose:
-            print(
-                f"Inserted the following record for {name} in the StreamFlow file:",
-                json.dumps(step_config),
-                json.dumps(deployment_config),
-                sep="\n",
+        logger.debug(
+            "\n".join(
+                [
+                    f"Inserted the following record for {name} in the StreamFlow file:",
+                    json.dumps(step_config, indent=2),
+                    json.dumps(deployment_config, indent=2),
+                ]
             )
+        )
 
         insert = check_input(
             "Insert another facility? [y/n]: ",
@@ -242,9 +247,13 @@ def create_deployment(args: argparse.Namespace):
 
 
 def main(args: argparse.Namespace):
-    print("*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***\n")
+    logger.info(
+        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***\n"
+    )
     create_deployment(args)
-    print("\n*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***")
+    logger.info(
+        "\n*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+    )
 
 
 if __name__ == "__main__":
@@ -253,4 +262,4 @@ if __name__ == "__main__":
     try:
         main(config_parser.parse_args())
     except KeyboardInterrupt:
-        print("Unexpected keyboard interrupt")
+        logger.critical("Unexpected keyboard interrupt")

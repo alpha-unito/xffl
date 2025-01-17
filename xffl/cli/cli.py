@@ -6,7 +6,10 @@ import sys
 
 from xffl.cli.parser import parser
 from xffl.config import main as create_config
-from xffl.version import VERSION
+from xffl.constants import VERSION
+from xffl.utils.logging import get_logger, set_log_level
+
+logger = get_logger("CLI")
 
 
 def main(arguments: argparse.Namespace) -> int:
@@ -17,19 +20,26 @@ def main(arguments: argparse.Namespace) -> int:
     :return: Exit code
     :rtype: int
     """
+
     try:
         args = parser.parse_args(arguments)
+        set_log_level(args.loglevel)
+
+        if args.help:
+            logger.info(f"\n{parser.format_help()}")
+            return 0
+        elif args.version:
+            logger.info(f"xFFL version: {VERSION}")
+            return 0
+
         if args.command == "config":
             create_config(args)
             return 0
-        elif args.command == "version":
-            print(f"xFFL version: {VERSION}")
-            return 0
         else:
-            parser.print_help(file=sys.stderr)
+            logger.critical(f"\n{parser.format_help()}")
             return 1
     except KeyboardInterrupt:
-        print("Unexpected keyboard interrupt")
+        logger.critical("Unexpected keyboard interrupt")
         return 1
 
 
