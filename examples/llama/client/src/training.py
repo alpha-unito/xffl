@@ -71,9 +71,6 @@ def pretraining(args: argparse.Namespace) -> None:
             local_files_only=True,  # Most HPCs do not have internet access from the nodes
             attn_implementation=args.attention,
             torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
-            device_map=(
-                None if args.fsdp else "auto"
-            ),  # Device map seems to not be compatible with FSDP
         )
     )
 
@@ -110,9 +107,6 @@ def pretraining(args: argparse.Namespace) -> None:
             buffer_dtype=default_precision,
             cast_forward_inputs=True,
         ),
-        sharding_strategy=args.sharding_strategy,
-        device_id=torch.cuda.current_device(),
-        limit_all_gathers=True,
     )  # Original LLaMA training adds activation checkpointing
 
     # Dataset loading
@@ -201,12 +195,8 @@ def main():
 
     ####################
     # todo: add args
-    # sharding_strategy
-    # fsdp
     # wandb_name
     # wandb_mode
-    parser.add_argument("--fsdp", help="", type=str, default=None)
-    parser.add_argument("--sharding_strategy", help="", type=str, default=None)
     ####################
 
     parser.add_argument(
