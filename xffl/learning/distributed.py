@@ -31,11 +31,11 @@ def setup_distributed_process_group(
     :return: rank and local_rank of the calling process and global world size
     :rtype: Tuple[int, int, int]
     """
-    rank = int(os.environ.get["RANK"]) if not rank else rank
+    rank = int(os.environ.get("RANK")) if not rank else rank
     local_rank = (
-        int(rank or os.environ.get["LOCAL_RANK"]) if not local_rank else local_rank
+        int(rank or os.environ.get("LOCAL_RANK")) if not local_rank else local_rank
     )
-    world_size = int(os.environ.get["WORLD_SIZE"]) if not world_size else world_size
+    world_size = int(os.environ.get("WORLD_SIZE")) if not world_size else world_size
 
     # Requires MASTER_ADDR and MASTER_PORT environmental variables to be set
     dist.init_process_group(

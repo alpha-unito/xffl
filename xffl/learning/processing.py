@@ -2,13 +2,12 @@
 """
 
 import time
-from contextlib import nullcontext
 from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-import tqdm
-import wandb
+from tqdm import tqdm
+from wandb.wandb_run import Run
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
@@ -31,8 +30,7 @@ def fsdp_training(
     model_name: Optional[str] = None,
     save_model: Optional[bool] = None,
     lr_scheduler: Optional[LRScheduler] = None,
-    wandb_run: Optional[wandb.Run] = None,
-    precision: Optional[torch.dtype] = None,
+    wandb_run: Optional[Run] = None,
     verbose: Optional[bool] = None,
 ) -> Dict[str, float]:
     """Genreric training cycle for FSDP models
@@ -74,7 +72,6 @@ def fsdp_training(
     """
 
     # TODO: if fp16 the gradients should be rescaled
-    autocast = nullcontext
     train_prep = []
     train_loss = []
     val_prep = []
@@ -106,12 +103,9 @@ def fsdp_training(
         for step, batch in enumerate(train_dataloader):
             for key in batch.keys():
                 batch[key] = batch[key].to(
-                    device=f"cuda:{local_rank}", non_blocking=True
+                    device=local_rank, non_blocking=True
                 )
-            with autocast(
-                device_type="cuda", dtype=precision
-            ):  # TODO: check this better
-                loss = model(**batch).loss
+            loss = model(**batch).loss
 
             total_loss += loss.detach().float()
             train_step_loss.append(loss.detach().float().item())
@@ -211,7 +205,7 @@ def fsdp_evaluation(
     eval_dataloader: DataLoader,
     local_rank: int,
     world_size: int,
-    wandb_run: Optional[wandb.Run] = None,
+    wandb_run: Optional[Run] = None,
 ) -> Tuple[float, float, List[float], List[float]]:
     """Genreric evaluation cycle for FSDP models
 

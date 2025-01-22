@@ -21,7 +21,7 @@ def load_datasets_from_disk(
     :rtype: Dict[str, Union[Dataset, DatasetDict]]
     """
     datasets = {}
-    for split, path in paths:
+    for split, path in paths.items():
         datasets[split] = load_from_disk(path)
 
     return datasets

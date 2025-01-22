@@ -34,7 +34,7 @@ def get_logger(
     if LOGGER_NUMBER == 1:
         logger = logging.getLogger("root")
         logger.info(
-            f"Cross-Facility Federated Learning (xFFL) {VERSION} - %s - Starting the execution...",
+            f"Cross-Facility Federated Learning (xFFL) {VERSION} - %s - Starting execution...",
         )
     return logging.getLogger(class_name)
 
