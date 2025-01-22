@@ -4,7 +4,7 @@
 import logging
 import logging.config
 
-from xffl.constants import LOGGING_CONFIGURATION, VERSION
+from xffl.utils.constants import LOGGING_CONFIGURATION, VERSION
 
 LOGGER_NUMBER: int = 0
 """Number of different loggers currently instantiated"""
