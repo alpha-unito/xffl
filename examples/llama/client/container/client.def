@@ -1,0 +1,36 @@
+Bootstrap: docker
+From: {{ BASE_IMAGE }}
+
+%arguments
+	WORKDIR=$(pwd)
+    REQUIREMENTS_FILE=requirements.txt
+	REQUIREMENTS_FOLDER=requirements
+	#LIBRARIES=libraries
+	#LLAMA_RECIPES=llama-recipes
+
+	# NVIDIA
+	BASE_IMAGE=nvcr.io/nvidia/pytorch:24.12-py3
+	# ROCM
+	#BASE_IMAGE=rocm/pytorch:rocm5.7_ubuntu22.04_py3.10_pytorch_2.0.1
+	VERSION=v0.1.0
+
+%setup
+    mkdir ${APPTAINER_ROOTFS}/{{ REQUIREMENTS_FOLDER }}
+
+%files
+	{{ WORKDIR }}/{{ REQUIREMENTS_FILE }} /{{ REQUIREMENTS_FOLDER }}/
+	#{{ WORKDIR }}/../{{ LIBRARIES }}/{{ LLAMA_RECIPES }} /{{ REQUIREMENTS_FOLDER }}/
+
+%post
+	# Basic Python requirements installation
+	python3 -m pip install --no-cache-dir --upgrade pip && \
+	python3 -m pip install --no-cache-dir -r /{{ REQUIREMENTS_FOLDER }}/{{ REQUIREMENTS_FILE }} && \
+	rm -rf /{{ REQUIREMENTS_FOLDER }}
+
+%labels
+    Author gianluca.mittone@unito.it
+    Version {{ VERSION }}
+
+%help
+   HPC-ready container for the xFFL experiments ({{ VERSION }})
+   Base image: {{ BASE_IMAGE }}

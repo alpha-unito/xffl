@@ -2,7 +2,7 @@
 
 from os import PathLike as _PathLike
 from pathlib import Path
-from typing import Final, TypeVar
+from typing import TypeVar
 
-PathLike: Final[TypeVar] = TypeVar("PathLike", str, Path, _PathLike)
+PathLike = TypeVar("PathLike", str, Path, _PathLike)
 """Path-like objects"""
