@@ -4,5 +4,5 @@
 
 
 format:
-	isort xffl
-	black xffl
+	isort xffl examples/llama
+	black xffl examples/llama

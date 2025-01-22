@@ -118,8 +118,9 @@ def pretraining(args: argparse.Namespace) -> None:
     # Dataset loading
     datasets: Dict[str, Union[Dataset, DatasetDict]] = data.load_datasets_from_disk(
         paths={
-            "train": args.dataset + "/clean_mc4_it_train.hf",
-            "val": args.dataset + "/clean_mc4_it_val.hf",
+            # todo: hardcoded paths?
+            "train": os.path.join(args.dataset, "clean_mc4_it_train.hf"),
+            "val": os.path.join(args.dataset, "clean_mc4_it_val.hf"),
         }
     )  # Original LLaMA training packs the datasets
 
@@ -197,6 +198,16 @@ def main():
     parser.add_argument(
         "-m", "--model", help="Path to a saved model's folder", type=str, required=True
     )
+
+    ####################
+    # todo: add args
+    # sharding_strategy
+    # fsdp
+    # wandb_name
+    # wandb_mode
+    parser.add_argument("--fsdp", help="", type=str, default=None)
+    parser.add_argument("--sharding_strategy", help="", type=str, default=None)
+    ####################
 
     parser.add_argument(
         "-attn",
