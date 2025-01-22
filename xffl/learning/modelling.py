@@ -17,9 +17,7 @@ from xffl.custom.types import PathLike
 
 
 def save_FSDP_model(
-    model: FullyShardedDataParallel[
-        PreTrainedModel  # To be generalized (as for now just HF)
-    ],
+    model: FullyShardedDataParallel, # To be generalized (as for now just HF)
     path: PathLike,
     name: str,
     rank: int,
@@ -33,7 +31,7 @@ def save_FSDP_model(
     All processes part of the FSDP training have to call this method to effectively save the model
 
     :param model: FSDP-wrapped model to be saved
-    :type model: FullyShardedDataParallel[PreTrainedModel]
+    :type model: FullyShardedDataParallel
     :param path: Path where to save the model
     :type path: PathLike
     :param name: Model's name

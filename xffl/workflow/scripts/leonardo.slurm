@@ -12,6 +12,7 @@
 #SBATCH --cpus-per-task=8			# cores x 1 node / GPUs x 1 node
 #SBATCH --gpus-per-node=4
 #SBATCH --exclusive
+#SBATCH --qos=boost_qos_dbg
 
 # Parameters
 # export CODE_FOLDER=""

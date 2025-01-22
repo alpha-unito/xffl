@@ -91,7 +91,7 @@ def pretraining(args: argparse.Namespace) -> None:
         )
 
     # FSDP setup
-    model: FullyShardedDataParallel[LlamaForCausalLM] = FullyShardedDataParallel(
+    model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=model,
         sharding_strategy=ShardingStrategy.FULL_SHARD,
         auto_wrap_policy=functools.partial(

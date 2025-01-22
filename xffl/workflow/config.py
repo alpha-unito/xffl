@@ -108,7 +108,7 @@ def create_deployment(args: argparse.Namespace):
         username = "amulone1"
         key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
         remote_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
-        slurm_template = "/home/ubuntu/xffl/xffl/scripts/leonardo.slurm"
+        slurm_template = "/home/ubuntu/xffl/xffl/workflow/scripts/leonardo.slurm"
 
         # todo: query to user
         code_path = "/leonardo/home/userexternal/amulone1/xffl"
