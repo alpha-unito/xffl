@@ -47,7 +47,18 @@ classifiers = [
 xffl = "xffl.cli.cli:run"
 
 [tool.setuptools]
-packages = ["xffl"]
+packages = [
+	"xffl",
+	"xffl.cli",
+	"xffl.custom",
+	"xffl.learning",
+	"xffl.utils",
+	"xffl.workflow",
+	"xffl.workflow.templates"
+]
+
+[tool.setuptools.package-data]
+"xffl.utils" = ["*.conf"]
 
 [project.urls]
 Homepage = "https://hpc4ai.unito.it/hpc-federation/"
