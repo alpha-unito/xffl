@@ -34,6 +34,6 @@ COMMAND="${CONTAINER_PLT} exec \
 	--home /code/ \
 	$GPU_FLAG \
 	$IMAGE \
-	/code/xffl/scripts/run.sh $*"
+	/code/xffl/workflow/scripts/run.sh $*"
 echo "[Rank $RANK] $COMMAND"		
 eval "$COMMAND"

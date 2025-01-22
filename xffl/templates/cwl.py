@@ -24,7 +24,6 @@ def get_main_cwl() -> MutableMapping[str, Any]:
             "script_train": "File",
             "script_aggregation": "File",
             "model": "Directory",
-            "tokenizer": "Directory",
             "epochs": "int",
             "model_basename": "string",
             "max_rounds": "int",
@@ -42,7 +41,6 @@ def get_main_cwl() -> MutableMapping[str, Any]:
                     "script_train": "script_train",
                     "script_aggregation": "script_aggregation",
                     "model": "model",
-                    "tokenizer": "tokenizer",
                     "epochs": "epochs",
                     "model_basename": "model_basename",
                     "round": {"default": 0},
@@ -77,7 +75,6 @@ def get_round_cwl() -> MutableMapping[str, Any]:
             "script_train": "File",
             "script_aggregation": "File",
             "model": "Directory",
-            "tokenizer": "Directory",
             "epochs": "int",
             "model_basename": "string",
             "max_rounds": "int",
@@ -126,14 +123,15 @@ def get_workflow_step(name: str) -> MutableMapping[str, Any]:
         f"training_on_{name}": {
             "run": "clt/training.cwl",
             "in": {
+                # todo: add `wandb` and `seed` inputs
                 "script": "script_train",
                 "facility": f"facility_{name}",
                 "train_samples": f"train_samples_{name}",
                 "test_samples": f"test_samples_{name}",
                 "repository": f"repository_{name}",
-                "replica": f"gpus_per_node_{name}",
+                "image": f"image_{name}",
+                "dataset": f"dataset_{name}",
                 "model": "model",
-                "tokenizer": "tokenizer",
                 "epochs": "epochs",
                 "model_basename": "model_basename",
                 "round": "round",
@@ -203,12 +201,22 @@ def get_training_step() -> MutableMapping[str, Any]:
     return {
         "cwlVersion": "v1.2",
         "class": "CommandLineTool",
-        "requirements": {"InlineJavascriptRequirement": {}},
+        "requirements": {
+            "InlineJavascriptRequirement": {},
+            "EnvVarRequirement": {
+                "envDef": {
+                    "CODE_FOLDER": "$(inputs.repository.path)",
+                    "MODEL_FOLDER": "$(inputs.model.path)",
+                    "DATASET_FOLDER": "$(inputs.dataset.path)",
+                    "IMAGE": "$(inputs.image.path)",
+                    "FACILITY": "$(inputs.facility)",
+                }
+            },
+        },
         "arguments": [
             {
-                "position": 4,
-                "valueFrom": "$(runtime.outdir)",
-                "prefix": "--workdir",
+                "position": 1,
+                "valueFrom": "$(inputs.repository.path)/xffl/workflow/scripts/facilitator.sh",
             },
             {
                 "position": 5,
@@ -217,30 +225,24 @@ def get_training_step() -> MutableMapping[str, Any]:
             },
         ],
         "inputs": {
-            "script": {"type": "File", "inputBinding": {"position": 1}},
-            # "image": {
-            #     "type": "File",
-            #     "inputBinding": {"position": 2, "prefix": "--image"},
-            # },
+            "script": {
+                "type": "File",
+                # "inputBinding": {"position": 1}
+            },
+            "image": {
+                "type": "File",
+            },
             "facility": {
                 "type": "string",
-                "inputBinding": {"position": 2, "prefix": "--facility"},
             },
             "model": {
                 "type": "Directory",
-                "inputBinding": {"position": 2, "prefix": "--model"},
             },
-            "tokenizer": {
+            "dataset": {
                 "type": "Directory",
-                "inputBinding": {"position": 3, "prefix": "--tokenizer"},
             },
-            # "dataset": {
-            #     "type": "Directory",
-            #     "inputBinding": {"position": 3, "prefix": "--dataset"},
-            # },
             "repository": {
                 "type": "Directory",
-                "inputBinding": {"position": 3, "prefix": "--repository"},
             },
             "train_samples": {
                 "type": "int",
@@ -250,13 +252,19 @@ def get_training_step() -> MutableMapping[str, Any]:
                 "type": "int",
                 "inputBinding": {"position": 3, "prefix": "--validation"},
             },
-            "replica": {
-                "type": "int",
-                "inputBinding": {"position": 4, "prefix": "--replica"},
-            },
             "epochs": {
                 "type": "int",
                 "inputBinding": {"position": 4, "prefix": "--epochs"},
+            },
+            "seed": {
+                "type": "int",
+                "inputBinding": {"position": 4, "prefix": "--seed"},
+                "default": 42,
+            },
+            "wandb": {
+                "type": "string",
+                "inputBinding": {"position": 4, "prefix": "--wandb"},
+                "default": "offline",
             },
             "model_basename": {"type": "string"},
             "round": {"type": "int"},

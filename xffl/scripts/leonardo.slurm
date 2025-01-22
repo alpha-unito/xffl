@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=4					# Nodes x GPUs x 1 node
 #SBATCH --time=00:15:00
-#SBATCH --account=IscrC_LNM
+#SBATCH --account=EUHPC_B18_066
 #SBATCH --partition=boost_usr_prod
 #SBATCH --ntasks-per-node=4			# GPUs x 1 node
 #SBATCH --cpus-per-task=8			# cores x 1 node / GPUs x 1 node

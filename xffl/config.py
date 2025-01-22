@@ -60,19 +60,12 @@ def create_deployment(args: argparse.Namespace):
 
     # todo: add user interaction
     # fixme: remove aggregation_script
-    os.makedirs(os.path.join(workdir, "cwl", "data", "model_placeholder"))
-    with open(
-        os.path.join(workdir, "cwl", "data", "model_placeholder", "file.txt"), "w"
-    ) as fd:
-        fd.write("Hello")
-    os.makedirs(os.path.join(workdir, "cwl", "data", "tokenizer_placeholder"))
     os.makedirs(os.path.join(workdir, "cwl", "scripts"))
     with open(os.path.join(workdir, "cwl", "scripts", "aggregation.py"), "w") as fd:
         fd.write(get_aggregate())
     cwl_config |= {
-        "model": {"class": "Directory", "path": "data/model_placeholder"},
-        "tokenizer": {"class": "Directory", "path": "data/tokenizer_placeholder"},
-        "model_basename": "ciao",
+        "model": {"class": "Directory", "path": "/mnt/data/llama/llama3.1-8b"},
+        "model_basename": "llama3",
         "max_rounds": 2,
         "epochs": 1,
         "script_aggregation": {
@@ -83,60 +76,102 @@ def create_deployment(args: argparse.Namespace):
 
     while insert:
 
-        name = check_input(
-            "Type facility's logic name: ",
-            "Facility name {} already used.",
-            lambda name: name not in facilities,
-        )
+        # name = check_input(
+        #     "Type facility's logic name: ",
+        #     "Facility name {} already used.",
+        #     lambda name: name not in facilities,
+        # )
+        # facilities.add(name)
+
+        # address = input(f"Type {name}'s frontend node address [IP:port]: ")
+        # username = input(f"{name}'s username: ")
+
+        # key = check_input(
+        #     f"Path to {name}'s SSH key file: ",
+        #     "{} does not exists.",
+        #     lambda key: os.path.exists(key),
+        #     is_path=True,
+        # )
+
+        # remote_workdir = input("Path to the facility's working directory: ")
+
+        # # todo: list the needed pragmas
+        # slurm_template = check_input(
+        #     f"Path to {name}'s SLURM template with the required directives: ",
+        #     "{} does not exists.",
+        #     lambda path: os.path.exists(path),
+        #     is_path=True,
+        # )
+        name = "leonardo"
         facilities.add(name)
+        address = "login.leonardo.cineca.it"
+        username = "amulone1"
+        key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
+        remote_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
+        slurm_template = "/home/ubuntu/xffl/xffl/scripts/leonardo.slurm"
 
-        address = input(f"Type {name}'s frontend node address [IP:port]: ")
-        username = input(f"{name}'s username: ")
+        # todo: query to user
+        code_path = "/leonardo/home/userexternal/amulone1/xffl"
+        dataset_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/datasets"
+        image_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/worker.sif"
+        num_test_sample = 100
+        num_train_sample = 1000
+        model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # fixme: remote it
 
-        key = check_input(
-            f"Path to {name}'s SSH key file: ",
-            "{} does not exists.",
-            lambda key: os.path.exists(key),
-            is_path=True,
-        )
-
-        remote_workdir = input("Path to the facility's working directory: ")
-
-        # todo: list the needed pragmas
-        slurm_template = check_input(
-            f"Path to {name}'s SLURM template with the required directives: ",
-            "{} does not exists.",
-            lambda path: os.path.exists(path),
-            is_path=True,
-        )
-
-        step_config = {
-            "step": f"/iteration/training_on_{name}",
-            "target": [
-                {"deployment": name, "service": "pragma"},
-                # {
-                #     "port": f"/repository_{name}",
-                #     "target": {
-                #         "deployment": f"{name}-ssh",
-                #         "workdir": code_path,
-                #     },
-                # },
-            ],
-        }
+        step_config = [
+            {
+                "step": f"/iteration/training_on_{name}",
+                "target": [
+                    {"deployment": name, "service": "pragma"},
+                ],
+            },
+            {
+                "port": f"/repository_{name}",
+                "target": {
+                    "deployment": f"{name}",
+                    "workdir": os.path.dirname(code_path),
+                },
+            },
+            {
+                "port": f"/dataset_{name}",
+                "target": {
+                    "deployment": f"{name}",
+                    "workdir": os.path.dirname(dataset_path),
+                },
+            },
+            {
+                "port": f"/image_{name}",
+                "target": {
+                    "deployment": f"{name}",
+                    "workdir": os.path.dirname(image_path),
+                },
+            },
+            {  # fixme: remote it
+                "port": f"/model",
+                "target": {
+                    "deployment": f"{name}",
+                    "workdir": os.path.dirname(model_path),
+                },
+            },
+        ]
 
         main_cwl["inputs"] |= {
             f"facility_{name}": "string",
             f"repository_{name}": "Directory",
             f"test_samples_{name}": "int",
             f"train_samples_{name}": "int",
-            f"gpus_per_node_{name}": "int",
+            f"repository_{name}": "Directory",
+            f"image_{name}": "File",
+            f"dataset_{name}": "Directory",
         }
         main_cwl["steps"]["iteration"]["in"] |= {
             f"facility_{name}": f"facility_{name}",
             f"repository_{name}": f"repository_{name}",
             f"test_samples_{name}": f"test_samples_{name}",
             f"train_samples_{name}": f"train_samples_{name}",
-            f"gpus_per_node_{name}": f"gpus_per_node_{name}",
+            f"repository_{name}": f"repository_{name}",
+            f"image_{name}": f"image_{name}",
+            f"dataset_{name}": f"dataset_{name}",
         }
 
         round_cwl["inputs"] |= {
@@ -144,7 +179,9 @@ def create_deployment(args: argparse.Namespace):
             f"repository_{name}": "Directory",
             f"test_samples_{name}": "int",
             f"train_samples_{name}": "int",
-            f"gpus_per_node_{name}": "int",
+            f"repository_{name}": "Directory",
+            f"image_{name}": "File",
+            f"dataset_{name}": "Directory",
         }
         round_cwl["steps"] |= get_workflow_step(name)
 
@@ -153,18 +190,22 @@ def create_deployment(args: argparse.Namespace):
         round_cwl["steps"]["merge"]["run"]["expression"].append(f"inputs.{name}")
 
         # fixme: insert correct values
-        os.makedirs(
-            os.path.join(workdir, "cwl", "data", f"repository_placeholder_{name}")
-        )
         cwl_config |= {
             f"facility_{name}": name,
             f"repository_{name}": {
                 "class": "Directory",
-                "path": f"data/repository_placeholder_{name}",
+                "path": os.path.basename(code_path),
             },
-            f"test_samples_{name}": 100,
-            f"train_samples_{name}": 100,
-            f"gpus_per_node_{name}": 4,
+            f"image_{name}": {
+                "class": "File",
+                "path": os.path.basename(image_path),
+            },
+            f"dataset_{name}": {
+                "class": "Directory",
+                "path": os.path.basename(dataset_path),
+            },
+            f"test_samples_{name}": num_test_sample,
+            f"train_samples_{name}": num_train_sample,
         }
 
         deployment_config = {
@@ -185,7 +226,7 @@ def create_deployment(args: argparse.Namespace):
             },
         }
 
-        streamflow_config["workflows"]["xffl"]["bindings"].append(step_config)
+        streamflow_config["workflows"]["xffl"]["bindings"].extend(step_config)
         streamflow_config["deployments"] |= deployment_config
 
         logger.debug(
