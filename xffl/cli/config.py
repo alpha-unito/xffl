@@ -74,11 +74,11 @@ def create_deployment(args: argparse.Namespace):
 
     while insert:
 
-        # name = check_input(
-        #     "Type facility's logic name: ",
-        #     "Facility name {} already used.",
-        #     lambda name: name not in facilities,
-        # )
+        name = check_input(
+            "Type facility's logic name: ",
+            "Facility name {} already used.",
+            lambda name: name not in facilities,
+        )
         # facilities.add(name)
 
         # address = input(f"Type {name}'s frontend node address [IP:port]: ")
@@ -91,7 +91,7 @@ def create_deployment(args: argparse.Namespace):
         #     is_path=True,
         # )
 
-        # remote_workdir = input("Path to the facility's working directory: ")
+        # workdir = input("Path to the facility's working directory: ")
 
         # # todo: list the needed pragmas
         # slurm_template = check_input(
@@ -100,12 +100,12 @@ def create_deployment(args: argparse.Namespace):
         #     lambda path: os.path.exists(path),
         #     is_path=True,
         # )
-        name = "leonardo"
+
         facilities.add(name)
         address = "login.leonardo.cineca.it"
         username = "amulone1"
         key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
-        remote_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
+        step_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
         slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # todo: copy the template in the project dir?
 
         # todo: query to user
@@ -114,6 +114,7 @@ def create_deployment(args: argparse.Namespace):
         image_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/worker.sif"
         num_test_sample = 100
         num_train_sample = 1000
+        gpu_per_nodes = 4
         model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # fixme: remote it
 
         step_config = [
@@ -144,7 +145,8 @@ def create_deployment(args: argparse.Namespace):
                     "workdir": os.path.dirname(image_path),
                 },
             },
-            {  # fixme: remote it
+            {
+                # fixme: remote it
                 "port": f"/model",
                 "target": {
                     "deployment": f"{name}",
@@ -160,6 +162,7 @@ def create_deployment(args: argparse.Namespace):
             f"train_samples_{name}": "int",
             f"repository_{name}": "Directory",
             f"image_{name}": "File",
+            f"gpu_per_nodes_{name}": "int",
             f"dataset_{name}": "Directory",
         }
         main_cwl["steps"]["iteration"]["in"] |= {
@@ -169,6 +172,7 @@ def create_deployment(args: argparse.Namespace):
             f"train_samples_{name}": f"train_samples_{name}",
             f"repository_{name}": f"repository_{name}",
             f"image_{name}": f"image_{name}",
+            f"gpu_per_nodes_{name}": f"gpu_per_nodes_{name}",
             f"dataset_{name}": f"dataset_{name}",
         }
 
@@ -179,6 +183,7 @@ def create_deployment(args: argparse.Namespace):
             f"train_samples_{name}": "int",
             f"repository_{name}": "Directory",
             f"image_{name}": "File",
+            f"gpu_per_nodes_{name}": "int",
             f"dataset_{name}": "Directory",
         }
         round_cwl["steps"] |= get_workflow_step(name)
@@ -204,25 +209,35 @@ def create_deployment(args: argparse.Namespace):
             },
             f"test_samples_{name}": num_test_sample,
             f"train_samples_{name}": num_train_sample,
+            f"gpu_per_nodes_{name}": gpu_per_nodes,
         }
 
-        deployment_config = {
-            f"{name}-ssh": {
-                "type": "ssh",
-                "config": {
-                    "nodes": [address],
-                    "username": username,
-                    "sshKey": key,
+        if name == "local":
+            deployment_config = {
+                f"{name}-ssh": {
+                    "type": "ssh",
+                    "config": {
+                        "nodes": [address],
+                        "username": username,
+                        "sshKey": key,
+                    },
+                    "workdir": step_workdir,
                 },
-                "workdir": remote_workdir,
-            },
-            name: {
-                "type": "slurm",
-                "config": {"services": {"pragma": {"file": slurm_template}}},
-                "wraps": f"{name}-ssh",
-                "workdir": remote_workdir,
-            },
-        }
+                name: {
+                    "type": "slurm",
+                    "config": {"services": {"pragma": {"file": slurm_template}}},
+                    "wraps": f"{name}-ssh",
+                    "workdir": step_workdir,
+                },
+            }
+        else:
+            deployment_config = {
+                name: {
+                    "type": "local",
+                    "config": {},
+                    "workdir": step_workdir,
+                },
+            }
 
         streamflow_config["workflows"]["xffl"]["bindings"].extend(step_config)
         streamflow_config["deployments"] |= deployment_config

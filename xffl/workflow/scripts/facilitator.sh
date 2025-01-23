@@ -10,7 +10,7 @@
 source "$(dirname "$0")/env.sh"
 
 # Set general env variables for distributed ML
-Derive_env_from_SLURM
+Derive_env
 Limit_PyTorch_threads
 Reset_visible_devices
 LLaMA_default_env
@@ -25,15 +25,34 @@ if [ ! -f "${FACILITY_SCRIPT}" ]; then
 fi
 source "${FACILITY_SCRIPT}"
 
-# Singularity container launch
-COMMAND="${CONTAINER_PLT} exec \
-	--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
-	--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
-	--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
-	--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
-	--home /code/ \
-	$GPU_FLAG \
-	$IMAGE \
-	/code/xffl/workflow/scripts/run.sh $*"
-echo "[Rank $RANK] $COMMAND"		
-eval "$COMMAND"
+if [ "${FACILITY}" = "local" ] ; then 
+	for RANK in $( seq 0 1 ${INSTANCES} )  ; do
+		LOCAL_RANK=${RANK}
+		ROLE_RANK=${RANK}
+		COMMAND="${CONTAINER_PLT} exec \
+			--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
+			--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
+			--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
+			--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
+			--home /code/ \
+			$GPU_FLAG \
+			$IMAGE \
+			/code/xffl/workflow/scripts/run.sh $*"
+		echo "[Rank $RANK] $COMMAND"		
+		eval "$COMMAND" & 
+		wait
+	done
+else
+	# Singularity container launch
+	COMMAND="${CONTAINER_PLT} exec \
+		--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
+		--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
+		--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
+		--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
+		--home /code/ \
+		$GPU_FLAG \
+		$IMAGE \
+		/code/xffl/workflow/scripts/run.sh $*"
+	echo "[Rank $RANK] $COMMAND"		
+	eval "$COMMAND"
+fi

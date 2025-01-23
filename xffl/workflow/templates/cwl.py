@@ -180,6 +180,7 @@ def get_training_step() -> MutableMapping[str, Any]:
                     "DATASET_FOLDER": "$(inputs.dataset.path)",
                     "IMAGE": "$(inputs.image.path)",
                     "FACILITY": "$(inputs.facility)",
+                    "INSTANCES": "$(inputs.gpu_per_nodes)",
                 }
             },
         },
@@ -235,6 +236,7 @@ def get_training_step() -> MutableMapping[str, Any]:
                 "inputBinding": {"position": 4, "prefix": "--wandb"},
                 "default": "offline",
             },
+            "gpu_per_nodes": {"type": "int"},
             "model_basename": {"type": "string"},
             "round": {"type": "int"},
         },
@@ -264,6 +266,7 @@ def get_workflow_step(name: str) -> MutableMapping[str, Any]:
                 # todo: add `wandb` and `seed` inputs
                 "script": "script_train",
                 "facility": f"facility_{name}",
+                "gpu_per_nodes": f"gpu_per_nodes_{name}",
                 "train_samples": f"train_samples_{name}",
                 "test_samples": f"test_samples_{name}",
                 "repository": f"repository_{name}",
