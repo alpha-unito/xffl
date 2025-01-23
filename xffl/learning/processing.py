@@ -6,11 +6,11 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-from tqdm import tqdm
-from wandb.wandb_run import Run
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
+from tqdm import tqdm
+from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
 from xffl.learning.modelling import save_FSDP_model
@@ -102,9 +102,7 @@ def fsdp_training(
         )
         for step, batch in enumerate(train_dataloader):
             for key in batch.keys():
-                batch[key] = batch[key].to(
-                    device=local_rank, non_blocking=True
-                )
+                batch[key] = batch[key].to(device=local_rank, non_blocking=True)
             loss = model(**batch).loss
 
             total_loss += loss.detach().float()

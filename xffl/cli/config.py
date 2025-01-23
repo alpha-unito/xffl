@@ -7,11 +7,13 @@ necessary to run xFFL workloads across different HPCs
 import argparse
 import json
 import os
+import shutil
 import stat
 from pathlib import Path
 
 import yaml
 
+from xffl.utils.constants import DEFAULT_xFFL_DIR
 from xffl.utils.logging import get_logger
 from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
@@ -22,7 +24,7 @@ from xffl.workflow.templates.cwl import (
     get_training_step,
     get_workflow_step,
 )
-from xffl.workflow.templates.sh import get_aggregate, get_run_sh
+from xffl.workflow.templates.sh import get_aggregate
 from xffl.workflow.templates.streamflow import get_streamflow_config
 
 logger = get_logger("Config")
@@ -59,12 +61,8 @@ def create_deployment(args: argparse.Namespace):
     cwl_config = get_config()
 
     # todo: add user interaction
-    # fixme: remove aggregation_script
-    os.makedirs(os.path.join(workdir, "cwl", "scripts"))
-    with open(os.path.join(workdir, "cwl", "scripts", "aggregation.py"), "w") as fd:
-        fd.write(get_aggregate())
     cwl_config |= {
-        "model": {"class": "Directory", "path": "/mnt/data/llama/llama3.1-8b"},
+        "model": {"class": "Directory", "path": "llama3.1-8b"},
         "model_basename": "llama3",
         "max_rounds": 2,
         "epochs": 1,
@@ -108,7 +106,7 @@ def create_deployment(args: argparse.Namespace):
         username = "amulone1"
         key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
         remote_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
-        slurm_template = "/home/ubuntu/xffl/xffl/workflow/scripts/leonardo.slurm"
+        slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # todo: copy the template in the project dir?
 
         # todo: query to user
         code_path = "/leonardo/home/userexternal/amulone1/xffl"
@@ -276,15 +274,14 @@ def create_deployment(args: argparse.Namespace):
     with open(os.path.join(workdir, "cwl", "config.yml"), "w") as outfile:
         yaml.dump(cwl_config, outfile, default_flow_style=False, sort_keys=False)
     ## Scripts
-    os.makedirs(os.path.join(workdir, "cwl", "scripts"), exist_ok=True)
-    with open(os.path.join(workdir, "cwl", "scripts", "run.sh"), "w") as outfile:
-        outfile.write(get_run_sh())
-    usr_permissions = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-    grp_permissions = stat.S_IRGRP | stat.S_IXGRP
-    os.chmod(
-        os.path.join(workdir, "cwl", "scripts", "run.sh"),
-        usr_permissions | grp_permissions,
+    shutil.copytree(
+        os.path.join(DEFAULT_xFFL_DIR, "workflow", "scripts"),
+        os.path.join(workdir, "cwl", "scripts"),
     )
+    # fixme: remove aggregation_script
+    os.makedirs(os.path.join(workdir, "cwl", "py_scripts"))
+    with open(os.path.join(workdir, "cwl", "py_scripts", "aggregation.py"), "w") as fd:
+        fd.write(get_aggregate())
 
 
 def main(args: argparse.Namespace):

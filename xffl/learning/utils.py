@@ -1,13 +1,13 @@
 """Utility methods useful in a number of common DNN training scenarios
 """
 
+import os
 import random
 from typing import Optional
 
 import numpy
 import torch
 import torch.nn as nn
-import os
 
 
 def set_deterministic_execution(seed: int) -> torch.Generator:
@@ -26,17 +26,19 @@ def set_deterministic_execution(seed: int) -> torch.Generator:
     generator = torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    torch.utils.deterministic.fill_uninitialized_memory=True  # This should be True by default
+    torch.utils.deterministic.fill_uninitialized_memory = (
+        True  # This should be True by default
+    )
     torch.use_deterministic_algorithms(mode=True)
 
-    os.environ["CUBLAS_WORKSPACE_CONFIG"]=":4096:8" #TODO: check cuBLAS version
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # TODO: check cuBLAS version
 
     return generator
 
 
 def set_nondeterministic_execution() -> None:
     """Deactivate deterministic execution and deterministic memory filling to improve performance"""
-    torch.utils.deterministic.fill_uninitialized_memory=False
+    torch.utils.deterministic.fill_uninitialized_memory = False
     torch.use_deterministic_algorithms(mode=False)
 
 

@@ -4,10 +4,10 @@
 import argparse
 import sys
 
+from xffl.cli.config import main as create_config
 from xffl.cli.parser import parser
 from xffl.utils.constants import VERSION
 from xffl.utils.logging import get_logger, set_log_level
-from xffl.workflow.config import main as create_config
 
 logger = get_logger("CLI")
 

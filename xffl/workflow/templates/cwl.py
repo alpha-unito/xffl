@@ -5,6 +5,57 @@ from collections.abc import MutableMapping
 from typing import Any
 
 
+def get_aggregate_step() -> MutableMapping[str, Any]:
+    """Get the CWL file standard content for a xFFL application aggregation step
+
+    :return: Dict template of a CWL xFFL aggregation step
+    :rtype: MutableMapping[str, Any]
+    """
+    return {
+        "cwlVersion": "v1.2",
+        "class": "CommandLineTool",
+        "requirements": {
+            "InlineJavascriptRequirement": {},
+            # todo: create the image llm-aggregator on alphaunito DockerHub
+            # "DockerRequirement": {"dockerPull": "alphaunito/llm-aggregator"}
+        },
+        "baseCommand": ["python"],
+        "arguments": [
+            {
+                "position": 5,
+                "valueFrom": "$(inputs.model_basename)-merged-round$(inputs.round)",
+                "prefix": "--outname",
+            }
+        ],
+        "inputs": {
+            "script": {"type": "File", "inputBinding": {"position": 1}},
+            "models": {
+                "type": {
+                    "type": "array",
+                    "items": "Directory",
+                    "inputBinding": {"position": 2, "prefix": "--model"},
+                }
+            },
+            "model_basename": {"type": "string"},
+            "round": {"type": "int"},
+        },
+        "outputs": {
+            "output_model": {
+                "type": "Directory",
+                "outputBinding": {
+                    "glob": "$(inputs.model_basename)-merged-round$(inputs.round)"
+                },
+            }
+        },
+    }
+
+
+def get_config() -> MutableMapping[str, Any]:
+    return {
+        "script_train": {"class": "Directory", "path": "scripts"},
+    }
+
+
 def get_main_cwl() -> MutableMapping[str, Any]:
     """Get the CWL main file standard content for a xFFL application
 
@@ -21,7 +72,7 @@ def get_main_cwl() -> MutableMapping[str, Any]:
             "StepInputExpressionRequirement": {},
         },
         "inputs": {
-            "script_train": "File",
+            "script_train": "Directory",
             "script_aggregation": "File",
             "model": "Directory",
             "epochs": "int",
@@ -72,7 +123,7 @@ def get_round_cwl() -> MutableMapping[str, Any]:
         "cwlVersion": "v1.2",
         "class": "Workflow",
         "inputs": {
-            "script_train": "File",
+            "script_train": "Directory",
             "script_aggregation": "File",
             "model": "Directory",
             "epochs": "int",
@@ -111,87 +162,6 @@ def get_round_cwl() -> MutableMapping[str, Any]:
     }
 
 
-def get_workflow_step(name: str) -> MutableMapping[str, Any]:
-    """Get the CWL file standard content for a xFFL application step
-
-    :param name: Name of the facility on which the step will be executed
-    :type name: str
-    :return: Dict template of a CWL xFFL step
-    :rtype: MutableMapping[str, Any]
-    """
-    return {
-        f"training_on_{name}": {
-            "run": "clt/training.cwl",
-            "in": {
-                # todo: add `wandb` and `seed` inputs
-                "script": "script_train",
-                "facility": f"facility_{name}",
-                "train_samples": f"train_samples_{name}",
-                "test_samples": f"test_samples_{name}",
-                "repository": f"repository_{name}",
-                "image": f"image_{name}",
-                "dataset": f"dataset_{name}",
-                "model": "model",
-                "epochs": "epochs",
-                "model_basename": "model_basename",
-                "round": "round",
-            },
-            "out": ["output_model"],
-        }
-    }
-
-
-def get_aggregate_step() -> MutableMapping[str, Any]:
-    """Get the CWL file standard content for a xFFL application aggregation step
-
-    :return: Dict template of a CWL xFFL aggregation step
-    :rtype: MutableMapping[str, Any]
-    """
-    return {
-        "cwlVersion": "v1.2",
-        "class": "CommandLineTool",
-        "requirements": {
-            "InlineJavascriptRequirement": {},
-            # todo: create the image llm-aggregator on alphaunito DockerHub
-            # "DockerRequirement": {"dockerPull": "alphaunito/llm-aggregator"}
-        },
-        "baseCommand": ["python"],
-        "arguments": [
-            {
-                "position": 5,
-                "valueFrom": "$(inputs.model_basename)-merged-round$(inputs.round)",
-                "prefix": "--outname",
-            }
-        ],
-        "inputs": {
-            "script": {"type": "File", "inputBinding": {"position": 1}},
-            "models": {
-                "type": {
-                    "type": "array",
-                    "items": "Directory",
-                    "inputBinding": {"position": 2, "prefix": "--model"},
-                }
-            },
-            "model_basename": {"type": "string"},
-            "round": {"type": "int"},
-        },
-        "outputs": {
-            "output_model": {
-                "type": "Directory",
-                "outputBinding": {
-                    "glob": "$(inputs.model_basename)-merged-round$(inputs.round)"
-                },
-            }
-        },
-    }
-
-
-def get_config() -> MutableMapping[str, Any]:
-    return {
-        "script_train": {"class": "File", "path": "scripts/run.sh"},
-    }
-
-
 def get_training_step() -> MutableMapping[str, Any]:
     """Get the CWL file standard content for a xFFL application training step
 
@@ -216,7 +186,7 @@ def get_training_step() -> MutableMapping[str, Any]:
         "arguments": [
             {
                 "position": 1,
-                "valueFrom": "$(inputs.repository.path)/xffl/workflow/scripts/facilitator.sh",
+                "valueFrom": "$(inputs.script.path)/facilitator.sh",
             },
             {
                 "position": 5,
@@ -226,8 +196,7 @@ def get_training_step() -> MutableMapping[str, Any]:
         ],
         "inputs": {
             "script": {
-                "type": "File",
-                # "inputBinding": {"position": 1}
+                "type": "Directory",
             },
             "image": {
                 "type": "File",
@@ -277,4 +246,34 @@ def get_training_step() -> MutableMapping[str, Any]:
                 },
             }
         },
+    }
+
+
+def get_workflow_step(name: str) -> MutableMapping[str, Any]:
+    """Get the CWL file standard content for a xFFL application step
+
+    :param name: Name of the facility on which the step will be executed
+    :type name: str
+    :return: Dict template of a CWL xFFL step
+    :rtype: MutableMapping[str, Any]
+    """
+    return {
+        f"training_on_{name}": {
+            "run": "clt/training.cwl",
+            "in": {
+                # todo: add `wandb` and `seed` inputs
+                "script": "script_train",
+                "facility": f"facility_{name}",
+                "train_samples": f"train_samples_{name}",
+                "test_samples": f"test_samples_{name}",
+                "repository": f"repository_{name}",
+                "image": f"image_{name}",
+                "dataset": f"dataset_{name}",
+                "model": "model",
+                "epochs": "epochs",
+                "model_basename": "model_basename",
+                "round": "round",
+            },
+            "out": ["output_model"],
+        }
     }
