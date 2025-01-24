@@ -5,12 +5,11 @@ import argparse
 import sys
 from logging import Logger, getLogger
 
-from xffl.cli.config import main as create_config
+from xffl.cli.config import main as xffl_config
 from xffl.cli.parser import parser
 from xffl.cli.run import main as xffl_run
 from xffl.utils.constants import VERSION
 from xffl.utils.logging import setup_logging
-from xffl.workflow.config import main as xffl_config
 
 logger: Logger = getLogger(__name__)
 """Deafult xFFL logger"""
