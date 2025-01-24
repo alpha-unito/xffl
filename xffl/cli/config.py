@@ -1,17 +1,20 @@
 """Guided configuration files creation for xFFL
 
-This script guides the user in the creation of the StreamFlow and CWL configuration files necessary to run xFFL workloads across different HPCs
+This script guides the user in the creation of the StreamFlow and CWL configuration files
+necessary to run xFFL workloads across different HPCs
 """
 
 import argparse
 import json
 import os
+import shutil
 import stat
-from logging import Logger, getLogger
 from pathlib import Path
 
 import yaml
 
+from xffl.utils.constants import DEFAULT_xFFL_DIR
+from xffl.utils.logging import get_logger
 from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
     get_aggregate_step,
@@ -21,11 +24,10 @@ from xffl.workflow.templates.cwl import (
     get_training_step,
     get_workflow_step,
 )
-from xffl.workflow.templates.sh import get_aggregate, get_run_sh
+from xffl.workflow.templates.sh import get_aggregate
 from xffl.workflow.templates.streamflow import get_streamflow_config
 
-logger: Logger = getLogger(__name__)
-"""Deafult xFFL logger"""
+logger = get_logger("Config")
 
 
 def create_deployment(args: argparse.Namespace):
@@ -59,12 +61,8 @@ def create_deployment(args: argparse.Namespace):
     cwl_config = get_config()
 
     # todo: add user interaction
-    # fixme: remove aggregation_script
-    os.makedirs(os.path.join(workdir, "cwl", "scripts"))
-    with open(os.path.join(workdir, "cwl", "scripts", "aggregation.py"), "w") as fd:
-        fd.write(get_aggregate())
     cwl_config |= {
-        "model": {"class": "Directory", "path": "/mnt/data/llama/llama3.1-8b"},
+        "model": {"class": "Directory", "path": "llama3.1-8b"},
         "model_basename": "llama3",
         "max_rounds": 2,
         "epochs": 1,
@@ -76,11 +74,11 @@ def create_deployment(args: argparse.Namespace):
 
     while insert:
 
-        # name = check_input(
-        #     "Type facility's logic name: ",
-        #     "Facility name {} already used.",
-        #     lambda name: name not in facilities,
-        # )
+        name = check_input(
+            "Type facility's logic name: ",
+            "Facility name {} already used.",
+            lambda name: name not in facilities,
+        )
         # facilities.add(name)
 
         # address = input(f"Type {name}'s frontend node address [IP:port]: ")
@@ -93,7 +91,7 @@ def create_deployment(args: argparse.Namespace):
         #     is_path=True,
         # )
 
-        # remote_workdir = input("Path to the facility's working directory: ")
+        # workdir = input("Path to the facility's working directory: ")
 
         # # todo: list the needed pragmas
         # slurm_template = check_input(
@@ -102,13 +100,13 @@ def create_deployment(args: argparse.Namespace):
         #     lambda path: os.path.exists(path),
         #     is_path=True,
         # )
-        name = "leonardo"
+
         facilities.add(name)
         address = "login.leonardo.cineca.it"
         username = "amulone1"
         key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
-        remote_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
-        slurm_template = "/home/ubuntu/xffl/xffl/workflow/scripts/leonardo.slurm"
+        step_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
+        slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # todo: copy the template in the project dir?
 
         # todo: query to user
         code_path = "/leonardo/home/userexternal/amulone1/xffl"
@@ -116,6 +114,7 @@ def create_deployment(args: argparse.Namespace):
         image_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/worker.sif"
         num_test_sample = 100
         num_train_sample = 1000
+        gpu_per_nodes = 4
         model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # fixme: remote it
 
         step_config = [
@@ -146,7 +145,8 @@ def create_deployment(args: argparse.Namespace):
                     "workdir": os.path.dirname(image_path),
                 },
             },
-            {  # fixme: remote it
+            {
+                # fixme: remote it
                 "port": f"/model",
                 "target": {
                     "deployment": f"{name}",
@@ -162,6 +162,7 @@ def create_deployment(args: argparse.Namespace):
             f"train_samples_{name}": "int",
             f"repository_{name}": "Directory",
             f"image_{name}": "File",
+            f"gpu_per_nodes_{name}": "int",
             f"dataset_{name}": "Directory",
         }
         main_cwl["steps"]["iteration"]["in"] |= {
@@ -171,6 +172,7 @@ def create_deployment(args: argparse.Namespace):
             f"train_samples_{name}": f"train_samples_{name}",
             f"repository_{name}": f"repository_{name}",
             f"image_{name}": f"image_{name}",
+            f"gpu_per_nodes_{name}": f"gpu_per_nodes_{name}",
             f"dataset_{name}": f"dataset_{name}",
         }
 
@@ -181,6 +183,7 @@ def create_deployment(args: argparse.Namespace):
             f"train_samples_{name}": "int",
             f"repository_{name}": "Directory",
             f"image_{name}": "File",
+            f"gpu_per_nodes_{name}": "int",
             f"dataset_{name}": "Directory",
         }
         round_cwl["steps"] |= get_workflow_step(name)
@@ -206,25 +209,35 @@ def create_deployment(args: argparse.Namespace):
             },
             f"test_samples_{name}": num_test_sample,
             f"train_samples_{name}": num_train_sample,
+            f"gpu_per_nodes_{name}": gpu_per_nodes,
         }
 
-        deployment_config = {
-            f"{name}-ssh": {
-                "type": "ssh",
-                "config": {
-                    "nodes": [address],
-                    "username": username,
-                    "sshKey": key,
+        if name == "local":
+            deployment_config = {
+                f"{name}-ssh": {
+                    "type": "ssh",
+                    "config": {
+                        "nodes": [address],
+                        "username": username,
+                        "sshKey": key,
+                    },
+                    "workdir": step_workdir,
                 },
-                "workdir": remote_workdir,
-            },
-            name: {
-                "type": "slurm",
-                "config": {"services": {"pragma": {"file": slurm_template}}},
-                "wraps": f"{name}-ssh",
-                "workdir": remote_workdir,
-            },
-        }
+                name: {
+                    "type": "slurm",
+                    "config": {"services": {"pragma": {"file": slurm_template}}},
+                    "wraps": f"{name}-ssh",
+                    "workdir": step_workdir,
+                },
+            }
+        else:
+            deployment_config = {
+                name: {
+                    "type": "local",
+                    "config": {},
+                    "workdir": step_workdir,
+                },
+            }
 
         streamflow_config["workflows"]["xffl"]["bindings"].extend(step_config)
         streamflow_config["deployments"] |= deployment_config
@@ -276,31 +289,24 @@ def create_deployment(args: argparse.Namespace):
     with open(os.path.join(workdir, "cwl", "config.yml"), "w") as outfile:
         yaml.dump(cwl_config, outfile, default_flow_style=False, sort_keys=False)
     ## Scripts
-    os.makedirs(os.path.join(workdir, "cwl", "scripts"), exist_ok=True)
-    with open(os.path.join(workdir, "cwl", "scripts", "run.sh"), "w") as outfile:
-        outfile.write(get_run_sh())
-    usr_permissions = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-    grp_permissions = stat.S_IRGRP | stat.S_IXGRP
-    os.chmod(
-        os.path.join(workdir, "cwl", "scripts", "run.sh"),
-        usr_permissions | grp_permissions,
+    shutil.copytree(
+        os.path.join(DEFAULT_xFFL_DIR, "workflow", "scripts"),
+        os.path.join(workdir, "cwl", "scripts"),
     )
+    # fixme: remove aggregation_script
+    os.makedirs(os.path.join(workdir, "cwl", "py_scripts"))
+    with open(os.path.join(workdir, "cwl", "py_scripts", "aggregation.py"), "w") as fd:
+        fd.write(get_aggregate())
 
 
-def main(args: argparse.Namespace) -> int:
+def main(args: argparse.Namespace):
     logger.info(
-        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***\n"
     )
-    try:
-        create_deployment(args)
-    except (FileNotFoundError, FileExistsError) as e:
-        logger.critical(str(e))
-    finally:
-        logger.info(
-            "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
-        )
-
-    return 0
+    create_deployment(args)
+    logger.info(
+        "\n*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+    )
 
 
 if __name__ == "__main__":

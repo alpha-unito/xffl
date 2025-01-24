@@ -5,6 +5,7 @@ import argparse
 import sys
 from logging import Logger, getLogger
 
+from xffl.cli.config import main as create_config
 from xffl.cli.parser import parser
 from xffl.cli.run import main as xffl_run
 from xffl.utils.constants import VERSION

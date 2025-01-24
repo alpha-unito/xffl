@@ -3,22 +3,41 @@
 # The PyTorch's FSDP runtime requires the following environment variables to be correctly set to operate correctly.
 # These environment variables are very similar to those used by other distributed systems (i.e., MPI)
 # We extract this information from the SLURM runtime environment through srun, but an equivalent setting is obtained through mpirun (mpi equivalent variables are indicated in comments)
-Derive_env_from_SLURM () {
-	if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
-		export LOCAL_WORLD_SIZE=$SLURM_NTASKS
-	else
-		export LOCAL_WORLD_SIZE=$SLURM_NTASKS_PER_NODE
-	fi
-	export WORLD_SIZE=$SLURM_NTASKS			 					# OMPI_COMM_WORLD_SIZE
-	export GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES				# OMPI_MCA_orte_num_nodes 
-	export ROLE_WORLD_SIZE=$SLURM_NTASKS 						# OMPI_COMM_WORLD_SIZE
-	export LOCAL_RANK=$SLURM_LOCALID 							# OMPI_COMM_WORLD_LOCAL_RANK
-	export RANK=$SLURM_PROCID 									# OMPI_COMM_WORLD_RANK
-	export ROLE_RANK=$RANK										# $OMPI_COMM_WORLD_RANK
-	export GROUP_RANK=$(( RANK / SLURM_NTASKS_PER_NODE ))
-	export ROLE_NAME="default"
-	export MASTER_ADDR=$SLURM_SRUN_COMM_HOST
-	export MASTER_PORT=29500
+Derive_env () {
+
+    if [ "${FACILITY}" = "local" ] ; then 
+        export LOCAL_WORLD_SIZE=4
+        export WORLD_SIZE=4			 					
+        export GROUP_WORLD_SIZE=4				
+        export ROLE_WORLD_SIZE=4 						
+        export ROLE_NAME="default"
+
+        export MASTER_ADDR=localhost
+        export MASTER_PORT=29500
+
+        export GROUP_RANK=0
+        return 0
+    fi
+
+    # Check SLURM
+    if srun --version > /dev/null ; then
+        if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
+            export LOCAL_WORLD_SIZE=$SLURM_NTASKS
+        else
+            export LOCAL_WORLD_SIZE=$SLURM_NTASKS_PER_NODE
+        fi
+        export WORLD_SIZE=$SLURM_NTASKS			 					# OMPI_COMM_WORLD_SIZE
+        export GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES				# OMPI_MCA_orte_num_nodes 
+        export ROLE_WORLD_SIZE=$SLURM_NTASKS 						# OMPI_COMM_WORLD_SIZE
+        export LOCAL_RANK=$SLURM_LOCALID 							# OMPI_COMM_WORLD_LOCAL_RANK
+        export RANK=$SLURM_PROCID 									# OMPI_COMM_WORLD_RANK
+        export ROLE_RANK=$RANK										# $OMPI_COMM_WORLD_RANK
+        export GROUP_RANK=$(( RANK / SLURM_NTASKS_PER_NODE ))
+        export ROLE_NAME="default"
+        export MASTER_ADDR=$SLURM_SRUN_COMM_HOST
+        export MASTER_PORT=29500
+        return 0
+    fi
 }
 
 # Due to PyTorch's aggressive thread policy OMP_NUM_THREADS should be manually set to the number of actually available cores (by default PyTorch would spawn a thread for each processor's core)

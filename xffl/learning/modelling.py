@@ -17,7 +17,7 @@ from xffl.custom.types import PathLike
 
 
 def save_FSDP_model(
-    model: FullyShardedDataParallel, # To be generalized (as for now just HF)
+    model: FullyShardedDataParallel,  # To be generalized (as for now just HF)
     path: PathLike,
     name: str,
     rank: int,
