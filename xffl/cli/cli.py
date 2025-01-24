@@ -3,13 +3,16 @@
 
 import argparse
 import sys
+from logging import Logger, getLogger
 
 from xffl.cli.parser import parser
+from xffl.cli.run import main as xffl_run
 from xffl.utils.constants import VERSION
-from xffl.utils.logging import get_logger, set_log_level
-from xffl.workflow.config import main as create_config
+from xffl.utils.logging import setup_logging
+from xffl.workflow.config import main as xffl_config
 
-logger = get_logger("CLI")
+logger: Logger = getLogger(__name__)
+"""Deafult xFFL logger"""
 
 
 def main(arguments: argparse.Namespace) -> int:
@@ -23,7 +26,7 @@ def main(arguments: argparse.Namespace) -> int:
 
     try:
         args = parser.parse_args(arguments)
-        set_log_level(args.loglevel)
+        setup_logging(args.loglevel)
 
         if args.help:
             logger.info(f"\n{parser.format_help()}")
@@ -33,8 +36,9 @@ def main(arguments: argparse.Namespace) -> int:
             return 0
 
         if args.command == "config":
-            create_config(args)
-            return 0
+            return xffl_config(args)
+        elif args.command == "run":
+            return xffl_run(args)
         else:
             logger.critical(f"\n{parser.format_help()}")
             return 1

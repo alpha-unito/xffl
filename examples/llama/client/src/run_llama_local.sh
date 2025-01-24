@@ -1,3 +1,5 @@
+#!/bin/bash
+
 export LOCAL_WORLD_SIZE=4
 export WORLD_SIZE=4			 					
 export GROUP_WORLD_SIZE=4				

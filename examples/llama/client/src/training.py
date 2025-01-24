@@ -6,14 +6,13 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 
 import argparse
 import functools
+import logging
 import os
 import time
-import logging
-from typing import Dict, Union, Optional
+from typing import Dict, Optional, Union
 
 import torch
 import wandb
-from wandb.wandb_run import Run
 from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import (
     FullyShardedDataParallel,
@@ -26,11 +25,14 @@ from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, LlamaForCausalLM, default_data_collator
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+from wandb.wandb_run import Run
 
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import get_logger, set_log_level
 
 logger = get_logger(__name__)
+"""Deafult xFFL logger"""
+
 
 def pretraining(args: argparse.Namespace) -> None:
     """Pre-training script for LLaMA-3.1
@@ -55,7 +57,7 @@ def pretraining(args: argparse.Namespace) -> None:
         generator = utils.set_deterministic_execution(
             args.seed
         )  # TODO: deterministic data loaders
-        if rank==0:
+        if rank == 0:
             logger.debug(f"RNGs seed set to: {args.seed}")
 
     start_time = time.perf_counter()
@@ -65,8 +67,10 @@ def pretraining(args: argparse.Namespace) -> None:
         if rank == 0:
             logger.debug(f"Clearing GPU cache for all ranks...")
         utils.setup_gpu(local_rank)
-    if rank==0:
-        logger.debug(f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds")
+    if rank == 0:
+        logger.debug(
+            f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
+        )
 
     # WandB setup
     wandb_run: Run = wandb.init(  # Default entity
@@ -83,21 +87,23 @@ def pretraining(args: argparse.Namespace) -> None:
 
     # LLaMA loading from saved model
     start_time = time.perf_counter()
-    model_name:str = os.path.basename(args.model)
+    model_name: str = os.path.basename(args.model)
     model: LlamaForCausalLM = (
         AutoModelForCausalLM.from_pretrained(  # Configuration is automatically loaded from the JSON file inside the model folder
             pretrained_model_name_or_path=args.model,
             use_cache=False,
             # output_loading_info=True #TODO: to add to verbose mode
             local_files_only=True,  # Most HPCs do not have internet access from the nodes
-            attn_implementation="flash_attention_2", #args.attention,
+            attn_implementation="flash_attention_2",  # args.attention,
             torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
         )
     )
 
     # Print model's weights
-    if rank==0:
-        logger.debug(f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds")
+    if rank == 0:
+        logger.debug(
+            f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds"
+        )
         logger.debug(
             f"Training {model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
@@ -121,8 +127,10 @@ def pretraining(args: argparse.Namespace) -> None:
             cast_forward_inputs=True,
         ),
     )  # Original LLaMA training adds activation checkpointing
-    if rank==0:
-        logger.debug(f"FSDP wrapping setup time: {(time.perf_counter() - start_time):.2f} seconds")
+    if rank == 0:
+        logger.debug(
+            f"FSDP wrapping setup time: {(time.perf_counter() - start_time):.2f} seconds"
+        )
 
     # Dataset loading
     start_time = time.perf_counter()
@@ -133,8 +141,10 @@ def pretraining(args: argparse.Namespace) -> None:
             "val": os.path.join(args.dataset, "clean_mc4_it_val.hf"),
         }
     )  # Original LLaMA training packs the datasets
-    if rank==0:
-        logger.debug(f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds")
+    if rank == 0:
+        logger.debug(
+            f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds"
+        )
 
     # Dataloaders creation
     start_time = time.perf_counter()
@@ -151,21 +161,25 @@ def pretraining(args: argparse.Namespace) -> None:
                 num_replicas=world_size,
                 rank=rank,
                 shuffle=split == "train",
-                #seed=args.seed if args.seed else None,
+                # seed=args.seed if args.seed else None,
                 drop_last=True,
             ),
             num_workers=0,  # TODO: to be investigated; if > 0 then also prefetch_factor should be set
             collate_fn=default_data_collator,
             pin_memory=True,
             drop_last=True,
-            #worker_init_fn=utils.seed_dataloader_worker if args.seed else None,  # Necessary for reproducibility
-            #generator=generator if args.seed else None,  # Necessary for reproducibility
+            # worker_init_fn=utils.seed_dataloader_worker if args.seed else None,  # Necessary for reproducibility
+            # generator=generator if args.seed else None,  # Necessary for reproducibility
         )
 
         if rank == 0:
-            logger.debug(f"{split} dataloader size: {len(dataloaders[split])} minibatches")
-    if rank==0:
-        logger.debug(f"Dataloaders creation time: {(time.perf_counter() - start_time):.2f} seconds")
+            logger.debug(
+                f"{split} dataloader size: {len(dataloaders[split])} minibatches"
+            )
+    if rank == 0:
+        logger.debug(
+            f"Dataloaders creation time: {(time.perf_counter() - start_time):.2f} seconds"
+        )
 
     # Optimizer and lr scheduler creation
     # TODO: lots of hardcoded parameters
@@ -173,15 +187,17 @@ def pretraining(args: argparse.Namespace) -> None:
         params=model.parameters(),
         lr=float(1e-4),
         weight_decay=float(0),
-        #foreach=True,  # Optimizes performances but uses more memory
+        # foreach=True,  # Optimizes performances but uses more memory
         fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
     scheduler: lr_scheduler.StepLR = lr_scheduler.StepLR(
         optimizer=optimizer, step_size=1, gamma=0.85
     )
 
-    if rank==0:
-        logger.debug(f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds")
+    if rank == 0:
+        logger.debug(
+            f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds"
+        )
 
     # Main training function
     results = processing.fsdp_training(
@@ -208,7 +224,7 @@ def pretraining(args: argparse.Namespace) -> None:
 
 def main():
     """Argument parsing and training launch"""
-    
+
     parser = argparse.ArgumentParser(
         prog="Cross-Facility Federated Learning (xFFL) - LLaMA example",
         description="This xFFL example pre-trains a LLaMA-3.1 8B model on multiple HPC infrastructures.",
@@ -242,22 +258,20 @@ def main():
         "--seed",
         help="Random execution seed (for reproducibility purposes)",
         type=Optional[int],
-        default=None
+        default=None,
     )
 
     parser.add_argument(
-    "-dbg",
-    "--debug",
-    help="Print of debugging statements",
-    action="store_const",
-    dest="loglevel",
-    const=logging.DEBUG,
-    default=logging.INFO,
-)
-
-    parser.add_argument(
-        "-w", "--wandb", help="Enable WandB", action="store_true"
+        "-dbg",
+        "--debug",
+        help="Print of debugging statements",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG,
+        default=logging.INFO,
     )
+
+    parser.add_argument("-w", "--wandb", help="Enable WandB", action="store_true")
 
     parser.add_argument(
         "-name",

@@ -34,7 +34,7 @@ class CustomFormatter(logging.Formatter):
         """
         super().__init__(fmt, datefmt, style, validate)
 
-        self.fmt = "%(asctime)s | %(name)16s | %(levelname)8s | %(message)s"  # TODO: get this format from logging.conf
+        self.fmt = "%(asctime)s | %(name)16s | %(levelname)8s | %(message)s"
         self.FORMATS = {
             logging.INFO: self.grey + self.fmt + self.reset,
             logging.DEBUG: self.blue + self.fmt + self.reset,

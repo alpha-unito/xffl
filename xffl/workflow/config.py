@@ -1,18 +1,17 @@
 """Guided configuration files creation for xFFL
 
-This script guides the user in the creation of the StreamFlow and CWL configuration files
-necessary to run xFFL workloads across different HPCs
+This script guides the user in the creation of the StreamFlow and CWL configuration files necessary to run xFFL workloads across different HPCs
 """
 
 import argparse
 import json
 import os
 import stat
+from logging import Logger, getLogger
 from pathlib import Path
 
 import yaml
 
-from xffl.utils.logging import get_logger
 from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
     get_aggregate_step,
@@ -25,7 +24,8 @@ from xffl.workflow.templates.cwl import (
 from xffl.workflow.templates.sh import get_aggregate, get_run_sh
 from xffl.workflow.templates.streamflow import get_streamflow_config
 
-logger = get_logger("Config")
+logger: Logger = getLogger(__name__)
+"""Deafult xFFL logger"""
 
 
 def create_deployment(args: argparse.Namespace):
@@ -287,14 +287,20 @@ def create_deployment(args: argparse.Namespace):
     )
 
 
-def main(args: argparse.Namespace):
+def main(args: argparse.Namespace) -> int:
     logger.info(
-        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***\n"
+        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
     )
-    create_deployment(args)
-    logger.info(
-        "\n*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
-    )
+    try:
+        create_deployment(args)
+    except (FileNotFoundError, FileExistsError) as e:
+        logger.critical(str(e))
+    finally:
+        logger.info(
+            "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+        )
+
+    return 0
 
 
 if __name__ == "__main__":
