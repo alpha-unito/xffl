@@ -8,11 +8,14 @@ import argparse
 import logging
 import os
 
+from xffl.custom.formatter import CustomFormatter
+
 # Base parser
 parser = argparse.ArgumentParser(
     prog="xffl",
     description="Cross-Facility Federated Learning (xFFL) is a federated learning (FL) framework based on the StreamFlow workflow management system (WMS) developed in the Parallel Computing [Alpha] research group at the University of Turin, Italy.",
     add_help=False,
+    conflict_handler="resolve",
 )
 
 parser.add_argument(
@@ -36,10 +39,17 @@ subparsers = parser.add_subparsers(dest="command", help="Available xFFL subcomma
 
 # Subcommand: config
 config_parser = subparsers.add_parser(
-    "config",
-    help="Guided xFFL experiment configuration",
+    name="config",
     description="Guided xFFL experiment configuration",
+    help="Guided xFFL experiment configuration",
+    add_help=False,
 )
+
+config_parser.add_argument(
+    "-h", "--help", help="show this help message and exit", action="store_true"
+)
+
+config_parser.add_argument("-p", "--project", help="Project name [REQUIRED]", type=str)
 
 config_parser.add_argument(
     "-w",
@@ -48,13 +58,17 @@ config_parser.add_argument(
     type=str,
     default=os.getcwd(),
 )
-config_parser.add_argument(
-    "-p", "--project", help="Project name", type=str, required=True
-)
 
 # Subcommand: run
 run_parser = subparsers.add_parser(
-    "run", help="Run an xFFL experiment", description="Run an xFFL experiment"
+    name="run",
+    description="Run an xFFL experiment",
+    help="Run an xFFL experiment",
+    add_help=False,
+)
+
+run_parser.add_argument(
+    "-h", "--help", help="show this help message and exit", action="store_true"
 )
 
 run_parser.add_argument(
@@ -72,7 +86,7 @@ run_parser.add_argument(
     help="Name of the current workflow. Will be used for search and indexing",
 )
 
-run_parser.add_argument("-p", "--project", help="Project name", type=str, required=True)
+run_parser.add_argument("-p", "--project", help="Project name", type=str)
 
 run_parser.add_argument(
     "--outdir",

@@ -10,25 +10,45 @@ from logging import Logger, getLogger
 from xffl.workflow.streamflow import run_streamflow
 
 logger: Logger = getLogger(__name__)
-"""Deafult xFFL logger"""
+"""Default xFFL logger"""
 
 
 def run_project(args: argparse.Namespace) -> None:
+    """Runs an xFFL project
+
+    :param args: Command line arguments
+    :type args: argparse.Namespace
+    """
     asyncio.run(run_streamflow(args=args))
 
 
 def main(args: argparse.Namespace) -> int:
-    logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
-    run_project(args)
-    logger.info("\*** Cross-Facility Federated Learning (xFFL) - Project run ***")
+    """xFFL project run entrypoing
 
-    return 0
+    :param args: Command line arguments
+    :type args: argparse.Namespace
+    :return: Exit code
+    :rtype: int
+    """
+    logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
+    exit_code = 0
+    try:
+        run_project(args)
+    except (
+        FileNotFoundError,
+        FileExistsError,
+    ) as e:  # TODO check which exception SF raises
+        logger.exception(e.strerror)
+        exit_code = 1
+    finally:
+        logger.info("\*** Cross-Facility Federated Learning (xFFL) - Project run ***")
+        return exit_code
 
 
 if __name__ == "__main__":
-    from xffl.cli.parser import config_parser
+    from xffl.cli.parser import run_parser
 
     try:
-        main(config_parser.parse_args())
+        main(run_parser.parse_args())
     except KeyboardInterrupt:
         logger.exception("Unexpected keyboard interrupt")

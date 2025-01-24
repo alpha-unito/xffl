@@ -1,4 +1,7 @@
 """Command line interface (CLI) for xFFL
+
+This is the main entrypoint of the xFFL CLI
+Here argument parsing takes place, anche the various xFFL subcommands are interpreted
 """
 
 import argparse
@@ -6,13 +9,13 @@ import sys
 from logging import Logger, getLogger
 
 from xffl.cli.config import main as xffl_config
-from xffl.cli.parser import parser
+from xffl.cli.parser import parser, config_parser, run_parser
 from xffl.cli.run import main as xffl_run
 from xffl.utils.constants import VERSION
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
-"""Deafult xFFL logger"""
+"""Default xFFL logger"""
 
 
 def main(arguments: argparse.Namespace) -> int:
@@ -26,24 +29,36 @@ def main(arguments: argparse.Namespace) -> int:
 
     try:
         args = parser.parse_args(arguments)
+
+        # Logging facilities setup
         setup_logging(args.loglevel)
 
+        # xFFL subcommands handling
+        if args.command == "config":
+            if args.help:
+                logger.info(f"\n{config_parser.format_help()}")
+                return 0
+            else:
+                return xffl_config(args)
+        elif args.command == "run":
+            if args.help:
+                logger.info(f"\n{run_parser.format_help()}")
+                return 0
+            else:
+                return xffl_run(args)
+
+            # xFFL arguments handling
         if args.help:
             logger.info(f"\n{parser.format_help()}")
             return 0
         elif args.version:
             logger.info(f"xFFL version: {VERSION}")
             return 0
-
-        if args.command == "config":
-            return xffl_config(args)
-        elif args.command == "run":
-            return xffl_run(args)
         else:
             logger.critical(f"\n{parser.format_help()}")
             return 1
     except KeyboardInterrupt:
-        logger.critical("Unexpected keyboard interrupt")
+        logger.exception("Unexpected keyboard interrupt")
         return 1
 
 

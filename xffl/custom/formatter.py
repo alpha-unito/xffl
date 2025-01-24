@@ -7,7 +7,7 @@ from typing import Literal, Optional
 class CustomFormatter(logging.Formatter):
     """Logging colored formatter, adapted from https://stackoverflow.com/a/56944256/3638629"""
 
-    grey = "\x1b[38;21m"
+    grey = "\x1b[38;20m"
     blue = "\x1b[38;5;39m"
     yellow = "\x1b[38;5;226m"
     red = "\x1b[38;5;196m"

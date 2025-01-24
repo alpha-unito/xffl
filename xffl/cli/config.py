@@ -8,13 +8,11 @@ import argparse
 import json
 import os
 import shutil
-import stat
 from pathlib import Path
-
+from logging import Logger, getLogger
 import yaml
 
 from xffl.utils.constants import DEFAULT_xFFL_DIR
-from xffl.utils.logging import get_logger
 from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
     get_aggregate_step,
@@ -26,8 +24,11 @@ from xffl.workflow.templates.cwl import (
 )
 from xffl.workflow.templates.sh import get_aggregate
 from xffl.workflow.templates.streamflow import get_streamflow_config
+from xffl.custom.types import PathLike
 
-logger = get_logger("Config")
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 def create_deployment(args: argparse.Namespace):
@@ -39,17 +40,17 @@ def create_deployment(args: argparse.Namespace):
     :raises FileExistsError: If the command-line provided project name already exists
     """
 
-    # Command-line parameters check
-    workdir = resolve_path(args.workdir)
+    # Project folder and path checks
+    workdir: PathLike = resolve_path(args.workdir)
     if not Path(workdir).exists():
         raise FileNotFoundError(
             f"The provided working directory path {workdir} does not exists"
         )
-    if Path(workdir, args.project).exists():
-        raise FileExistsError(
-            f"Impossible create project {args.project} inside {workdir}: directory already exists"
-        )
     workdir = os.path.join(workdir, args.project)
+    if Path(workdir).exists():
+        raise FileExistsError(
+            f"Impossible creating project {args.project} inside {workdir}: directory already exists"
+        )
     os.makedirs(workdir)
 
     # StreamFlow guided configuration
@@ -299,14 +300,28 @@ def create_deployment(args: argparse.Namespace):
         fd.write(get_aggregate())
 
 
-def main(args: argparse.Namespace):
+def main(args: argparse.Namespace) -> int:
+    """xFFL project's guided configuration entrypoint
+
+    :param args: Command line arguments
+    :type args: argparse.Namespace
+    :return: Exit code
+    :rtype: int
+    """
     logger.info(
-        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***\n"
+        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
     )
-    create_deployment(args)
-    logger.info(
-        "\n*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
-    )
+    exit_code = 0
+    try:
+        create_deployment(args)
+    except (FileNotFoundError, FileExistsError) as e:
+        logger.exception(e.strerror)
+        exit_code = 1
+    finally:
+        logger.info(
+            "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+        )
+        return exit_code
 
 
 if __name__ == "__main__":
@@ -315,4 +330,4 @@ if __name__ == "__main__":
     try:
         main(config_parser.parse_args())
     except KeyboardInterrupt:
-        logger.critical("Unexpected keyboard interrupt")
+        logger.exception("Unexpected keyboard interrupt")
