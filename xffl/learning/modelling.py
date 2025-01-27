@@ -11,7 +11,6 @@ from torch.distributed.fsdp import (
     FullyShardedDataParallel,
     StateDictType,
 )
-from transformers import PreTrainedModel
 
 from xffl.custom.types import PathLike
 

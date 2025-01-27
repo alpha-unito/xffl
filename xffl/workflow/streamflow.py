@@ -1,6 +1,12 @@
+"""StreamFlow wrappers
+
+This file contains all the scripts and wrapper code related to StreamFlow and its execution
+"""
+
 import argparse
 import asyncio
 import os
+import logging
 
 from streamflow.config.config import WorkflowConfig
 from streamflow.config.validator import SfValidator
@@ -10,8 +16,22 @@ from streamflow.main import build_context
 
 
 async def run_streamflow(args: argparse.Namespace) -> None:
-    args.name = args.name if args.name else os.path.basename(args.project)
+    """Run a StreamFlow workflow
+
+    :param args: Command line arguments
+    :type args: argparse.Namespace
+    """
+
+    # Mapping between xFLL and StreamFlow CLI arguments
+    args.name = args.project
+    args.outdir = os.path.join(args.workdir, args.project)
     streamflow_file = os.path.join(args.workdir, args.project, "streamflow.yml")
+    if args.loglevel == logging.WARNING:
+        args.quiet = True
+    elif args.loglevel == logging.DEBUG:
+        args.debug = logging.DEBUG
+
+    # StreamFlow run
     load_extensions()  # Load 2FA extension
     streamflow_config = SfValidator().validate_file(streamflow_file)
     streamflow_config["path"] = streamflow_file

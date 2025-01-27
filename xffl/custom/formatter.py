@@ -1,7 +1,8 @@
-"""Custom logging.Formatter to obtain coloured output"""
+"""Custom logging.Formatter for formatted and coloured logging"""
 
 import logging
 from typing import Literal, Optional
+from logging import LogRecord
 
 
 class CustomFormatter(logging.Formatter):
@@ -43,12 +44,14 @@ class CustomFormatter(logging.Formatter):
             logging.CRITICAL: self.bold_red + self.fmt + self.reset,
         }
 
-    def format(self, record):
-        """Format the log.
+    def format(self, record: LogRecord) -> LogRecord:
+        """Format the provided record
 
-        :param record: log record.
-        :return: formatted log record.
+        :param record: Logging record
+        :type record: LogRecord
+        :return: Formatted logging record
+        :rtype: LogRecord
         """
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
+
+        formatter = logging.Formatter(self.FORMATS.get(record.levelno))
         return formatter.format(record)

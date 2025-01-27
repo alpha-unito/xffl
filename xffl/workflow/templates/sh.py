@@ -1,4 +1,4 @@
-def get_aggregate():
+def get_aggregate() -> str:
     return """import argparse
 import math
 import random

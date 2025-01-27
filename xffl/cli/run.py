@@ -7,7 +7,6 @@ import argparse
 import asyncio
 from logging import Logger, getLogger
 
-from xffl.workflow.streamflow import run_streamflow
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -19,6 +18,10 @@ def run_project(args: argparse.Namespace) -> None:
     :param args: Command line arguments
     :type args: argparse.Namespace
     """
+    from xffl.workflow.streamflow import (
+        run_streamflow,
+    )  # import here for performance concerns
+
     asyncio.run(run_streamflow(args=args))
 
 
@@ -34,10 +37,7 @@ def main(args: argparse.Namespace) -> int:
     exit_code = 0
     try:
         run_project(args)
-    except (
-        FileNotFoundError,
-        FileExistsError,
-    ) as e:  # TODO check which exception SF raises
+    except Exception as e:  # TODO check which exception SF raises
         logger.exception(e.strerror)
         exit_code = 1
     finally:

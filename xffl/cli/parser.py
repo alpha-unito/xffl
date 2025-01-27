@@ -8,18 +8,17 @@ import argparse
 import logging
 import os
 
-from xffl.custom.formatter import CustomFormatter
+from xffl.custom.types import PathLike
 
 # Base parser
 parser = argparse.ArgumentParser(
     prog="xffl",
     description="Cross-Facility Federated Learning (xFFL) is a federated learning (FL) framework based on the StreamFlow workflow management system (WMS) developed in the Parallel Computing [Alpha] research group at the University of Turin, Italy.",
     add_help=False,
-    conflict_handler="resolve",
 )
 
 parser.add_argument(
-    "-h", "--help", help="show this help message and exit", action="store_true"
+    "-h", "--help", help="Show this help message and exit", action="store_true"
 )
 
 parser.add_argument("-v", "--version", help="Display xFFL version", action="store_true")
@@ -46,16 +45,18 @@ config_parser = subparsers.add_parser(
 )
 
 config_parser.add_argument(
-    "-h", "--help", help="show this help message and exit", action="store_true"
+    "-h", "--help", help="Show this help message and exit", action="store_true"
 )
 
-config_parser.add_argument("-p", "--project", help="Project name [REQUIRED]", type=str)
+config_parser.add_argument(
+    "-p", "--project", help="Project name", type=str, default="project"
+)
 
 config_parser.add_argument(
     "-w",
     "--workdir",
     help="Working directory path",
-    type=str,
+    type=PathLike,
     default=os.getcwd(),
 )
 
@@ -68,33 +69,21 @@ run_parser = subparsers.add_parser(
 )
 
 run_parser.add_argument(
-    "-h", "--help", help="show this help message and exit", action="store_true"
+    "-h", "--help", help="Show this help message and exit", action="store_true"
 )
 
 run_parser.add_argument(
     "-w",
     "--workdir",
     help="Working directory path",
-    type=str,
+    type=PathLike,
     default=os.getcwd(),
 )
 
 run_parser.add_argument(
-    "--name",
-    nargs="?",
-    type=str,
-    help="Name of the current workflow. Will be used for search and indexing",
-)
-
-run_parser.add_argument("-p", "--project", help="Project name", type=str)
-
-run_parser.add_argument(
-    "--outdir",
-    default=os.getcwd(),
-    type=str,
-    help="Output directory in which to store final results of the workflow (default: current directory)",
+    "-p", "--project", help="Project name", type=str, default="project"
 )
 
 run_parser.add_argument(
-    "--quiet", action="store_true", help="Only prints results, warnings and errors"
+    "--quiet", help="Only prints results, warnings and errors", action="store_true"
 )

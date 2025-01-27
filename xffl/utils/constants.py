@@ -12,5 +12,5 @@ VERSION: Final[str] = "v0.1.0"
 """xFFL software version"""
 
 # Paths #
-DEFAULT_xFFL_DIR: Final[PathLike] = os.path.dirname(os.path.abspath(xffl.__file__))  # type: ignore
+DEFAULT_xFFL_DIR: Final[PathLike] = os.path.dirname(os.path.abspath(xffl.__file__))
 """FastFederatedLearning deault root directory"""
