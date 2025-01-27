@@ -24,7 +24,7 @@ parser.add_argument(
 parser.add_argument("-v", "--version", help="Display xFFL version", action="store_true")
 
 parser.add_argument(
-    "-d",
+    "-dbg",
     "--debug",
     help="Print of debugging statements",
     action="store_const",
@@ -72,6 +72,8 @@ run_parser.add_argument(
     "-h", "--help", help="Show this help message and exit", action="store_true"
 )
 
+run_parser.add_argument("-l", "--local", help="Run xFFL locally", action="store_true")
+
 run_parser.add_argument(
     "-w",
     "--workdir",
@@ -81,9 +83,37 @@ run_parser.add_argument(
 )
 
 run_parser.add_argument(
-    "-p", "--project", help="Project name", type=str, default="project"
+    "-p",
+    "--project",
+    help="Name of the project/Python execultable file",
+    type=str,
+    default="project",
 )
 
 run_parser.add_argument(
     "--quiet", help="Only prints results, warnings and errors", action="store_true"
+)
+
+run_parser.add_argument(
+    "-m",
+    "--model",
+    help="Path to the ML model",
+    type=PathLike,
+    default=os.getcwd(),
+)
+
+run_parser.add_argument(
+    "-d",
+    "--dataset",
+    help="Path to the dataset",
+    type=PathLike,
+    default=os.getcwd(),
+)
+
+run_parser.add_argument(
+    "-i",
+    "--image",
+    help="Path to the Docker/Singularity image",
+    type=PathLike,
+    default=os.getcwd(),
 )

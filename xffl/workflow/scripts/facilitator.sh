@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # input environment variables: 
-#  - XFFL_FOLDER 
+#  - CODE_FOLDER 
 #  - MODEL_FOLDER
 #  - DATASET_FOLDER
 #  - IMAGE
@@ -26,19 +26,24 @@ fi
 source "${FACILITY_SCRIPT}"
 
 if [ "${FACILITY}" = "local" ] ; then 
-	for RANK in $( seq 0 1 ${INSTANCES} )  ; do
-		LOCAL_RANK=${RANK}
-		ROLE_RANK=${RANK}
-		COMMAND="${CONTAINER_PLT} exec \
-			--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
-			--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
-			--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
-			--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
-			--home /code/ \
-			$GPU_FLAG \
-			$IMAGE \
-			/code/xffl/workflow/scripts/run.sh $*"
-		echo "[Rank $RANK] $COMMAND"		
+	for _RANK in $( seq 0 1 "${WORLD_SIZE}" ) ; do
+		RANK=${_RANK}
+		LOCAL_RANK=${_RANK}
+		ROLE_RANK=${_RANK}
+		if [ -n "${CONTAINER_PLT}" ] ; then
+			COMMAND="${CONTAINER_PLT} exec \
+				--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
+				--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
+				--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
+				--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
+				--home /code/ \
+				$GPU_FLAG \
+				$IMAGE \
+				$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh $EXECUTABLE $*"
+		else
+			COMMAND="$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh $EXECUTABLE $*"
+		fi
+		echo "[Rank $_RANK] $COMMAND"		
 		eval "$COMMAND" & 
 		wait
 	done

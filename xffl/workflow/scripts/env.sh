@@ -15,12 +15,12 @@ Derive_env () {
         export MASTER_ADDR=localhost
         export MASTER_PORT=29500
 
+        export SLURM_CPUS_PER_TASK=8
+        export SLURM_GPUS_PER_NODE=4
+
         export GROUP_RANK=0
         return 0
-    fi
-
-    # Check SLURM
-    if srun --version > /dev/null ; then
+    elif srun --version > /dev/null ; then # Check SLURM
         if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS
         else
@@ -65,44 +65,44 @@ LLaMA_default_env () {
 # Check which GPU architecture is available on the current computing node
 Gpu_detection () {
     # Check Nvidia GPU
-    if nvidia-smi > /dev/null ; then 
+    if command -v nvidia-smi ; then 
         export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES		
         GPU_FLAG="--nv" 
         return 0
     fi 
 
     # Check AMD GPU
-    if rocm-smi > /dev/null ; then 
+    if command -v rocm-smi ; then 
         export HIP_VISIBLE_DEVICES=$VISIBLE_DEVICES
         export ROCR_VISIBLE_DEVICES=$VISIBLE_DEVICES		
         GPU_FLAG="--rocm" 
         return 0
     fi 
 
-    echo "[RANK ${RANK}] GPU detection FAILED"
-    exit 1
+    echo "No GPU detected - falling back to CPU training"
+    return 0
 }
 
 # Check which containerization software is available on the current computing node
 Container_platform_detection () {
     # Check if `singularity` command exists
-    if singularity --version > /dev/null ; then 
+    if command -v singularity > /dev/null ; then 
         CONTAINER_PLT="singularity"
         return 0
     fi 
 
     # Check if `apptainer` command exists
-    if apptainer --version > /dev/null ; then 
+    if command -v apptainer > /dev/null ; then 
         CONTAINER_PLT="apptainer" 
         return 0
     fi 
 
     # Check if `docker` command exists
-    if docker --version > /dev/null ; then 
+    if command -v docker > /dev/null ; then 
         CONTAINER_PLT="docker"
         return 0
     fi 
 
-    echo "[RANK ${RANK}] Container Platform detection FAILED"
-    exit 1
+    echo "No container platform detected - falling back to local environment"
+    return 0
 }
