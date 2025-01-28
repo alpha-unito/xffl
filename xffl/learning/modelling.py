@@ -1,5 +1,4 @@
-"""Methods useful for model handling
-"""
+"""Methods useful for model handling"""
 
 from logging import Logger, getLogger
 from pathlib import Path

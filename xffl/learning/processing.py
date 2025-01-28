@@ -1,5 +1,4 @@
-"""DNN training utility methods
-"""
+"""DNN training utility methods"""
 
 import time
 from logging import Logger, getLogger

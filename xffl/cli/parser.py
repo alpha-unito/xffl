@@ -72,8 +72,6 @@ run_parser.add_argument(
     "-h", "--help", help="Show this help message and exit", action="store_true"
 )
 
-run_parser.add_argument("-l", "--local", help="Run xFFL locally", action="store_true")
-
 run_parser.add_argument(
     "-w",
     "--workdir",
@@ -94,42 +92,73 @@ run_parser.add_argument(
     "--quiet", help="Only prints results, warnings and errors", action="store_true"
 )
 
-run_parser.add_argument(
+
+# Subcommand: simulate
+simulate_parser = subparsers.add_parser(
+    name="simulate",
+    description="Run a script locally through xFFL",
+    help="Run a script through xFFL",
+    add_help=False,
+)
+
+simulate_parser.add_argument(
+    "-h", "--help", help="Show this help message and exit", action="store_true"
+)
+
+simulate_parser.add_argument(
+    "-e",
+    "--executable",
+    help="Name of the Python execultable file",
+    type=str,
+    default=None,
+)
+
+simulate_parser.add_argument(
+    "-w",
+    "--workdir",
+    help="Working directory path",
+    type=PathLike,
+    default=os.getcwd(),
+)
+
+simulate_parser.add_argument(
     "-m",
     "--model",
-    help="Path to the ML model",
+    help="Model path (if saved to disk)",
     type=PathLike,
-    default=os.getcwd(),
+    default=None,
 )
 
-run_parser.add_argument(
+simulate_parser.add_argument(
     "-d",
     "--dataset",
-    help="Path to the dataset",
+    help="Dataset path (if saved to disk)",
     type=PathLike,
-    default=os.getcwd(),
+    default=None,
 )
 
-run_parser.add_argument(
+virtualisation_group = simulate_parser.add_mutually_exclusive_group()
+
+virtualisation_group.add_argument(
+    "-v",
+    "--venv",
+    help="Virtual environment to use for the experiment",
+    type=PathLike,
+    default=None,
+)
+
+virtualisation_group.add_argument(
     "-i",
     "--image",
-    help="Path to the Docker/Singularity image",
+    help="Path to the Docker/Singularity/Apptainer image",
     type=PathLike,
-    default=os.getcwd(),
+    default=None,
 )
 
-run_parser.add_argument(
+simulate_parser.add_argument(
     "-ws",
     "--world-size",
     help="Number of process to spawn (max. number of available GPUs)",
     type=int,
     default=1,
-)
-
-run_parser.add_argument(
-    "-v",
-    "--venv",
-    help="Use local virtual environment",
-    type=PathLike,
-    default=None,
 )

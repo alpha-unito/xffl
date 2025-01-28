@@ -1,8 +1,8 @@
 """Custom logging.Formatter for formatted and coloured logging"""
 
 import logging
-from typing import Literal, Optional
 from logging import LogRecord
+from typing import Literal, Optional
 
 
 class CustomFormatter(logging.Formatter):

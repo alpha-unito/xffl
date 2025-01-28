@@ -9,8 +9,9 @@ import sys
 from logging import Logger, getLogger
 
 from xffl.cli.config import main as xffl_config
-from xffl.cli.parser import parser, config_parser, run_parser
+from xffl.cli.parser import config_parser, parser, run_parser, simulate_parser
 from xffl.cli.run import main as xffl_run
+from xffl.cli.simulate import main as xffl_simulate
 from xffl.utils.constants import VERSION
 from xffl.utils.logging import setup_logging
 
@@ -46,8 +47,14 @@ def main(arguments: argparse.Namespace) -> int:
                 return 0
             else:
                 return xffl_run(args)
+        elif args.command == "simulate":
+            if args.help:
+                logger.info(f"\n{simulate_parser.format_help()}")
+                return 0
+            else:
+                return xffl_simulate(args)
 
-            # xFFL arguments handling
+        # xFFL arguments handling
         if args.help:
             logger.info(f"\n{parser.format_help()}")
             return 0

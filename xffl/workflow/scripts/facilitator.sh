@@ -35,7 +35,7 @@ if [ "${FACILITY}" = "local" ] ; then
 			COMMAND="RANK=\"${_RANK}\" \
 				LOCAL_RANK=\"${_RANK}\" \
 				ROLE_RANK=\"${_RANK}\" \
-				$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh $EXECUTABLE $*"
+				$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh ${CODE_FOLDER}/$EXECUTABLE $*"
 		else
 			COMMAND=" RANK=\"${_RANK}\" \
 				LOCAL_RANK=\"${_RANK}\" \

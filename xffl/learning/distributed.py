@@ -1,5 +1,4 @@
-"""Common distributed PyTorch utilities
-"""
+"""Common distributed PyTorch utilities"""
 
 import os
 from logging import Logger, getLogger

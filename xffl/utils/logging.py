@@ -4,7 +4,6 @@ import logging
 import sys
 
 from xffl.custom.formatter import CustomFormatter
-from xffl.utils.constants import VERSION
 
 
 def setup_logging(log_level: int = logging.INFO):
@@ -20,12 +19,8 @@ def setup_logging(log_level: int = logging.INFO):
         handlers=[get_default_handler(log_level=log_level)],
         force=True,
     )
-    xffl_logger = logging.getLogger("xffl")
-    xffl_logger.info(
-        f"Cross-Facility Federated Learning (xFFL) - {VERSION} - Starting execution...",
-    )
 
-    set_external_loggers(log_level=log_level)
+    set_external_loggers()
 
 
 def get_default_handler(log_level: int = logging.INFO) -> logging.StreamHandler:
@@ -42,7 +37,7 @@ def get_default_handler(log_level: int = logging.INFO) -> logging.StreamHandler:
     return handler
 
 
-def set_external_loggers(log_level: int = logging.INFO):
+def set_external_loggers():
     """Empties the formatter list of the imported libraries loggers to obtain homogeneous output"""
 
     if "transformers" in sys.modules:
@@ -50,23 +45,12 @@ def set_external_loggers(log_level: int = logging.INFO):
 
         transformers.utils.logging._get_library_root_logger().handlers = []
         transformers.utils.logging._get_library_root_logger().propagate = True
-        # transformers.utils.logging.set_verbosity(log_level)
-        # transformers.utils.logging.disable_default_handler()
-        # transformers.utils.logging.disable_progress_bar()
-        #    get_default_handler(log_level)
-        # ]
 
     if "datasets" in sys.modules:
         import datasets
 
         datasets.utils.logging._get_library_root_logger().handlers = []
         datasets.utils.logging._get_library_root_logger().propagate = True
-        # datasets.utils.logging.set_verbosity(log_level)
-        # datasets.utils.logging.disable_default_handler()
-        # datasets.utils.logging.disable_progress_bar()
-        # datasets.utils.logging._get_library_root_logger().handlers = [
-        #    get_default_handler(log_level)
-        # ]
 
     external_loggers = ["cwltool", "salad", "streamflow"]
     for logger_name in external_loggers:

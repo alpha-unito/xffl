@@ -8,10 +8,12 @@ import argparse
 import json
 import os
 import shutil
-from pathlib import Path
 from logging import Logger, getLogger
+from pathlib import Path
+
 import yaml
 
+from xffl.custom.types import PathLike
 from xffl.utils.constants import DEFAULT_xFFL_DIR
 from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
@@ -24,14 +26,12 @@ from xffl.workflow.templates.cwl import (
 )
 from xffl.workflow.templates.sh import get_aggregate
 from xffl.workflow.templates.streamflow import get_streamflow_config
-from xffl.custom.types import PathLike
-
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def create_deployment(args: argparse.Namespace):
+def config(args: argparse.Namespace):
     """Gathers from the user all the necessary parameters to generate a valid StreamFlow file for xFFL
 
     :param args: Command line arguments
@@ -313,7 +313,7 @@ def main(args: argparse.Namespace) -> int:
     )
     exit_code = 0
     try:
-        create_deployment(args)
+        config(args)
     except (FileNotFoundError, FileExistsError) as e:
         logger.exception(e.strerror)
         exit_code = 1

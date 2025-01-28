@@ -1,5 +1,4 @@
-"""Data-related utility methods
-"""
+"""Data-related utility methods"""
 
 from logging import Logger, getLogger
 from typing import Dict, Union

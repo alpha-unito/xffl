@@ -1,5 +1,4 @@
-"""Utility methods useful in a number of common DNN training scenarios
-"""
+"""Utility methods useful in a number of common DNN training scenarios"""
 
 import os
 import random

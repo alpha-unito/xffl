@@ -10,8 +10,6 @@ Help()
 	echo
 	echo "Syntax: exec_llama [-t|--train] [-v|--validation] [-e|--epochs] [-w|--wandb] [-o|--output] [-s|--seed] [-h|--help]"
 	echo "options:"
-	echo "-m|--model		Path to the ML model"
-	echo "-d|--dataset		Path to the dataset"
 	echo "-t|--train		Number of training samples to load"
 	echo "-v|--validation	Number of validation samples to load"
 	echo "-e|--epochs		Training epochs"
@@ -30,16 +28,6 @@ Parser()
 {
 	while [[ $# -gt 0 ]]; do
 		case $1 in
-			-m|--model)
-				MODEL="--model $2"
-				shift
-				shift
-				;;
-			-d|--dataset)
-				DATASET="--dataset $2"
-				shift
-				shift
-				;;
 			-t|--train)
 				TRAIN_SAMPLES="--train_samples $2"
 				shift
