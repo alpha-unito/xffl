@@ -1,6 +1,7 @@
 """Methods useful for model handling
 """
 
+from logging import Logger, getLogger
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -14,6 +15,9 @@ from torch.distributed.fsdp import (
 
 from xffl.custom.types import PathLike
 
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
+
 
 def save_FSDP_model(
     model: FullyShardedDataParallel,  # To be generalized (as for now just HF)
@@ -23,7 +27,6 @@ def save_FSDP_model(
     epoch: Optional[int] = None,
     checkpoint: Optional[int] = None,
     precision: Optional[torch.dtype] = None,
-    verbose: Optional[bool] = None,
 ) -> None:
     """Saves an FSDP wrapped model to a specified path
 
@@ -91,5 +94,4 @@ def save_FSDP_model(
             safe_serialization=True,  # Safeternsor or Pickle
         )  # Shard size can be controlled (can improve transfer performance)
 
-        if verbose:
-            print(f"Model saved to {save_path}")
+        logger.info(f"Model saved to {save_path}")

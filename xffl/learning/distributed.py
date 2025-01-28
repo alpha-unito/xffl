@@ -2,9 +2,13 @@
 """
 
 import os
+from logging import Logger, getLogger
 from typing import Optional, Tuple
 
 import torch.distributed as dist
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 def setup_distributed_process_group(

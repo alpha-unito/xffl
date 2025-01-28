@@ -6,21 +6,21 @@
 Derive_env () {
 
     if [ "${FACILITY}" = "local" ] ; then 
-        export LOCAL_WORLD_SIZE=4
-        export WORLD_SIZE=4			 					
-        export GROUP_WORLD_SIZE=4				
-        export ROLE_WORLD_SIZE=4 						
+        export LOCAL_WORLD_SIZE=$XFFL_WORLD_SIZE
+        export WORLD_SIZE=$XFFL_WORLD_SIZE		 					
+        export GROUP_WORLD_SIZE=$XFFL_WORLD_SIZE				
+        export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE 						
         export ROLE_NAME="default"
 
         export MASTER_ADDR=localhost
         export MASTER_PORT=29500
 
         export SLURM_CPUS_PER_TASK=8
-        export SLURM_GPUS_PER_NODE=4
+        export SLURM_GPUS_PER_NODE=$XFFL_WORLD_SIZE
 
         export GROUP_RANK=0
         return 0
-    elif srun --version > /dev/null ; then # Check SLURM
+    elif command -v srun > /dev/null ; then # Check SLURM
         if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS
         else
@@ -65,14 +65,14 @@ LLaMA_default_env () {
 # Check which GPU architecture is available on the current computing node
 Gpu_detection () {
     # Check Nvidia GPU
-    if command -v nvidia-smi ; then 
+    if command -v nvidia-smi > /dev/null ; then 
         export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES		
         GPU_FLAG="--nv" 
         return 0
     fi 
 
     # Check AMD GPU
-    if command -v rocm-smi ; then 
+    if command -v rocm-smi > /dev/null ; then 
         export HIP_VISIBLE_DEVICES=$VISIBLE_DEVICES
         export ROCR_VISIBLE_DEVICES=$VISIBLE_DEVICES		
         GPU_FLAG="--rocm" 

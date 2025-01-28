@@ -2,6 +2,7 @@
 """
 
 import time
+from logging import Logger, getLogger
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -14,6 +15,9 @@ from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
 from xffl.learning.modelling import save_FSDP_model
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 def fsdp_training(
@@ -88,7 +92,7 @@ def fsdp_training(
     best_val_loss = float("inf")
 
     for epoch in range(epochs):
-        print(f"Starting epoch {epoch}/{epochs}")
+        logger.info(f"Starting epoch {epoch}/{epochs}")
         epoch_start_time = time.perf_counter()
 
         model.train()
@@ -171,12 +175,12 @@ def fsdp_training(
             if eval_epoch_loss < best_val_loss:
                 best_val_loss = eval_epoch_loss
                 if verbose and rank == 0:
-                    print(f"best eval loss on epoch {epoch+1} is {best_val_loss}")
+                    logger.info(f"best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(best_val_loss))
             val_prep.append(float(eval_ppl))
 
-        if verbose and rank == 0:
-            print(
+        if rank == 0:
+            logger.info(
                 f"Epoch {epoch+1}: train_perplexity={train_perplexity:.4f}, train_epoch_loss={train_epoch_loss:.4f}, epoch time {epoch_end_time}s"
             )
 
@@ -251,7 +255,7 @@ def fsdp_evaluation(
     eval_ppl = torch.exp(eval_epoch_loss)
 
     if local_rank == 0:
-        print(f" {eval_ppl=} {eval_epoch_loss=}")
+        logger.info(f" {eval_ppl=} {eval_epoch_loss=}")
 
     if wandb_run:
         wandb_run.log(

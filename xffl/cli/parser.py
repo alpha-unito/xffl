@@ -117,3 +117,19 @@ run_parser.add_argument(
     type=PathLike,
     default=os.getcwd(),
 )
+
+run_parser.add_argument(
+    "-ws",
+    "--world-size",
+    help="Number of process to spawn (max. number of available GPUs)",
+    type=int,
+    default=1,
+)
+
+run_parser.add_argument(
+    "-v",
+    "--venv",
+    help="Use local virtual environment",
+    type=PathLike,
+    default=None,
+)

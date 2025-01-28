@@ -9,6 +9,7 @@ import functools
 import logging
 import os
 import time
+from logging import Logger, getLogger
 from typing import Dict, Optional, Union
 
 import torch
@@ -28,11 +29,10 @@ from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from wandb.wandb_run import Run
 
 from xffl.learning import data, distributed, processing, utils
-from xffl.utils.logging import get_logger, set_log_level
+from xffl.utils.logging import setup_logging
 
-logger = get_logger(__name__)
+logger: Logger = getLogger(__name__)
 """Deafult xFFL logger"""
-
 
 
 def pretraining(args: argparse.Namespace) -> None:
@@ -47,7 +47,7 @@ def pretraining(args: argparse.Namespace) -> None:
     setup_time = time.perf_counter()
 
     # Set the requested logging level
-    set_log_level(args.loglevel)
+    setup_logging(log_level=args.loglevel)
 
     # The whole training is done in bfloat16
     default_precision: torch.dtype = torch.bfloat16
@@ -294,7 +294,7 @@ def main():
     try:
         pretraining(parser.parse_args())
     except KeyboardInterrupt:
-        print("Unexpected keyboard interrupt")
+        logger.exception("Unexpected keyboard interrupt")
 
 
 if __name__ == "__main__":

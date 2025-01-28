@@ -9,7 +9,7 @@ import inspect
 import logging
 import os
 from logging import Logger, getLogger
-from subprocess import PIPE, STDOUT, Popen
+from subprocess import PIPE, STDOUT, Popen, run
 
 import xffl
 import xffl.workflow
@@ -20,11 +20,51 @@ logger: Logger = getLogger(__name__)
 
 def local_run(args: argparse.Namespace) -> int:
     xffl_env = os.environ.copy()
+
+    if args.workdir == os.getcwd():
+        logger.warning(
+            f"The specified working directory corresponds with the current directory, which is the default value."
+        )
     xffl_env["CODE_FOLDER"] = args.workdir
+
+    if args.model == os.getcwd():
+        logger.warning(
+            f"The specified model directory corresponds with the current directory, which is the default value."
+        )
     xffl_env["MODEL_FOLDER"] = args.model
+
+    if args.dataset == os.getcwd():
+        logger.warning(
+            f"The specified dataset directory corresponds with the current directory, which is the default value."
+        )
     xffl_env["DATASET_FOLDER"] = args.dataset
+
+    if args.image == os.getcwd():
+        logger.warning(
+            f"The specified image directory corresponds with the current directory, which is the default value."
+        )
     xffl_env["IMAGE"] = args.image
+
+    if args.project == "project":
+        logger.warning(
+            f"The specified project executable file path corresponds with the default value."
+        )
+
+    if args.venv:
+        logger.debug(f"Using virtual environment: {args.venv}")
+        xffl_env["VENV"] = args.venv
+    elif args.image:
+        if args.image == os.getcwd():
+            logger.warning(
+                f"The specified image directory corresponds with the current directory, which is the default value."
+            )
+        logger.debug(f"Using container image: {args.venv}")
+        xffl_env["IMAGE"] = args.image
+    else:
+        logger.error(f"No execution environment specified [container/virtual env]")
+
     xffl_env["FACILITY"] = "local"
+    xffl_env["XFFL_WORLD_SIZE"] = str(args.world_size)
     logger.debug(f"Created xFFL environment: {xffl_env}")
 
     facilitator = os.path.join(
@@ -38,18 +78,12 @@ def local_run(args: argparse.Namespace) -> int:
         args.model,
         "-d",
         args.dataset,
+        # "2>&1",
     ]
-
     logger.debug(f"Running local execution: {' '.join(command)}")
-    with Popen(
-        command,
-        stdout=PIPE,
-        stderr=STDOUT,
-        shell=True,
-        env=xffl_env,
-    ) as process:  # ,
+    with run(command, env=xffl_env) as process:
         for line in process.stdout:
-            logger.info(line.decode("utf-8").rstrip())
+            logger.info(" ".join(line.decode("utf-8").rstrip().split()))
         process.wait()
         status = process.poll()
     return status

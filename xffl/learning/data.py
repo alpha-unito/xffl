@@ -1,11 +1,15 @@
 """Data-related utility methods
 """
 
+from logging import Logger, getLogger
 from typing import Dict, Union
 
 from datasets import Dataset, DatasetDict, load_from_disk
 
 from xffl.custom.types import PathLike
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 def load_datasets_from_disk(

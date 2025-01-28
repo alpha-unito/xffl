@@ -3,11 +3,15 @@
 
 import os
 import random
+from logging import Logger, getLogger
 from typing import Optional
 
 import numpy
 import torch
 import torch.nn as nn
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 def set_deterministic_execution(seed: int) -> torch.Generator:
