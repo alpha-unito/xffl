@@ -25,30 +25,28 @@ if [ ! -f "${FACILITY_SCRIPT}" ]; then
 fi
 source "${FACILITY_SCRIPT}"
 
-EXECUTABLE=$1; shift
-
 if [ "${FACILITY}" = "local" ] ; then
 	pids=()
 	for _RANK in $( seq 0 1 $(( WORLD_SIZE - 1 )) ) ; do
-		if [ -n "${VENV}" ] ; then
+		if [ -n "$VENV" ] ; then
 			source "${VENV}"
 			COMMAND="RANK=\"${_RANK}\" \
-				LOCAL_RANK=\"${_RANK}\" \
-				ROLE_RANK=\"${_RANK}\" \
-				$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh ${CODE_FOLDER}/$EXECUTABLE $*"
+LOCAL_RANK=\"${_RANK}\" \
+ROLE_RANK=\"${_RANK}\" \
+$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh $*"
 		else
-			COMMAND=" RANK=\"${_RANK}\" \
-				LOCAL_RANK=\"${_RANK}\" \
-				ROLE_RANK=\"${_RANK}\" \
-				${CONTAINER_PLT} exec \
-				--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
-				--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
-				--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
-				--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
-				--home /code/ \
-				$GPU_FLAG \
-				$IMAGE \
-				/code/xffl/workflow/scripts/run.sh /code/$EXECUTABLE $*"
+			COMMAND="RANK=\"${_RANK}\" \
+LOCAL_RANK=\"${_RANK}\" \
+ROLE_RANK=\"${_RANK}\" \
+${CONTAINER_PLT} exec \
+--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
+--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
+--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
+--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
+--home /code/ \
+$GPU_FLAG \
+$IMAGE \
+/code/xffl/workflow/scripts/run.sh $*"
 		fi
 		eval "$COMMAND" &
 		pids[_RANK]=$!
@@ -56,8 +54,6 @@ if [ "${FACILITY}" = "local" ] ; then
 	for pid in "${pids[@]}" ; do
     	wait "$pid"
 	done
-
-	echo "TUTTI MORTI"
 
 else
 	# Singularity container launch

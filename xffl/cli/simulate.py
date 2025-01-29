@@ -7,8 +7,8 @@ import argparse
 import inspect
 import logging
 import os
+import subprocess
 from logging import Logger, getLogger
-from subprocess import run
 from typing import Dict
 
 import xffl
@@ -30,6 +30,8 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     # Creating a new environment based on the provided mapping
     env_mapping = {
         "CODE_FOLDER": "workdir",
+        "MODEL_FOLDER": "model",
+        "DATASET_FOLDER": "dataset",
         "XFFL_WORLD_SIZE": "world_size",
     }
     env = setup_env(args=vars(args), mapping=env_mapping, parser=simulate_parser)
@@ -84,12 +86,11 @@ def simulate(args: argparse.Namespace) -> None:
     ]
     logger.debug(f"Local simulation command: {' '.join(command)}")
 
+    # Launch facilitator
     logger.info(f"Running local simulation...")
-    with run(command, env=env) as process:
-        for line in process.stdout:
-            logger.info(" ".join(line.decode("utf-8").rstrip().split()))
-        process.wait()
-        # status = process.poll()
+    process = subprocess.run(command, env=env)
+
+    return process.returncode
 
 
 def main(args: argparse.Namespace) -> int:

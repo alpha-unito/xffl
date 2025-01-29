@@ -42,9 +42,7 @@ def setup_distributed_process_group(
 
     # Requires MASTER_ADDR and MASTER_PORT environmental variables to be set
     dist.init_process_group(
-        backend=backend,
-        world_size=world_size,
-        rank=rank,
+        backend=backend, world_size=world_size, rank=rank, group_name="xFFL"
     )
 
     return rank, local_rank, world_size
@@ -55,4 +53,4 @@ def cleanup_distributed_process_group() -> None:
 
     To be called AFTER the various processes have completed their work and by ALL processes
     """
-    dist.destroy_process_group()
+    dist.destroy_process_group(group="xFFL")

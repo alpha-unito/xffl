@@ -151,6 +151,12 @@ def pretraining(args: argparse.Namespace) -> None:
     start_time = time.perf_counter()
     dataloaders: Dict[str, DataLoader] = {}
     for split in ["train", "val"]:
+
+        # Subsampling
+        datasets[split] = datasets[split].select(
+            list(range(0, 16))
+        )  # TODO: parametrise data reduction
+
         if rank == 0:
             logger.debug(f"{split} set size: {len(datasets[split])} samples")
 
