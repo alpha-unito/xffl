@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
+from torch import nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
@@ -20,7 +21,7 @@ logger: Logger = getLogger(__name__)
 
 
 def fsdp_training(
-    model: torch.nn,
+    model: nn.Module,
     optimizer: Optimizer,
     train_dataloader: DataLoader,
     eval_dataloader: DataLoader,
@@ -39,7 +40,7 @@ def fsdp_training(
     """Genreric training cycle for FSDP models
 
     :param model: Model to train
-    :type model: torch.nn
+    :type model: nn.Module
     :param optimizer: Model's optimizer
     :type optimizer: Optimizer
     :param train_dataloader: Training dataset data loader
@@ -202,7 +203,7 @@ def fsdp_training(
 
 
 def fsdp_evaluation(
-    model: torch.nn,
+    model: nn.Module,
     eval_dataloader: DataLoader,
     local_rank: int,
     world_size: int,
@@ -211,7 +212,7 @@ def fsdp_evaluation(
     """Genreric evaluation cycle for FSDP models
 
     :param model: Model to evaluate
-    :type model: torch.nn
+    :type model: nn.Module
     :param eval_dataloader: Validation dataset data loader
     :type eval_dataloader: DataLoader
     :param local_rank: Local rank of the calling process

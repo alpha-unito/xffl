@@ -4,9 +4,9 @@ This is the main entrypoint of the xFFL CLI
 Here argument parsing takes place, anche the various xFFL subcommands are interpreted
 """
 
-import argparse
 import sys
 from logging import Logger, getLogger
+from typing import List
 
 from xffl.cli.config import main as xffl_config
 from xffl.cli.parser import config_parser, parser, run_parser, simulate_parser
@@ -19,7 +19,7 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def main(arguments: argparse.Namespace) -> int:
+def main(arguments: List[str]) -> int:
     """xFFL command line interface (CLI)
 
     :param arguments: Command line arguments
