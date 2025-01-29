@@ -315,7 +315,7 @@ def main(args: argparse.Namespace) -> int:
     try:
         config(args)
     except (FileNotFoundError, FileExistsError) as e:
-        logger.exception(e.strerror)
+        logger.exception(e)
         exit_code = 1
     finally:
         logger.info(
@@ -329,5 +329,5 @@ if __name__ == "__main__":
 
     try:
         main(config_parser.parse_args())
-    except KeyboardInterrupt:
-        logger.exception("Unexpected keyboard interrupt")
+    except KeyboardInterrupt as e:
+        logger.exception(e)

@@ -64,8 +64,8 @@ def main(arguments: argparse.Namespace) -> int:
         else:
             logger.critical(f"\n{parser.format_help()}")
             return 1
-    except KeyboardInterrupt:
-        logger.exception("Unexpected keyboard interrupt")
+    except KeyboardInterrupt as e:
+        logger.exception(e)
         return 1
 
 

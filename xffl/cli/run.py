@@ -50,5 +50,5 @@ if __name__ == "__main__":
 
     try:
         main(run_parser.parse_args())
-    except KeyboardInterrupt:
-        logger.exception("Unexpected keyboard interrupt")
+    except KeyboardInterrupt as e:
+        logger.exception(e)
