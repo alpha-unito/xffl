@@ -28,27 +28,27 @@ source "${FACILITY_SCRIPT}"
 if [ "${FACILITY}" = "local" ] ; then
 	pids=()
 	for _RANK in $( seq 0 1 $(( WORLD_SIZE - 1 )) ) ; do
+		XFFL_RANKS="RANK=\"${_RANK}\" \
+				LOCAL_RANK=\"${_RANK}\" \
+				ROLE_RANK=\"${_RANK}\" \
+				GROUP_RANK=\"${_RANK}\""
+		XFFL_TASKSET="taskset --cpu-list "$(( _RANK * OMP_NUM_THREADS ))"-"$(( _RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
+
 		if [ -n "$VENV" ] ; then
 			source "${VENV}"
-			COMMAND="RANK=\"${_RANK}\" \
-LOCAL_RANK=\"${_RANK}\" \
-ROLE_RANK=\"${_RANK}\" \
-$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh $*"
+			COMMAND="$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh $*"
 		else
-			COMMAND="RANK=\"${_RANK}\" \
-LOCAL_RANK=\"${_RANK}\" \
-ROLE_RANK=\"${_RANK}\" \
-${CONTAINER_PLT} exec \
---mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
---mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
---mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
---mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
---home /code/ \
-$GPU_FLAG \
-$IMAGE \
-/code/xffl/workflow/scripts/run.sh $*"
+			COMMAND="${CONTAINER_PLT} exec \
+				--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
+				--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
+				--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
+				--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
+				--home /code/ \
+				$GPU_FLAG \
+				$IMAGE \
+				/code/xffl/workflow/scripts/run.sh $*"
 		fi
-		eval "$COMMAND" &
+		eval "$XFFL_RANKS $XFFL_TASKSET $COMMAND" &
 		pids[_RANK]=$!
 	done
 	for pid in "${pids[@]}" ; do

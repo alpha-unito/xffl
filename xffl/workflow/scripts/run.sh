@@ -6,7 +6,7 @@ source "$(dirname "$0")/parser.sh"
 # Main program											   #
 ############################################################
 
-echo "[Rank $RANK] Evaluating CLI parameters and pre-loading model and datasets..."
+#echo "[Rank $RANK] Evaluating CLI parameters and pre-loading model and datasets..."
 EXECUTABLE=$1; shift
 #Parser "$@"
 
@@ -21,5 +21,3 @@ else
 	COMMAND="time python /code/${EXECUTABLE} --model /model/ --dataset /datasets/"
 	PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/gmittone/.local/bin eval "$COMMAND"
 fi
-
-
