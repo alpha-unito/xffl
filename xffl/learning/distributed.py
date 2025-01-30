@@ -41,9 +41,10 @@ def setup_distributed_process_group(
     world_size = int(os.environ.get("WORLD_SIZE")) if not world_size else world_size
 
     # Requires MASTER_ADDR and MASTER_PORT environmental variables to be set
-    dist.init_process_group(
-        backend=backend, world_size=world_size, rank=rank, group_name="xFFL"
+    logger.debug(
+        f"Setting up process with global rank {rank}, local rank {local_rank} and world size {world_size} through {backend}"
     )
+    dist.init_process_group(backend=backend, world_size=world_size, rank=rank)
 
     return rank, local_rank, world_size
 
@@ -53,4 +54,5 @@ def cleanup_distributed_process_group() -> None:
 
     To be called AFTER the various processes have completed their work and by ALL processes
     """
-    dist.destroy_process_group(group="xFFL")
+    dist.barrier()
+    dist.destroy_process_group()

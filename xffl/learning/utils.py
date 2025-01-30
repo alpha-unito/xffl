@@ -1,5 +1,6 @@
 """Utility methods useful in a number of common DNN training scenarios"""
 
+import functools
 import os
 import random
 from logging import Logger, getLogger
@@ -8,6 +9,12 @@ from typing import Optional
 import numpy
 import torch
 import torch.nn as nn
+from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
+    CheckpointImpl,
+    apply_activation_checkpointing,
+    checkpoint_wrapper,
+)
+from transformers import PreTrainedModel
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -69,13 +76,50 @@ def get_model_size(model: nn.Module) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def seed_dataloader_worker() -> None:
+def seed_dataloader_worker(worker_id: int) -> None:
     """Seeds PyTorch's data loader workers to guarantee reproducibility
 
     Since each data loader worker is a process, the underlying libraries have to be re-seeded in a reproducible way to guarantee reproducibility of the loaded data and that different workers do not have the same seed, thus loading the same data
+
+    :param worker_id: Worker's id
+    :type worker_id: int
     """
     worker_seed = (
-        torch.initial_seed()
-    )  # Get PyTorch generated seed for the worker (base_seed + worker_id)
+        torch.initial_seed() % 2**32
+    )  # Get PyTorch generated seed for the worker (base_seed + worker_id) and reduce it into a valid range
     random.seed(worker_seed)
     numpy.random.seed(worker_seed)
+
+
+def set_activation_checkpointing(
+    model: nn.Module | PreTrainedModel, layer: Optional[nn.Module] = None
+) -> None:
+    """Sets up activation (gradient) checkpointing
+
+    This feature reduces maximum memory usage trading off more compute
+
+    :param model: Model on which setting up the checkpointing
+    :type model: nn.Module | PreTrainedModel
+    :param layer: Layer to wrap, needed only by Torch models, defaults to None
+    :type layer: Optional[nn.Module], optional
+    """
+    if isinstance(model, PreTrainedModel):
+        # Specific for HuggingFace models
+        # model.enable_input_require_grads()  # TODO: Solo per finetuning?
+        try:
+            model.gradient_checkpointing_enable()
+        except ValueError as e:
+            logger.exception(e)
+        else:
+            logger.debug("Activated reentrant model (gradient) checkpointing")
+    else:
+        # Generic PyTorch models - non-reentrant checkpointing
+        apply_activation_checkpointing(
+            model,
+            checkpoint_wrapper_fn=functools.partial(
+                checkpoint_wrapper,
+                checkpoint_impl=CheckpointImpl.NO_REENTRANT,
+            ),
+            check_fn=lambda submodule: isinstance(submodule, layer),
+        )
+        logger.debug("Activated non-reentrant model (gradient) checkpointing")

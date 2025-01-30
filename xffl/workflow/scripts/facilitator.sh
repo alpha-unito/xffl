@@ -25,6 +25,7 @@ if [ ! -f "${FACILITY_SCRIPT}" ]; then
 fi
 source "${FACILITY_SCRIPT}"
 
+# Local simulation
 if [ "${FACILITY}" = "local" ] ; then
 	pids=()
 	for _RANK in $( seq 0 1 $(( WORLD_SIZE - 1 )) ) ; do
@@ -55,8 +56,8 @@ if [ "${FACILITY}" = "local" ] ; then
     	wait "$pid"
 	done
 
+# StreamFlow execution
 else
-	# Singularity container launch
 	COMMAND="${CONTAINER_PLT} exec \
 		--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
 		--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
@@ -65,7 +66,7 @@ else
 		--home /code/ \
 		$GPU_FLAG \
 		$IMAGE \
-		/code/xffl/workflow/scripts/run.sh /code/$EXECUTABLE $*"
+		/code/xffl/workflow/scripts/run.sh $*"
 	echo "[Rank $RANK] Executing: $COMMAND"		
 	eval "$COMMAND"
 fi

@@ -58,7 +58,9 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     return xffl_env
 
 
-def simulate(args: argparse.Namespace) -> None:
+def simulate(
+    args: argparse.Namespace,
+) -> None:  # TODO: allow executable parameteres passing
     # Environment creation
     env = setup_simulation_env(args=args)
     logger.debug(f"Updated xFFL environment: {env}")

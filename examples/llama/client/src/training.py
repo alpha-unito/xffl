@@ -45,6 +45,8 @@ def pretraining(args: argparse.Namespace) -> None:
     """
 
     setup_time = time.perf_counter()
+    args.seed = 42
+    args.subsampling = 16
 
     # Set the requested logging level
     setup_logging(log_level=args.loglevel)
@@ -55,23 +57,24 @@ def pretraining(args: argparse.Namespace) -> None:
     # Sets RNGs seeds and force PyTorch's deterinistic execution
     generator: torch.Generator = None
     if args.seed:
-        generator = utils.set_deterministic_execution(
-            args.seed
-        )  # TODO: deterministic data loaders
-        if rank == 0:
-            logger.debug(f"RNGs seed set to: {args.seed}")
+        generator = utils.set_deterministic_execution(args.seed)
+        logger.info(f"RNGs seed set to: {args.seed}")
 
     start_time = time.perf_counter()
     # PyTorch's distributed backend setup
     rank, local_rank, world_size = distributed.setup_distributed_process_group()
-    if torch.distributed.is_initialized() and torch.cuda.is_available():
+    if torch.distributed.is_initialized():
         if rank == 0:
-            logger.debug(f"Clearing GPU cache for all ranks...")
-        utils.setup_gpu(local_rank)
-    if rank == 0:
-        logger.debug(
-            f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
-        )
+            logger.debug(
+                f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
+            )
+        if torch.cuda.is_available():
+            utils.setup_gpu(local_rank)
+            if rank == 0:
+                logger.info(f"Assigned GPUs to ranks and GPUs cache cleared")
+            logger.debug(
+                f"Rank {rank} located on local GPU {torch.cuda.current_device()}"
+            )
 
     # WandB setup
     wandb_run: Run = wandb.init(  # Default entity
@@ -94,11 +97,16 @@ def pretraining(args: argparse.Namespace) -> None:
             pretrained_model_name_or_path=args.model,
             use_cache=False,
             # output_loading_info=True #TODO: to add to verbose mode
-            local_files_only=True,  # Most HPCs do not have internet access from the nodes
-            attn_implementation="flash_attention_2",  # args.attention,
+            local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
+            attn_implementation=args.attention,
             torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
         )
     )
+
+    # Activation checkpointing 2.69s/it ENTRAMBI: 3.11s/it
+    # utils.set_activation_checkpointing(
+    #    model=model, layer=LlamaDecoderLayer
+    # )  # This can also be called aftes FSDP specifying the layer to wrap (e.g., LlamaDecoderLayer)
 
     # Print model's weights
     if rank == 0:
@@ -113,21 +121,27 @@ def pretraining(args: argparse.Namespace) -> None:
     start_time = time.perf_counter()
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=model,
-        sharding_strategy=ShardingStrategy.FULL_SHARD,
+        sharding_strategy=ShardingStrategy.FULL_SHARD,  # TODO: Enable HybridShard and HSDP
         auto_wrap_policy=functools.partial(
             wrap.transformer_auto_wrap_policy,
             transformer_layer_cls={LlamaDecoderLayer},
         ),
         device_id=torch.cuda.current_device(),
-        forward_prefetch=True,
-        limit_all_gathers=False,
+        forward_prefetch=True,  # 2.50s/it
+        limit_all_gathers=False,  # 2.50s/it
         mixed_precision=MixedPrecision(
             param_dtype=default_precision,
             reduce_dtype=default_precision,
             buffer_dtype=default_precision,
             cast_forward_inputs=True,
         ),
-    )  # Original LLaMA training adds activation checkpointing
+    )
+
+    # Activation checkpointing 2.51s/it
+    utils.set_activation_checkpointing(
+        model=model, layer=LlamaDecoderLayer
+    )  # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
+
     if rank == 0:
         logger.debug(
             f"FSDP wrapping setup time: {(time.perf_counter() - start_time):.2f} seconds"
@@ -147,36 +161,42 @@ def pretraining(args: argparse.Namespace) -> None:
             f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
+    # No memory pinning and non_blocking: 2.49s/it
+    # Memory pinning and non_blocking: 2.49s/it
+
     # Dataloaders creation
     start_time = time.perf_counter()
     dataloaders: Dict[str, DataLoader] = {}
     for split in ["train", "val"]:
 
         # Subsampling
-        datasets[split] = datasets[split].select(
-            list(range(0, 16))
-        )  # TODO: parametrise data reduction
+        if args.subsampling:
+            datasets[split] = datasets[split].select(list(range(0, args.subsampling)))
 
         if rank == 0:
             logger.debug(f"{split} set size: {len(datasets[split])} samples")
 
         dataloaders[split] = DataLoader(
             dataset=datasets[split],
-            batch_size=2 if split == "train" else 1,
+            batch_size=(
+                args.train_batch_size if split == "train" else args.val_batch_size
+            ),
             sampler=DistributedSampler(
                 dataset=datasets[split],
                 num_replicas=world_size,
                 rank=rank,
                 shuffle=split == "train",
-                # seed=args.seed if args.seed else None,
+                seed=args.seed if args.seed else None,
                 drop_last=True,
             ),
-            num_workers=0,  # TODO: to be investigated; if > 0 then also prefetch_factor should be set
+            num_workers=args.workers,  # 1: 2.47s/it #2: 2.46s/it # 4: 2.46s/it
             collate_fn=default_data_collator,
             pin_memory=True,
             drop_last=True,
-            # worker_init_fn=utils.seed_dataloader_worker if args.seed else None,  # Necessary for reproducibility
-            # generator=generator if args.seed else None,  # Necessary for reproducibility
+            worker_init_fn=(
+                utils.seed_dataloader_worker if args.seed else None
+            ),  # Necessary for reproducibility
+            generator=generator if args.seed else None,  # Necessary for reproducibility
         )
 
         if rank == 0:
@@ -189,16 +209,16 @@ def pretraining(args: argparse.Namespace) -> None:
         )
 
     # Optimizer and lr scheduler creation
-    # TODO: lots of hardcoded parameters
     optimizer: AdamW = AdamW(
         params=model.parameters(),
-        lr=float(1e-4),
-        weight_decay=float(0),
-        # foreach=True,  # Optimizes performances but uses more memory
-        fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
+        lr=args.learning_rate,
+        weight_decay=args.weight_decay,
+        # No optimisation 2.51s/it
+        # foreach=True,  # Optimizes performances but uses more memory # 2.51s/it
+        # fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16 # 2.48s/it
     )
     scheduler: lr_scheduler.StepLR = lr_scheduler.StepLR(
-        optimizer=optimizer, step_size=1, gamma=0.85
+        optimizer=optimizer, step_size=args.step_size, gamma=args.gamma
     )
 
     if rank == 0:
@@ -241,24 +261,20 @@ def main():
         "-m", "--model", help="Path to a saved model's folder", type=str, required=True
     )
 
-    ####################
-    # todo: add args
-    # wandb_name
-    # wandb_mode
-    ####################
-
     parser.add_argument(
         "-attn",
         "--attention",
         help="Type of attention implementation to use",
         type=str,
-        default="sdpa",
+        default="flash_attention_2",
         choices=["sdpa", "eager", "flash_attention_2"],
     )
 
     parser.add_argument(
         "-d", "--dataset", help="Path to the dataset's folder", type=str, required=True
     )
+
+    parser.add_argument("-o", "--online", help="Online mode", action="store_true")
 
     parser.add_argument(
         "-s",
@@ -278,7 +294,7 @@ def main():
         default=logging.INFO,
     )
 
-    parser.add_argument("-w", "--wandb", help="Enable WandB", action="store_true")
+    parser.add_argument("-wb", "--wandb", help="Enable WandB", action="store_true")
 
     parser.add_argument(
         "-name",
@@ -295,6 +311,70 @@ def main():
         type=str,
         default="online",
         choices=["online", "offline", "disabled"],
+    )
+
+    parser.add_argument(
+        "-sub",
+        "--subsampling",
+        help="Quantity of data samples to load (for each dataset)",
+        type=int,
+        default=0,
+    )
+
+    parser.add_argument(
+        "-t",
+        "--train-batch-size",
+        help="Training batch size",
+        type=int,
+        default=4,
+    )
+
+    parser.add_argument(
+        "-v",
+        "--val-batch-size",
+        help="Validation batch size",
+        type=int,
+        default=1,
+    )
+
+    parser.add_argument(
+        "-w",
+        "--workers",
+        help="Number of data loaders workers",
+        type=int,
+        default=2,
+    )
+
+    parser.add_argument(
+        "-lr",
+        "--learning-rate",
+        help="Learning rate",
+        type=float,
+        default=1e-4,
+    )
+
+    parser.add_argument(
+        "-wd",
+        "--weight-decay",
+        help="Weight decay",
+        type=float,
+        default=0,
+    )
+
+    parser.add_argument(
+        "-sz",
+        "--step-size",
+        help="Learning rate scheduler step size",
+        type=int,
+        default=1,
+    )
+
+    parser.add_argument(
+        "-g",
+        "--gamma",
+        help="Learning rate scheduler gamma",
+        type=float,
+        default=0.85,
     )
 
     try:
