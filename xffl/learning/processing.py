@@ -31,8 +31,7 @@ def fsdp_training(
     validate: bool = True,
     epochs: int = 1,
     save_path: Optional[PathLike] = None,
-    model_name: Optional[str] = None,
-    save_model: Optional[bool] = None,
+    output_model_name: Optional[str] = None,
     lr_scheduler: Optional[LRScheduler] = None,
     wandb_run: Optional[Run] = None,
     verbose: Optional[bool] = None,
@@ -61,8 +60,6 @@ def fsdp_training(
     :type save_path: Optional[PathLike], optional
     :param model_name: Name to use for the saved trained model, defaults to None
     :type model_name: Optional[str], optional
-    :param save_model: If to save the model, defaults to None
-    :type save_model: Optional[bool], optional
     :param lr_scheduler: Learning rate scheduler, defaults to None
     :type lr_scheduler: Optional[LRScheduler], optional
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
@@ -158,12 +155,12 @@ def fsdp_training(
             val_step_loss.extend(temp_val_loss)
             val_step_perplexity.extend(temp_step_perplexity)
 
-            if save_model:
+            if output_model_name:
                 checkpoint_start_time = time.perf_counter()
                 save_FSDP_model(
                     model=model,
                     path=save_path,
-                    name=model_name,
+                    name=output_model_name,
                     rank=rank,
                     epoch=epoch,
                     verbose=True,

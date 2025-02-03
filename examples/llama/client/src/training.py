@@ -237,9 +237,8 @@ def pretraining(args: argparse.Namespace) -> None:
         world_size=world_size,
         lr_scheduler=scheduler,
         wandb_run=wandb_run,
-        save_model=True,
-        save_model=os.getcwd(),
-        model_name=args.output,
+        save_model=args.output_path,
+        output_model_name=args.output_model,
     )
 
     if rank == 0:
@@ -381,10 +380,19 @@ def main():
     )
 
     parser.add_argument(
-        "--output",
-        help="New model name",
+        "-om",
+        "--output-model",
+        help="Saved model name",
         type=str,
-        default="new-model",
+        default=None,
+    )
+
+    parser.add_argument(
+        "-op",
+        "--output-path",
+        help="Path to the model saving folder",
+        type=str,
+        default=os.getcwd(),
     )
 
     try:
