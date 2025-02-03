@@ -69,7 +69,7 @@ def config(args: argparse.Namespace):
         "epochs": 1,
         "script_aggregation": {
             "class": "File",
-            "path": os.path.join(workdir, "cwl", "scripts", "aggregation.py"),
+            "path": os.path.join("py_scripts", "aggregation.py"),
         },
         "executable": "examples/llama/client/src/training.py",
     }

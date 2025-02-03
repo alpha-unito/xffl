@@ -6,6 +6,7 @@
 #  - DATASET_FOLDER
 #  - IMAGE
 #  - FACILITY
+#  - OUTPUT_FOLDER
 
 source "$(dirname "$0")/env.sh"
 
@@ -24,6 +25,10 @@ if [ ! -f "${FACILITY_SCRIPT}" ]; then
   exit 1
 fi
 source "${FACILITY_SCRIPT}"
+
+if [ -z "${OUTPUT_FOLDER}" ] ; then 
+	OUTPUT_FOLDER=$LOCAL_TMPDIR
+fi
 
 # Local simulation
 if [ "${FACILITY}" = "local" ] ; then
@@ -44,6 +49,7 @@ if [ "${FACILITY}" = "local" ] ; then
 				--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
 				--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
 				--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
+				--mount type=bind,src=${OUTPUT_FOLDER}/,dst=/output/ \
 				--home /code/ \
 				$GPU_FLAG \
 				$IMAGE \
@@ -59,10 +65,11 @@ if [ "${FACILITY}" = "local" ] ; then
 # StreamFlow execution
 else
 	COMMAND="${CONTAINER_PLT} exec \
-		--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
-		--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
-		--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
-		--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
+		--mount type=bind,src=${CODE_FOLDER},dst=/code \
+		--mount type=bind,src=${MODEL_FOLDER},dst=/model \
+		--mount type=bind,src=${DATASET_FOLDER},dst=/datasets \
+		--mount type=bind,src=${LOCAL_TMPDIR},dst=/tmp \
+		--mount type=bind,src=${OUTPUT_FOLDER},dst=${OUTPUT_FOLDER} \
 		--home /code/ \
 		$GPU_FLAG \
 		$IMAGE \

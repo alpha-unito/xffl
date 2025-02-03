@@ -22,7 +22,7 @@ async def run_streamflow(args: argparse.Namespace) -> None:
     :type args: argparse.Namespace
     """
 
-    # Mapping between xFLL and StreamFlow CLI arguments
+    # Mapping between xFFL and StreamFlow CLI arguments
     args.name = args.project
     args.outdir = os.path.join(args.workdir, args.project)
     streamflow_file = os.path.join(args.workdir, args.project, "streamflow.yml")

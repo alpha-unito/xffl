@@ -183,6 +183,7 @@ def get_training_step() -> MutableMapping[str, Any]:
                     "DATASET_FOLDER": "$(inputs.dataset.path)",
                     "IMAGE": "$(inputs.image.path)",
                     "FACILITY": "$(inputs.facility)",
+                    "OUTPUT_FOLDER": "$(runtime.outdir)",
                 }
             },
         },
@@ -194,7 +195,12 @@ def get_training_step() -> MutableMapping[str, Any]:
             {
                 "position": 8,
                 "valueFrom": "$(inputs.model_basename)-round$(inputs.round)",
-                "prefix": "--output",
+                "prefix": "--output-model",
+            },
+            {
+                "position": 9,
+                "valueFrom": "$(runtime.outdir)",
+                "prefix": "--output-path",
             },
         ],
         "inputs": {

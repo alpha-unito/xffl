@@ -163,7 +163,6 @@ def fsdp_training(
                     name=output_model_name,
                     rank=rank,
                     epoch=epoch,
-                    verbose=True,
                 )
                 # TODO: possible barrier?
                 checkpoint_end_time = time.perf_counter() - checkpoint_start_time

@@ -1,5 +1,6 @@
 """Methods useful for model handling"""
 
+import os
 from logging import Logger, getLogger
 from pathlib import Path
 from typing import Dict, Optional
@@ -45,8 +46,6 @@ def save_FSDP_model(
     :type checkpoint: Optional[int], optional
     :param precision: Numerical format to use to save the model, defaults to None
     :type precision: Optional[torch.dtype], optional
-    :param verbose: Enable verbose output, defaults to None
-    :type verbose: Optional[bool], optional
     """
 
     # Ensure that training is done on all ranks
@@ -64,14 +63,16 @@ def save_FSDP_model(
     # Only rank 0 saves the model
     if rank == 0:
         # Saving path creation
+        if not os.path.exists(path):
+            raise Exception(f"Save model path {path} does not exist")
+        if not os.path.isdir(path):
+            raise Exception(f"Save model path {path} must be a directory")
         if epoch:
-            save_path = f"{path}/{name}/epoch_{epoch}/"
+            save_path = Path(path, name, f"epoch_{epoch}")
         elif checkpoint:
-            save_path = f"{path}/{name}/checkpoint_{checkpoint}/"
+            save_path = Path(path, name, f"checkpoint_{checkpoint}")
         else:
-            save_path = f"{path}/{name}/"
-
-        save_path = Path(save_path)
+            save_path = Path(path, name)
         save_path.mkdir(parents=True, exist_ok=True)
 
         # Saving state_dict changing precision

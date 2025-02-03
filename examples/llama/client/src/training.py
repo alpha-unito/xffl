@@ -237,7 +237,7 @@ def pretraining(args: argparse.Namespace) -> None:
         world_size=world_size,
         lr_scheduler=scheduler,
         wandb_run=wandb_run,
-        save_model=args.output_path,
+        save_path=args.output_path,
         output_model_name=args.output_model,
     )
 
