@@ -18,9 +18,9 @@ def run(args: argparse.Namespace) -> None:
     :param args: Command line arguments
     :type args: argparse.Namespace
     """
-    from xffl.workflow.streamflow import (  # import here for performance concerns
-        run_streamflow,
-    )
+
+    # import here for performance concerns
+    from xffl.workflow.streamflow import run_streamflow
 
     asyncio.run(run_streamflow(args=args))
 
