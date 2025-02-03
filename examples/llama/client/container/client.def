@@ -3,8 +3,9 @@ From: {{ BASE_IMAGE }}
 
 %arguments
 	WORKDIR=$(pwd)
-    REQUIREMENTS_FILE=requirements.txt
-	REQUIREMENTS_FOLDER=requirements
+	XFFL_FOLDER=xffl
+    #REQUIREMENTS_FILE=requirements.txt
+	#REQUIREMENTS_FOLDER=requirements
 	#LIBRARIES=libraries
 	#LLAMA_RECIPES=llama-recipes
 
@@ -15,17 +16,20 @@ From: {{ BASE_IMAGE }}
 	VERSION=v0.1.0
 
 %setup
-    mkdir ${APPTAINER_ROOTFS}/{{ REQUIREMENTS_FOLDER }}
+    mkdir ${APPTAINER_ROOTFS}/{{ XFFL_FOLDER }}
 
 %files
-	{{ WORKDIR }}/{{ REQUIREMENTS_FILE }} /{{ REQUIREMENTS_FOLDER }}/
+	#{{ WORKDIR }}/{{ REQUIREMENTS_FILE }} /{{ REQUIREMENTS_FOLDER }}/
 	#{{ WORKDIR }}/../{{ LIBRARIES }}/{{ LLAMA_RECIPES }} /{{ REQUIREMENTS_FOLDER }}/
 
 %post
-	# Basic Python requirements installation
-	python3 -m pip install --no-cache-dir --upgrade pip && \
-	python3 -m pip install --no-cache-dir -r /{{ REQUIREMENTS_FOLDER }}/{{ REQUIREMENTS_FILE }} && \
-	rm -rf /{{ REQUIREMENTS_FOLDER }}
+	# xFFL installation
+	cd /{{ XFFL_FOLDER }}/
+	git clone -b develop https://github.com/alpha-unito/xffl.git
+	python3 -m pip install --no-cache-dir --upgrade pip
+	python3 -m pip install --no-cache-dir .
+	#python3 -m pip install --no-cache-dir -r /{{ REQUIREMENTS_FOLDER }}/{{ REQUIREMENTS_FILE }} && \
+	cd .. && rm -rf /{{ XFFL_FOLDER }}
 
 %labels
     Author gianluca.mittone@unito.it
