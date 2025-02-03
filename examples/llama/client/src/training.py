@@ -237,6 +237,9 @@ def pretraining(args: argparse.Namespace) -> None:
         world_size=world_size,
         lr_scheduler=scheduler,
         wandb_run=wandb_run,
+        save_model=True,
+        save_model=os.getcwd(),
+        model_name=args.output,
     )
 
     if rank == 0:
@@ -375,6 +378,13 @@ def main():
         help="Learning rate scheduler gamma",
         type=float,
         default=0.85,
+    )
+
+    parser.add_argument(
+        "--output",
+        help="New model name",
+        type=str,
+        default="new-model",
     )
 
     try:

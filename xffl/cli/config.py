@@ -115,9 +115,9 @@ def config(args: argparse.Namespace):
         code_path = "/leonardo/home/userexternal/amulone1/xffl"
         dataset_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/datasets"
         image_path = "/leonardo_scratch/fast/EUHPC_B18_066/client.sif"
-        num_test_sample = 100
-        num_train_sample = 1000
-        gpu_per_nodes = 4
+        val_batch_size = 1
+        train_batch_size = 4
+        subsampling = 16
         model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # fixme: remote it
 
         step_config = [
@@ -161,32 +161,32 @@ def config(args: argparse.Namespace):
         main_cwl["inputs"] |= {
             f"facility_{name}": "string",
             f"repository_{name}": "Directory",
-            f"test_samples_{name}": "int",
-            f"train_samples_{name}": "int",
+            f"train_batch_size_{name}": "int",
+            f"val_batch_size_{name}": "int",
+            f"subsampling_{name}": "int",
             f"repository_{name}": "Directory",
             f"image_{name}": "File",
-            f"gpu_per_nodes_{name}": "int",
             f"dataset_{name}": "Directory",
         }
         main_cwl["steps"]["iteration"]["in"] |= {
             f"facility_{name}": f"facility_{name}",
             f"repository_{name}": f"repository_{name}",
-            f"test_samples_{name}": f"test_samples_{name}",
-            f"train_samples_{name}": f"train_samples_{name}",
+            f"val_batch_size_{name}": f"val_batch_size_{name}",
+            f"train_batch_size_{name}": f"train_batch_size_{name}",
+            f"subsampling_{name}": f"subsampling_{name}",
             f"repository_{name}": f"repository_{name}",
             f"image_{name}": f"image_{name}",
-            f"gpu_per_nodes_{name}": f"gpu_per_nodes_{name}",
             f"dataset_{name}": f"dataset_{name}",
         }
 
         round_cwl["inputs"] |= {
             f"facility_{name}": "string",
             f"repository_{name}": "Directory",
-            f"test_samples_{name}": "int",
-            f"train_samples_{name}": "int",
+            f"train_batch_size_{name}": "int",
+            f"val_batch_size_{name}": "int",
+            f"subsampling_{name}": "int",
             f"repository_{name}": "Directory",
             f"image_{name}": "File",
-            f"gpu_per_nodes_{name}": "int",
             f"dataset_{name}": "Directory",
         }
         round_cwl["steps"] |= get_workflow_step(name)
@@ -210,9 +210,9 @@ def config(args: argparse.Namespace):
                 "class": "Directory",
                 "path": os.path.basename(dataset_path),
             },
-            f"test_samples_{name}": num_test_sample,
-            f"train_samples_{name}": num_train_sample,
-            f"gpu_per_nodes_{name}": gpu_per_nodes,
+            f"val_batch_size_{name}": val_batch_size,
+            f"train_batch_size_{name}": train_batch_size,
+            f"subsampling_{name}": subsampling,
         }
 
         deployment_config = {

@@ -183,7 +183,6 @@ def get_training_step() -> MutableMapping[str, Any]:
                     "DATASET_FOLDER": "$(inputs.dataset.path)",
                     "IMAGE": "$(inputs.image.path)",
                     "FACILITY": "$(inputs.facility)",
-                    "INSTANCES": "$(inputs.gpu_per_nodes)",
                 }
             },
         },
@@ -221,29 +220,23 @@ def get_training_step() -> MutableMapping[str, Any]:
             "repository": {
                 "type": "Directory",
             },
-            "train_samples": {
+            "train_batch_size": {
                 "type": "int",
-                "inputBinding": {"position": 3, "prefix": "--train"},
+                "inputBinding": {"position": 3, "prefix": "--train-batch-size"},
             },
-            "test_samples": {
+            "val_batch_size": {
                 "type": "int",
-                "inputBinding": {"position": 4, "prefix": "--validation"},
+                "inputBinding": {"position": 4, "prefix": "--val-batch-size"},
             },
-            "epochs": {
+            "subsampling": {
                 "type": "int",
-                "inputBinding": {"position": 5, "prefix": "--epochs"},
+                "inputBinding": {"position": 5, "prefix": "--subsampling"},
             },
             "seed": {
                 "type": "int",
                 "inputBinding": {"position": 6, "prefix": "--seed"},
                 "default": 42,
             },
-            "wandb": {
-                "type": "string",
-                "inputBinding": {"position": 7, "prefix": "--wandb"},
-                "default": "offline",
-            },
-            "gpu_per_nodes": {"type": "int"},
             "model_basename": {"type": "string"},
             "round": {"type": "int"},
         },
@@ -274,9 +267,9 @@ def get_workflow_step(name: str) -> MutableMapping[str, Any]:
                 "script": "script_train",
                 "executable": "executable",
                 "facility": f"facility_{name}",
-                "gpu_per_nodes": f"gpu_per_nodes_{name}",
-                "train_samples": f"train_samples_{name}",
-                "test_samples": f"test_samples_{name}",
+                "train_batch_size": f"train_batch_size_{name}",
+                "val_batch_size": f"val_batch_size_{name}",
+                "subsampling": f"subsampling_{name}",
                 "repository": f"repository_{name}",
                 "image": f"image_{name}",
                 "dataset": f"dataset_{name}",
