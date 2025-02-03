@@ -2,7 +2,8 @@
 
 from os import PathLike as _PathLike
 from pathlib import Path
-from typing import TypeVar, Any
+from typing import Any, TypeVar
+
 from xffl.utils.utils import resolve_path
 
 PathLike = TypeVar("PathLike", str, Path, _PathLike)

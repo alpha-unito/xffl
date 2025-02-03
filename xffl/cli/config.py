@@ -71,15 +71,16 @@ def config(args: argparse.Namespace):
             "class": "File",
             "path": os.path.join(workdir, "cwl", "scripts", "aggregation.py"),
         },
+        "executable": "examples/llama/client/src/training.py",
     }
 
     while insert:
 
-        name = check_input(
-            "Type facility's logic name: ",
-            "Facility name {} already used.",
-            lambda name: name not in facilities,
-        )
+        # name = check_input(
+        #     "Type facility's logic name: ",
+        #     "Facility name {} already used.",
+        #     lambda name: name not in facilities,
+        # )
         # facilities.add(name)
 
         # address = input(f"Type {name}'s frontend node address [IP:port]: ")
@@ -102,6 +103,7 @@ def config(args: argparse.Namespace):
         #     is_path=True,
         # )
 
+        name = "leonardo"
         facilities.add(name)
         address = "login.leonardo.cineca.it"
         username = "amulone1"
@@ -213,32 +215,23 @@ def config(args: argparse.Namespace):
             f"gpu_per_nodes_{name}": gpu_per_nodes,
         }
 
-        if name == "local":
-            deployment_config = {
-                f"{name}-ssh": {
-                    "type": "ssh",
-                    "config": {
-                        "nodes": [address],
-                        "username": username,
-                        "sshKey": key,
-                    },
-                    "workdir": step_workdir,
+        deployment_config = {
+            f"{name}-ssh": {
+                "type": "ssh",
+                "config": {
+                    "nodes": [address],
+                    "username": username,
+                    "sshKey": key,
                 },
-                name: {
-                    "type": "slurm",
-                    "config": {"services": {"pragma": {"file": slurm_template}}},
-                    "wraps": f"{name}-ssh",
-                    "workdir": step_workdir,
-                },
-            }
-        else:
-            deployment_config = {
-                name: {
-                    "type": "local",
-                    "config": {},
-                    "workdir": step_workdir,
-                },
-            }
+                "workdir": step_workdir,
+            },
+            name: {
+                "type": "slurm",
+                "config": {"services": {"pragma": {"file": slurm_template}}},
+                "wraps": f"{name}-ssh",
+                "workdir": step_workdir,
+            },
+        }
 
         streamflow_config["workflows"]["xffl"]["bindings"].extend(step_config)
         streamflow_config["deployments"] |= deployment_config

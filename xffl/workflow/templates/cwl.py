@@ -75,6 +75,7 @@ def get_main_cwl() -> MutableMapping[str, Any]:
             "script_train": "Directory",
             "script_aggregation": "File",
             "model": "Directory",
+            "executable": "string",
             "epochs": "int",
             "model_basename": "string",
             "max_rounds": "int",
@@ -92,6 +93,7 @@ def get_main_cwl() -> MutableMapping[str, Any]:
                     "script_train": "script_train",
                     "script_aggregation": "script_aggregation",
                     "model": "model",
+                    "executable": "executable",
                     "epochs": "epochs",
                     "model_basename": "model_basename",
                     "round": {"default": 0},
@@ -126,6 +128,7 @@ def get_round_cwl() -> MutableMapping[str, Any]:
             "script_train": "Directory",
             "script_aggregation": "File",
             "model": "Directory",
+            "executable": "string",
             "epochs": "int",
             "model_basename": "string",
             "max_rounds": "int",
@@ -190,7 +193,7 @@ def get_training_step() -> MutableMapping[str, Any]:
                 "valueFrom": "$(inputs.script.path)/facilitator.sh",
             },
             {
-                "position": 5,
+                "position": 8,
                 "valueFrom": "$(inputs.model_basename)-round$(inputs.round)",
                 "prefix": "--output",
             },
@@ -198,6 +201,10 @@ def get_training_step() -> MutableMapping[str, Any]:
         "inputs": {
             "script": {
                 "type": "Directory",
+            },
+            "executable": {
+                "type": "string",  # todo: fix me. It is a relative path of the `repository` input
+                "inputBinding": {"position": 2},
             },
             "image": {
                 "type": "File",
@@ -220,20 +227,20 @@ def get_training_step() -> MutableMapping[str, Any]:
             },
             "test_samples": {
                 "type": "int",
-                "inputBinding": {"position": 3, "prefix": "--validation"},
+                "inputBinding": {"position": 4, "prefix": "--validation"},
             },
             "epochs": {
                 "type": "int",
-                "inputBinding": {"position": 4, "prefix": "--epochs"},
+                "inputBinding": {"position": 5, "prefix": "--epochs"},
             },
             "seed": {
                 "type": "int",
-                "inputBinding": {"position": 4, "prefix": "--seed"},
+                "inputBinding": {"position": 6, "prefix": "--seed"},
                 "default": 42,
             },
             "wandb": {
                 "type": "string",
-                "inputBinding": {"position": 4, "prefix": "--wandb"},
+                "inputBinding": {"position": 7, "prefix": "--wandb"},
                 "default": "offline",
             },
             "gpu_per_nodes": {"type": "int"},
@@ -265,6 +272,7 @@ def get_workflow_step(name: str) -> MutableMapping[str, Any]:
             "in": {
                 # todo: add `wandb` and `seed` inputs
                 "script": "script_train",
+                "executable": "executable",
                 "facility": f"facility_{name}",
                 "gpu_per_nodes": f"gpu_per_nodes_{name}",
                 "train_samples": f"train_samples_{name}",

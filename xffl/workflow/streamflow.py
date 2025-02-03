@@ -5,8 +5,8 @@ This file contains all the scripts and wrapper code related to StreamFlow and it
 
 import argparse
 import asyncio
-import os
 import logging
+import os
 
 from streamflow.config.config import WorkflowConfig
 from streamflow.config.validator import SfValidator
