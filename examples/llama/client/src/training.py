@@ -280,7 +280,7 @@ def main():
         "-s",
         "--seed",
         help="Random execution seed (for reproducibility purposes)",
-        type=Optional[int],
+        type=int,
         default=None,
     )
 
