@@ -114,7 +114,7 @@ def config(args: argparse.Namespace):
         # todo: query to user
         code_path = "/leonardo/home/userexternal/amulone1/xffl"
         dataset_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/datasets"
-        image_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/worker.sif"
+        image_path = "/leonardo_scratch/fast/EUHPC_B18_066/client.sif"
         num_test_sample = 100
         num_train_sample = 1000
         gpu_per_nodes = 4
