@@ -46,6 +46,12 @@ classifiers = [
 [project.scripts]
 xffl = "xffl.cli.cli:run"
 
+[project.urls]
+Homepage = "https://hpc4ai.unito.it/hpc-federation/"
+Repository = "https://github.com/alpha-unito/xffl"
+Issues = "https://github.com/alpha-unito/xffl/issues"
+
+
 [tool.setuptools]
 packages = [
     "xffl",
@@ -64,7 +70,5 @@ packages = [
 "xffl.workflow.scripts" = ["*.sh"]
 "xffl.workflow.scripts.facilities" = ["*.sh"]
 
-[project.urls]
-Homepage = "https://hpc4ai.unito.it/hpc-federation/"
-Repository = "https://github.com/alpha-unito/xffl"
-Issues = "https://github.com/alpha-unito/xffl/issues"
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
