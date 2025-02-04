@@ -3,10 +3,9 @@
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import torch
-import torch.distributed as dist
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer

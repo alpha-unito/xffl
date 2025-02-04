@@ -10,7 +10,7 @@ import logging
 import os
 import time
 from logging import Logger, getLogger
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 import torch
 import wandb
