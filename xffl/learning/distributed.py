@@ -54,5 +54,4 @@ def cleanup_distributed_process_group() -> None:
 
     To be called AFTER the various processes have completed their work and by ALL processes
     """
-    dist.barrier()
     dist.destroy_process_group()

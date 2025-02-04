@@ -159,6 +159,7 @@ def fsdp_training(
                 checkpoint_start_time = time.perf_counter()
                 save_FSDP_model(
                     model=model,
+                    optimizer=optimizer,
                     path=save_path,
                     name=output_model_name,
                     rank=rank,

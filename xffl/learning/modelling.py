@@ -7,11 +7,9 @@ from typing import Dict, Optional
 
 import torch
 import torch.distributed as dist
-from torch.distributed.fsdp import (
-    FullStateDictConfig,
-    FullyShardedDataParallel,
-    StateDictType,
-)
+from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
+from torch.distributed.fsdp import FullyShardedDataParallel
+from torch.optim import Optimizer
 
 from xffl.custom.types import PathLike
 
@@ -21,6 +19,7 @@ logger: Logger = getLogger(__name__)
 
 def save_FSDP_model(
     model: FullyShardedDataParallel,  # To be generalized (as for now just HF)
+    optimizer: Optimizer,
     path: PathLike,
     name: str,
     rank: int,
@@ -48,17 +47,14 @@ def save_FSDP_model(
     :type precision: Optional[torch.dtype], optional
     """
 
-    # Ensure that training is done on all ranks
-    dist.barrier()
-
-    # Gather the full, unsharded state dict on rank 0 process
-    with FullyShardedDataParallel.state_dict_type(
-        module=model,
-        state_dict_type=StateDictType.FULL_STATE_DICT,
-        state_dict_config=FullStateDictConfig(offload_to_cpu=True, rank0_only=True),
-        # optim_state_dict_config=OptimStateDictConfig(offload_to_cpu=True),  # TODO: Save also optimizer?
-    ):
-        state_dict: Dict[str, torch.Tensor] = model.state_dict()
+    # Gather the full, unsharded state dict
+    state_dict, _ = get_state_dict(
+        model=model,
+        optimizers=optimizer,
+        options=StateDictOptions(
+            full_state_dict=True,
+        ),
+    )
 
     # Only rank 0 saves the model
     if rank == 0:
