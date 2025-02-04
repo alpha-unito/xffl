@@ -8,6 +8,7 @@ import inspect
 import os
 import subprocess
 import sys
+import time
 from logging import Logger, getLogger
 from subprocess import PIPE
 from typing import Dict
@@ -85,8 +86,9 @@ def simulate(
         [facilitator_script, executable_script] + [arg for arg in args.arguments]
     )
     logger.debug(f"Local simulation command: {command}")
+    start_time = time.perf_counter()
     try:
-        return subprocess.Popen(
+        return_code = subprocess.Popen(
             command,
             env=env,
             stdout=sys.stdout,
@@ -97,6 +99,12 @@ def simulate(
     except (OSError, ValueError) as e:
         logger.exception(e)
         return 1
+    else:
+        logger.info(
+            f"Total simulation execution time: {(time.perf_counter() - start_time):.2f} seconds"
+        )
+
+    return return_code
 
 
 def main(args: argparse.Namespace) -> int:

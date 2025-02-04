@@ -8,7 +8,7 @@ EXECUTABLE=$1; shift
 
 if [ "${FACILITY}" = "local" ] ; then
 	if [ -n "${VENV}" ] ; then
-		COMMAND="time python ${EXECUTABLE} $*"
+		COMMAND="python ${EXECUTABLE} $*"
 		eval "$COMMAND"
 	else
 		find "/model/" -type f -exec cat {} + > /dev/null & # Caching for improved performance
