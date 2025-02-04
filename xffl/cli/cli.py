@@ -28,8 +28,20 @@ def main(arguments: List[str]) -> int:
     :rtype: int
     """
 
+    # Logging facilities setup
+    setup_logging()
+
+    # Check if there are arguments to be passed to the runned script
+    args_index = len(arguments)
+    if "-args" in arguments:
+        args_index = arguments.index("-args")
+    elif "--arguments" in arguments:
+        args_index = arguments.index("--arguments")
+
     try:
-        args = parser.parse_args(arguments)
+        # Parse CLI arguments and isolate script arguments
+        args = parser.parse_args(arguments[:args_index])
+        args.arguments = arguments[args_index + 1 :]
 
         # Logging facilities setup
         setup_logging(args.loglevel)
@@ -52,7 +64,7 @@ def main(arguments: List[str]) -> int:
                 logger.info(f"\n{simulate_parser.format_help()}")
                 return 0
             else:
-                return xffl_simulate(args)
+                return xffl_simulate(args=args)
 
         # xFFL arguments handling
         if args.help:

@@ -35,15 +35,18 @@ if [ "${FACILITY}" = "local" ] ; then
 	pids=()
 	for _RANK in $( seq 0 1 $(( WORLD_SIZE - 1 )) ) ; do
 		XFFL_RANKS="RANK=\"${_RANK}\" \
-				LOCAL_RANK=\"${_RANK}\" \
-				ROLE_RANK=\"${_RANK}\" \
-				GROUP_RANK=\"${_RANK}\""
+LOCAL_RANK=\"${_RANK}\" \
+ROLE_RANK=\"${_RANK}\" \
+GROUP_RANK=\"${_RANK}\""
 		XFFL_TASKSET="taskset --cpu-list "$(( _RANK * OMP_NUM_THREADS ))"-"$(( _RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
+		XFFL_RUN="xffl/workflow/scripts/run.sh"
 
+		# Python virtual environment
 		if [ -n "$VENV" ] ; then
 			source "${VENV}"
-			COMMAND="$(pip show xffl | grep Location | awk '{print $2}')/xffl/workflow/scripts/run.sh $*"
+			COMMAND="$(pip show xffl | grep Location | awk '{print $2}')/$XFFL_RUN"
 		else
+		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
 				--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
 				--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
@@ -53,11 +56,15 @@ if [ "${FACILITY}" = "local" ] ; then
 				--home /code/ \
 				$GPU_FLAG \
 				$IMAGE \
-				/code/xffl/workflow/scripts/run.sh $*"
+				/code/$XFFL_RUN"
 		fi
-		eval "$XFFL_RANKS $XFFL_TASKSET $COMMAND" &
+
+		# Run the local simulation process
+		eval "$XFFL_RANKS $XFFL_TASKSET $COMMAND $*" &
 		pids[_RANK]=$!
 	done
+
+	# Wait for all processes to terminate
 	for pid in "${pids[@]}" ; do
     	wait "$pid"
 	done

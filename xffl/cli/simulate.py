@@ -5,10 +5,11 @@ This script wraps StreamFlow with a simple Python CLI, offering a homogeneous in
 
 import argparse
 import inspect
-import logging
 import os
 import subprocess
+import sys
 from logging import Logger, getLogger
+from subprocess import PIPE
 from typing import Dict
 
 import xffl
@@ -27,21 +28,26 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     :return: Updated environment
     :rtype: Dict[str, str]
     """
-    # Creating a new environment based on the provided mapping
-    env_mapping = {
-        "CODE_FOLDER": "workdir",
-        "MODEL_FOLDER": "model",
-        "DATASET_FOLDER": "dataset",
-        "XFFL_WORLD_SIZE": "world_size",
-    }
-    env = setup_env(args=vars(args), mapping=env_mapping, parser=simulate_parser)
-
-    # Updating the new environment with the virtualization technology specified
+    # Updating the environment with the virtualization technology specified
+    env = {}
     if args.venv:
         logger.debug(f"Using virtual environment: {args.venv}")
+        # Creating new environment variables based on the provided mapping
+        env_mapping = {
+            "XFFL_WORLD_SIZE": "world_size",
+        }
+        env = setup_env(args=vars(args), mapping=env_mapping, parser=simulate_parser)
         env["VENV"] = check_default_value("venv", args.venv, simulate_parser)
     elif args.image:
         logger.debug(f"Using container image: {args.venv}")
+        # Creating new environment variables based on the provided mapping
+        env_mapping = {
+            "CODE_FOLDER": "workdir",
+            "MODEL_FOLDER": "model",
+            "DATASET_FOLDER": "dataset",
+            "XFFL_WORLD_SIZE": "world_size",
+        }
+        env = setup_env(args=vars(args), mapping=env_mapping, parser=simulate_parser)
         env["IMAGE"] = check_default_value("image", args.image, simulate_parser)
     else:
         logger.error(f"No execution environment specified [container/virtual env]")
@@ -60,7 +66,7 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
 
 def simulate(
     args: argparse.Namespace,
-) -> None:  # TODO: allow executable parameteres passing
+) -> None:
     # Environment creation
     env = setup_simulation_env(args=args)
     logger.debug(f"Updated xFFL environment: {env}")
@@ -69,30 +75,28 @@ def simulate(
     facilitator_script = os.path.join(
         os.path.dirname(inspect.getfile(xffl.workflow)), "scripts", "facilitator.sh"
     )
-    debug_mode = "-dbg" if args.loglevel == logging.DEBUG else ""
-
     executable_script = check_default_value(
         "executable", args.executable, simulate_parser
     )
-    model_path = check_default_value("model", args.model, simulate_parser)
-    dataset_path = check_default_value("dataset", args.dataset, simulate_parser)
-
-    command = [
-        facilitator_script,
-        executable_script,
-        debug_mode,
-        "-m" if model_path else "",
-        model_path,
-        "-d" if dataset_path else "",
-        dataset_path,
-    ]
-    logger.debug(f"Local simulation command: {' '.join(command)}")
 
     # Launch facilitator
     logger.info(f"Running local simulation...")
-    process = subprocess.run(command, env=env)
-
-    return process.returncode
+    command = " ".join(
+        [facilitator_script, executable_script] + [arg for arg in args.arguments]
+    )
+    logger.debug(f"Local simulation command: {command}")
+    try:
+        return subprocess.Popen(
+            command,
+            env=env,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            shell=True,
+            universal_newlines=True,
+        ).wait()
+    except (OSError, ValueError) as e:
+        logger.exception(e)
+        return 1
 
 
 def main(args: argparse.Namespace) -> int:

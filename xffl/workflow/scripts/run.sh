@@ -8,10 +8,7 @@ EXECUTABLE=$1; shift
 
 if [ "${FACILITY}" = "local" ] ; then
 	if [ -n "${VENV}" ] ; then
-		find "$MODEL_FOLDER" -type f -exec cat {} + > /dev/null & # Caching for improved performance
-		find "$DATASET_FOLDER" -type f -exec cat {} + > /dev/null & # Caching for improved performance
-
-		COMMAND="time python ${CODE_FOLDER}/${EXECUTABLE} $*"
+		COMMAND="time python ${EXECUTABLE} $*"
 		eval "$COMMAND"
 	else
 		find "/model/" -type f -exec cat {} + > /dev/null & # Caching for improved performance

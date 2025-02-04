@@ -106,8 +106,7 @@ simulate_parser.add_argument(
 )
 
 simulate_parser.add_argument(
-    "-e",
-    "--executable",
+    "executable",
     help="Name of the Python execultable file",
     type=str,
     default=None,
@@ -161,4 +160,13 @@ simulate_parser.add_argument(
     help="Number of process to spawn (max. number of available GPUs)",
     type=int,
     default=1,
+)
+
+simulate_parser.add_argument(
+    "-args",
+    "--arguments",
+    help="Command line arguments to be passed to the executable",
+    type=str,
+    nargs="+",
+    default=[],
 )
