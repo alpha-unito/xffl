@@ -28,6 +28,7 @@ from transformers import AutoModelForCausalLM, LlamaForCausalLM, default_data_co
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from wandb.wandb_run import Run
 
+from xffl.custom.types import Folder
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging
 
@@ -260,7 +261,11 @@ def main():
     )
 
     parser.add_argument(
-        "-m", "--model", help="Path to a saved model's folder", type=str, required=True
+        "-m",
+        "--model",
+        help="Path to a saved model's folder",
+        type=Folder,
+        required=True,
     )
 
     parser.add_argument(
@@ -273,7 +278,11 @@ def main():
     )
 
     parser.add_argument(
-        "-d", "--dataset", help="Path to the dataset's folder", type=str, required=True
+        "-d",
+        "--dataset",
+        help="Path to the dataset's folder",
+        type=Folder,
+        required=True,
     )
 
     parser.add_argument("-o", "--online", help="Online mode", action="store_true")
@@ -391,7 +400,7 @@ def main():
         "-op",
         "--output-path",
         help="Path to the model saving folder",
-        type=str,
+        type=Folder,
         default=os.getcwd(),
     )
 

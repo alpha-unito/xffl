@@ -7,12 +7,16 @@ import argparse
 import asyncio
 import logging
 import os
+from logging import Logger, getLogger
 
 from streamflow.config.config import WorkflowConfig
 from streamflow.config.validator import SfValidator
 from streamflow.cwl.main import main as cwl_main
 from streamflow.ext.utils import load_extensions
 from streamflow.main import build_context
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 async def run_streamflow(args: argparse.Namespace) -> None:
