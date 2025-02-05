@@ -22,11 +22,11 @@ def PathLike(path: Any) -> PathLike:
     return resolve_path(path=path)
 
 
-Folder = TypeVar("Folder", str, Path, _PathLike)
+FolderLike = TypeVar("FolderLike", str, Path, _PathLike)
 """Path to folder objects"""
 
 
-def Folder(path: Any) -> Folder:
+def FolderLike(path: Any) -> FolderLike:
     """Folder objects constructor
 
     :param path: A file system path to a folder
@@ -40,11 +40,11 @@ def Folder(path: Any) -> Folder:
         raise ValueError
 
 
-File = TypeVar("File", str, Path, _PathLike)
+FileLike = TypeVar("FileLike", str, Path, _PathLike)
 """Path to file objects"""
 
 
-def File(path: Any) -> File:
+def FileLike(path: Any) -> FileLike:
     """File objects constructor
 
     :param path: A file system path to a file
