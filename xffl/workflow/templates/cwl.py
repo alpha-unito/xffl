@@ -40,25 +40,47 @@ class CWLConfig(YamlConfig):
 
 
 class Workflow(ABC):
+    """Abstract base class describing workflow-like objects"""
 
     def __init__(self):
+        """Creates a new Workflow instance with empty cwl data"""
         # todo: change mutablemapping to cwl_utils objs (PR #3)
         self.cwl: MutableMapping[str, Any] = type(self).get_default_definition()
 
     @classmethod
     def get_default_definition(cls) -> MutableMapping[str, Any]:
+        """Returns the default workflow definition
+
+        :return: Default workflow definition
+        :rtype: MutableMapping[str, Any]
+        """
         return {}
 
     def save(self) -> MutableMapping[str, Any]:
+        """Returns the current CWL Workflow definition
+
+        :return: Current CWL Workflow definition
+        :rtype: MutableMapping[str, Any]
+        """
         return self.cwl
 
     @abstractmethod
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, str]
-    ) -> None: ...
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+    ) -> None:
+        """Add the given extra inputs to the Workflow definition
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        :param extra_inputs: Command line argument required by the executable script
+        :type extra_inputs: MutableMapping[str, str]
+        """
+        ...
 
 
 class AggregateStep(Workflow):
+    """Workflow describing the Federated Learning aggregation step"""
+
     @classmethod
     def get_default_definition(cls) -> MutableMapping[str, Any]:
         """Get the CWL file standard content for a xFFL application aggregation step
@@ -105,12 +127,20 @@ class AggregateStep(Workflow):
         }
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
     ) -> None:
+        """Add the given extra inputs to the AggregateStep definition
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        :param extra_inputs: Command line argument required by the executable script
+        :type extra_inputs: MutableMapping[str, str]
+        """
         pass
 
 
 class MainWorkflow(Workflow):
+    """Main description of a Federated Learning workflow"""
 
     @classmethod
     def get_default_definition(cls) -> MutableMapping[str, Any]:
@@ -171,7 +201,14 @@ class MainWorkflow(Workflow):
 
     def add_inputs(
         self, facility_name: str, extra_inputs: MutableMapping[str, str]
-    ) -> None:
+    ) -> None:  # TODO: remove all the redundancy
+        """Add the given extra inputs to the MainWorkflow definition
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        :param extra_inputs: Command line argument required by the executable script [name: cwl type]
+        :type extra_inputs: MutableMapping[str, str]
+        """
         self.cwl["inputs"] |= {
             f"image_{facility_name}": "File",
             f"facility_{facility_name}": "string",
@@ -191,6 +228,7 @@ class MainWorkflow(Workflow):
 
 
 class RoundWorkflow(Workflow):
+    """Round workflow CWL description"""
 
     @classmethod
     def get_default_definition(cls) -> MutableMapping[str, Any]:
@@ -269,6 +307,13 @@ class RoundWorkflow(Workflow):
     def add_inputs(
         self, facility_name: str, extra_inputs: MutableMapping[str, str]
     ) -> None:
+        """Add the given extra inputs to the RoundWorkflow definition
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        :param extra_inputs: Command line argument required by the executable script [name: cwl type]
+        :type extra_inputs: MutableMapping[str, str]
+        """
         self.cwl["inputs"] |= {
             f"facility_{facility_name}": "string",
             f"repository_{facility_name}": "Directory",
@@ -279,7 +324,6 @@ class RoundWorkflow(Workflow):
         self.cwl["steps"][f"training_on_{facility_name}"]["in"] |= {
             f"{name}": f"{name}_{facility_name}" for name in extra_inputs.keys()
         }
-        # rm -r project ; pip install . ;
         self.cwl["steps"]["merge"]["in"] |= {
             facility_name: f"training_on_{facility_name}/output_model"
         }
@@ -288,7 +332,8 @@ class RoundWorkflow(Workflow):
             f"inputs.{facility_name}"
         )
 
-    def update_merge_step(self):
+    def update_merge_step(self) -> None:
+        """Updates the merge step"""
         self.cwl["steps"]["merge"]["run"]["expression"] = (
             "$({'models': ["
             + ",".join(self.cwl["steps"]["merge"]["run"]["expression"])
@@ -297,6 +342,7 @@ class RoundWorkflow(Workflow):
 
 
 class TrainingStep(Workflow):
+    """Workflow modelling a training step"""
 
     @classmethod
     def get_default_definition(cls) -> MutableMapping[str, Any]:
@@ -363,23 +409,6 @@ class TrainingStep(Workflow):
                 },
                 "model_basename": {"type": "string"},
                 "round": {"type": "int"},  # num of the current iteration
-                # "train_batch_size": {
-                #     "type": "int",
-                #     "inputBinding": {"position": 3, "prefix": "--train-batch-size"},
-                # },
-                # "val_batch_size": {
-                #     "type": "int",
-                #     "inputBinding": {"position": 4, "prefix": "--val-batch-size"},
-                # },
-                # "subsampling": {
-                #     "type": "int",
-                #     "inputBinding": {"position": 5, "prefix": "--subsampling"},
-                # },
-                # "seed": {
-                #     "type": "int",
-                #     "inputBinding": {"position": 6, "prefix": "--seed"},
-                #     "default": 42,
-                # },
             },
             "outputs": {
                 "output_model": {
@@ -392,6 +421,13 @@ class TrainingStep(Workflow):
     def add_inputs(
         self, facility_name: str, extra_inputs: MutableMapping[str, str]
     ) -> None:
+        """Add the given extra inputs to the TrainingStep definition
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        :param extra_inputs: Command line argument required by the executable script [name: cwl type]
+        :type extra_inputs: MutableMapping[str, str]
+        """
         self.cwl["inputs"] |= {
             f"facility": "string",
             f"repository": "Directory",
