@@ -24,5 +24,5 @@ else
 
 	COMMAND="time python /code/${EXECUTABLE} --model /model/ --dataset /datasets/ $*"
 	echo "[Rank $RANK] $COMMAND"
-	PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/amulone1/venv-xxfl/bin/xffl eval "$COMMAND" # TODO: Remove Path modification
+	PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/amulone1/xffl/venv/bin/xffl eval "$COMMAND" # TODO: Remove Path modification
 fi
