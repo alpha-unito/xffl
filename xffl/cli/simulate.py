@@ -116,15 +116,13 @@ def main(args: argparse.Namespace) -> int:
     :rtype: int
     """
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
-    exit_code = 0
     try:
         simulate(args=args)
     except Exception as e:
         logger.exception(e)
-        exit_code = 1
+        raise
     finally:
         logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
-        return exit_code
 
 
 if __name__ == "__main__":

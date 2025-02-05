@@ -34,15 +34,13 @@ def main(args: argparse.Namespace) -> int:
     :rtype: int
     """
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
-    exit_code = 0
     try:
         run(args)
     except Exception as e:  # TODO check which exception SF raises
         logger.exception(e)
-        exit_code = 1
+        raise
     finally:
         logger.info("\*** Cross-Facility Federated Learning (xFFL) - Project run ***")
-        return exit_code
 
 
 if __name__ == "__main__":

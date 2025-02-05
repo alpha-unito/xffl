@@ -76,7 +76,7 @@ def main(arguments: List[str]) -> int:
         else:
             logger.critical(f"\n{parser.format_help()}")
             return 1
-    except KeyboardInterrupt as e:
+    except Exception as e:
         logger.exception(e)
         return 1
 
