@@ -24,7 +24,7 @@ from xffl.workflow.templates.cwl import (
     TrainingStep,
 )
 from xffl.workflow.templates.streamflow import StreamFlowFile
-from xffl.workflow.utils import from_parser_to_cwl
+from xffl.workflow.utils import from_args_to_cwl
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -246,10 +246,7 @@ def config(args: argparse.Namespace):
         image_path = "/leonardo_scratch/fast/EUHPC_B18_066/client.sif"
         model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # TODO: sparirà
         # TODO: passare output-dir
-
-        val_batch_size = 1
-        train_batch_size = 4
-        subsampling = 16
+        # TODO: far scegliere all'utente il numero di round
 
         try:
             # from examples.llama.client.src.training import (
@@ -257,7 +254,7 @@ def config(args: argparse.Namespace):
             # )
 
             training_step_args, main_cwl_args, round_cwl_inputs, config_cwl_args = (
-                from_parser_to_cwl(parser=parser, arguments=args.arguments)
+                from_args_to_cwl(parser=parser, arguments=args.arguments)
             )
         except Exception as e:
             raise e

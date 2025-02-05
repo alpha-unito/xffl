@@ -3,7 +3,7 @@
 import argparse
 from argparse import _HelpAction
 from types import MappingProxyType
-from typing import Any, Final, List, MutableMapping
+from typing import Any, Final, List, MutableMapping, Tuple
 
 from xffl.custom.types import FileLike, FolderLike
 
@@ -49,47 +49,61 @@ CWL_TYPE_MAPPING: Final[MappingProxyType[Any, str]] = MappingProxyType(
 """An immutable dictionary mapping Python to CWL types"""
 
 
-def from_parser_to_cwl(
-    parser: argparse.ArgumentParser, arguments=List[str], start_position: int = 0
-) -> MutableMapping[str, Any]:
-    """Method that converts a Python ArgumentParser into a valid dictionary of CWL inputs entries
+def from_args_to_cwl(
+    parser: argparse.ArgumentParser, arguments: List[str], start_position: int = 0
+) -> Tuple[
+    MutableMapping[str, Any], MutableMapping[str, str], MutableMapping[str, Any]
+]:
+    """Converts a Python ArgumentParser into valid dictionaries of CWL inputs entries
 
     :param parser: Python command line argument parser
     :type parser: argparse.ArgumentParser
-    :return: Dictionary of valid CWL inputs entries
-    :rtype: MutableMapping[str, MutableMapping[str, str | MutableMapping[str, str]]]
+    :param arguments: Command line arguments
+    :type arguments: List[str]
+    :param start_position: Starting number for the enumeration of arguments, defaults to 0
+    :type start_position: int, optional
+    :raises (argparse.ArgumentError, argparse.ArgumentTypeError): Argument parsering exceptions
+    :return: Three dictionaries with the arguments name as keys and different values: CWL input bidding, CWL type, CWL value
+    :rtype: Tuple[MutableMapping[str, Any], MutableMapping[str, str], MutableMapping[str, Any]]
     """
-    training_step_args, main_cwl_args, round_cwl_args, config_cwl_args = {}, {}, {}, {}
+    # Three dictionaries are produced, with three different mappings
+    arg_to_bidding, arg_to_type, arg_to_value = {}, {}, {}
 
-    namespace = vars(parser.parse_args(arguments))
+    # Parse the command line arguments and convert the namespace to a dictionary
+    try:
+        namespace = vars(parser.parse_args(arguments))
+    except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
+        raise e
 
+    # Itarate over the parser's declared arguments and compile the three dictionaries
     for position, action in enumerate(parser._actions, start=start_position):
         if not isinstance(action, _HelpAction):
-            param_name = get_param_name(action.option_strings, parser.prefix_chars)
+            # Convert the action attributes into useful parameter informations
+            input = get_param_name(action.option_strings, parser.prefix_chars)
+            cwl_type = CWL_TYPE_MAPPING[action.type]
+            required = action.required
 
-            training_step_args[param_name] = {
-                "type": CWL_TYPE_MAPPING[action.type]
-                + ("" if action.required else "?"),
+            # Argument name to CWL input bidding format
+            arg_to_bidding[input] = {
+                "type": cwl_type + ("" if required else "?"),
                 "inputBinding": {
                     "position": position,
                     "prefix": get_param_flag(action.option_strings),
                 },
-                "default": action.default if action.default is not None else "null",
+                "default": action.default if action.default else "null",
             }
 
-            main_cwl_args[param_name] = CWL_TYPE_MAPPING[action.type] + (
-                "" if action.required else "?"
-            )
+            # Argument name to CWL type
+            arg_to_type[input] = cwl_type + ("" if required else "?")
 
-            config_cwl_args[param_name] = (
-                namespace[param_name]
+            # Argument name to value (Directory and folder require different format)
+            arg_to_value[input] = (
+                namespace[input]
                 if action.type not in [FolderLike, FileLike]
                 else {
-                    "class": CWL_TYPE_MAPPING[action.type],
-                    "path": namespace[param_name],
+                    "class": cwl_type,
+                    "path": namespace[input],
                 }
             )
 
-    round_cwl_args = main_cwl_args
-
-    return training_step_args, main_cwl_args, round_cwl_args, config_cwl_args
+    return arg_to_bidding, arg_to_type, arg_to_value
