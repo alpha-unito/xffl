@@ -6,7 +6,7 @@ import os
 from collections.abc import MutableMapping
 from typing import Any
 
-from xffl.workflow.templates.streamflow import YamlConfig
+from xffl.workflow.config import YamlConfig
 
 
 class StreamFlowFile(YamlConfig):
@@ -95,7 +95,7 @@ class StreamFlowFile(YamlConfig):
             {
                 "port": f"/dataset_{facility_name}",
                 "target": {
-                    "deployment": f"{facility_name}",
+                    "deployment": facility_name,
                     "workdir": os.path.dirname(dataset_path),
                 },
             },

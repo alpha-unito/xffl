@@ -6,17 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import MutableMapping
 from typing import Any
 
-
-class YamlConfig:
-    def __init__(self):
-        self.content: MutableMapping[str, Any] = type(self).get_content()
-
-    @classmethod
-    def get_default_content(cls) -> MutableMapping[str, Any]:
-        return {}
-
-    def save(self) -> MutableMapping[str, Any]:
-        return self.content
+from xffl.workflow.config import YamlConfig
 
 
 class CWLConfig(YamlConfig):
@@ -61,23 +51,29 @@ class CWLConfig(YamlConfig):
         }
 
     def add_inputs(self, facility_name: str) -> None:
-        self.content |= self.faciltiry_data[facility_name]
+        self.content |= self.facility_data[facility_name]
 
 
-class Workflow(YamlConfig, ABC):
+class Workflow(ABC):
+
     def __init__(self):
-        self.cwl: MutableMapping[str, any] = type(self).get_cwl()
+        # todo: change mutablemapping with cwl_utils objs (PR #3)
+        self.cwl: MutableMapping[str, Any] = type(self).get_default_definition()
 
-    @abstractmethod
-    def add_inputs(self, facility_name: str) -> None: ...
+    @classmethod
+    def get_default_definition(cls) -> MutableMapping[str, Any]:
+        return {}
 
     def save(self) -> MutableMapping[str, Any]:
         return self.cwl
 
+    @abstractmethod
+    def add_inputs(self, facility_name: str) -> None: ...
+
 
 class AggregateStep(Workflow):
     @classmethod
-    def get_default_content(cls) -> MutableMapping[str, Any]:
+    def get_default_definition(cls) -> MutableMapping[str, Any]:
         """Get the CWL file standard content for a xFFL application aggregation step
 
         :return: Dict template of a CWL xFFL aggregation step
@@ -121,11 +117,14 @@ class AggregateStep(Workflow):
             },
         }
 
+    def add_inputs(self, facility_name: str) -> None:
+        pass
+
 
 class MainWorkflow(Workflow):
 
     @classmethod
-    def get_default_content(cls) -> MutableMapping[str, Any]:
+    def get_default_definition(cls) -> MutableMapping[str, Any]:
         """Get the CWL main file standard content for a xFFL application
 
         :return: main.cwl template
@@ -184,7 +183,7 @@ class MainWorkflow(Workflow):
         }
 
     def add_inputs(self, facility_name: str) -> None:
-        self.content["inputs"] |= {
+        self.cwl["inputs"] |= {
             f"facility_{facility_name}": "string",
             f"repository_{facility_name}": "Directory",
             f"train_batch_size_{facility_name}": "int",
@@ -194,7 +193,7 @@ class MainWorkflow(Workflow):
             f"image_{facility_name}": "File",
             f"dataset_{facility_name}": "Directory",
         }
-        self.content["steps"]["iteration"]["in"] |= {
+        self.cwl["steps"]["iteration"]["in"] |= {
             f"facility_{facility_name}": f"facility_{facility_name}",
             f"repository_{facility_name}": f"repository_{facility_name}",
             f"val_batch_size_{facility_name}": f"val_batch_size_{facility_name}",
@@ -209,7 +208,7 @@ class MainWorkflow(Workflow):
 class RoundWorkflow(Workflow):
 
     @classmethod
-    def get_default_content() -> MutableMapping[str, Any]:
+    def get_default_definition(cls) -> MutableMapping[str, Any]:
         """Get the CWL round file standard content for a xFFL application
 
         :return: round.cwl template
@@ -259,7 +258,7 @@ class RoundWorkflow(Workflow):
         }
 
     @classmethod
-    def get_default_content(cls, name: str) -> MutableMapping[str, Any]:
+    def get_training_step(cls, name: str) -> MutableMapping[str, Any]:
         """Get the CWL file standard content for a xFFL application step
 
         :param name: Name of the facility on which the step will be executed
@@ -291,7 +290,7 @@ class RoundWorkflow(Workflow):
         }
 
     def add_inputs(self, facility_name: str) -> None:
-        self.content["inputs"] |= {
+        self.cwl["inputs"] |= {
             f"facility_{facility_name}": "string",
             f"repository_{facility_name}": "Directory",
             f"train_batch_size_{facility_name}": "int",
@@ -301,20 +300,27 @@ class RoundWorkflow(Workflow):
             f"image_{facility_name}": "File",
             f"dataset_{facility_name}": "Directory",
         }
-        self.content["steps"] |= RoundWorkflow.get_training_step(facility_name)
-        self.content["steps"]["merge"]["in"] |= {
+        self.cwl["steps"] |= RoundWorkflow.get_training_step(facility_name)
+        self.cwl["steps"]["merge"]["in"] |= {
             facility_name: f"training_on_{facility_name}/output_model"
         }
-        self.content["steps"]["merge"]["run"]["inputs"] |= {facility_name: "Directory"}
-        self.content["steps"]["merge"]["run"]["expression"].append(
+        self.cwl["steps"]["merge"]["run"]["inputs"] |= {facility_name: "Directory"}
+        self.cwl["steps"]["merge"]["run"]["expression"].append(
             f"inputs.{facility_name}"
+        )
+
+    def update_merge_step(self):
+        self.cwl["steps"]["merge"]["run"]["expression"] = (
+            "$({'models': ["
+            + ",".join(self.cwl["steps"]["merge"]["run"]["expression"])
+            + "] })"
         )
 
 
 class TrainingStep(Workflow):
 
     @classmethod
-    def get_default_content(cls) -> MutableMapping[str, Any]:
+    def get_default_definition(cls) -> MutableMapping[str, Any]:
         """Get the CWL file standard content for a xFFL application training step
 
         :return: Dict template of a CWL xFFL training step
@@ -391,10 +397,6 @@ class TrainingStep(Workflow):
                     "type": "int",
                     "inputBinding": {"position": 6, "prefix": "--seed"},
                     "default": 42,
-                },
-                "debug": {
-                    "type": "str?",  # value must be "-dbg"
-                    "inputBinding": {"position": 7},
                 },
                 "model_basename": {"type": "string"},
                 "round": {"type": "int"},

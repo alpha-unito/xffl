@@ -1,13 +1,10 @@
-def get_aggregate() -> str:
-    return """import argparse
+import argparse
 import math
-import random
 import os
-
+import random
 from pathlib import Path
 from statistics import mean
 from string import ascii_lowercase
-
 
 NUM_FILE_DIRECTORY = 2
 
@@ -99,4 +96,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Interrupted!")
     pass
-"""

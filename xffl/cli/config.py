@@ -23,7 +23,6 @@ from xffl.workflow.templates.cwl import (
     RoundWorkflow,
     TrainingStep,
 )
-from xffl.workflow.templates.sh import get_aggregate
 from xffl.workflow.templates.streamflow import StreamFlowFile
 
 logger: Logger = getLogger(__name__)
@@ -75,7 +74,6 @@ def config(args: argparse.Namespace):
         },
         "executable": "examples/llama/client/src/training.py",
     }
-
     while insert:
 
         # name = check_input(
@@ -148,7 +146,7 @@ def config(args: argparse.Namespace):
             "\n".join(
                 [
                     f"Inserted the following record for {name} in the StreamFlow file:",
-                    json.dumps(streamflow_config.step_binding[name], indent=2),
+                    json.dumps(streamflow_config.step_bindings[name], indent=2),
                     json.dumps(streamflow_config.deployments[name], indent=2),
                 ]
             )
@@ -159,16 +157,15 @@ def config(args: argparse.Namespace):
             "Answer {} not accepted.",
             lambda answer: answer.lower() in ["y", "yes", "n", "no"],
         ) in ["y", "yes"]
+    round_cwl.update_merge_step()
 
     # YAML exportation
     ## StreamFlow file
     with open(os.path.join(workdir, "streamflow.yml"), "w") as outfile:
-        yaml.dump(streamflow_config, outfile, default_flow_style=False, sort_keys=False)
+        yaml.dump(
+            streamflow_config.save(), outfile, default_flow_style=False, sort_keys=False
+        )
 
-    inputs_list = ",".join(round_cwl["steps"]["merge"]["run"]["expression"])
-    round_cwl["steps"]["merge"]["run"]["expression"] = (
-        "$({'models': [" + inputs_list + "] })"
-    )
     ## CWL files
     os.makedirs(os.path.join(workdir, "cwl", "clt"))
     with open(os.path.join(workdir, "cwl", "main.cwl"), "w") as outfile:
@@ -189,7 +186,7 @@ def config(args: argparse.Namespace):
         )
     ## CWL config file
     with open(os.path.join(workdir, "cwl", "config.yml"), "w") as outfile:
-        yaml.dump(cwl_config, outfile, default_flow_style=False, sort_keys=False)
+        yaml.dump(cwl_config.save(), outfile, default_flow_style=False, sort_keys=False)
     ## Scripts
     shutil.copytree(
         os.path.join(DEFAULT_xFFL_DIR, "workflow", "scripts"),
@@ -197,8 +194,12 @@ def config(args: argparse.Namespace):
     )
     # fixme: remove aggregation_script
     os.makedirs(os.path.join(workdir, "cwl", "py_scripts"))
-    with open(os.path.join(workdir, "cwl", "py_scripts", "aggregation.py"), "w") as fd:
-        fd.write(get_aggregate())
+    shutil.copy(
+        os.path.join(
+            DEFAULT_xFFL_DIR, "workflow", "templates", "aggregation_application.py"
+        ),
+        os.path.join(workdir, "cwl", "py_scripts"),
+    )
 
 
 def main(args: argparse.Namespace) -> int:
@@ -212,17 +213,15 @@ def main(args: argparse.Namespace) -> int:
     logger.info(
         "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
     )
-    exit_code = 0
     try:
         config(args)
-    except (FileNotFoundError, FileExistsError) as e:
+    except Exception as e:
         logger.exception(e)
-        exit_code = 1
+        raise
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
         )
-        return exit_code
 
 
 if __name__ == "__main__":
