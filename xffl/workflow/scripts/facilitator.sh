@@ -7,6 +7,7 @@
 #  - IMAGE
 #  - FACILITY
 #  - OUTPUT_FOLDER
+#  - EXECUTABLE_FOLDER
 
 source "$(dirname "$0")/env.sh"
 
@@ -72,11 +73,11 @@ GROUP_RANK=\"${_RANK}\""
 # StreamFlow execution
 else
 	COMMAND="${CONTAINER_PLT} exec \
-		--mount type=bind,src=${CODE_FOLDER},dst=/code \
 		--mount type=bind,src=${MODEL_FOLDER},dst=/model \
 		--mount type=bind,src=${DATASET_FOLDER},dst=/datasets \
 		--mount type=bind,src=${LOCAL_TMPDIR},dst=/tmp \
 		--mount type=bind,src=${OUTPUT_FOLDER},dst=${OUTPUT_FOLDER} \
+		--mount type=bind,src=${EXECUTABLE_FOLDER},dst=${EXECUTABLE_FOLDER} \
 		--home /code/ \
 		$GPU_FLAG \
 		$IMAGE \

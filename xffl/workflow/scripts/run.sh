@@ -22,7 +22,7 @@ else
 	find "/model/" -type f -exec cat {} + > /dev/null & # Caching for improved performance
 	find "/datasets/" -type f -exec cat {} + > /dev/null & # Caching for improved performance
 
-	COMMAND="time python /code/${EXECUTABLE} --model /model/ --dataset /datasets/ $*"
+	COMMAND="time python ${EXECUTABLE} --model /model/ --dataset /datasets/ $*"
 	echo "[Rank $RANK] $COMMAND"
 	PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/amulone1/xffl/venv/bin/xffl eval "$COMMAND" # TODO: Remove Path modification
 fi

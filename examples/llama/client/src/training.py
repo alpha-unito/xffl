@@ -28,12 +28,138 @@ from transformers import AutoModelForCausalLM, LlamaForCausalLM, default_data_co
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from wandb.wandb_run import Run
 
-from xffl.custom.types import FolderLike
+from xffl.custom.parser import ArgumentParser
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
 """Deafult xFFL logger"""
+
+### Argument parser
+parser = ArgumentParser(
+    prog="Cross-Facility Federated Learning (xFFL) - LLaMA example",
+    description="This xFFL example pre-trains a LLaMA-3.1 8B model on multiple HPC infrastructures.",
+)
+
+parser.add_argument(
+    "-attn",
+    "--attention",
+    help="Type of attention implementation to use",
+    type=str,
+    default="flash_attention_2",
+    choices=["sdpa", "eager", "flash_attention_2"],
+)
+
+parser.add_argument("-on", "--online", help="Online mode", action="store_true")
+
+parser.add_argument(
+    "-s",
+    "--seed",
+    help="Random execution seed (for reproducibility purposes)",
+    type=int,
+    default=None,
+)
+
+parser.add_argument(
+    "-dbg",
+    "--debug",
+    help="Print of debugging statements",
+    action="store_const",
+    dest="loglevel",
+    const=logging.DEBUG,
+    default=logging.INFO,
+)
+
+parser.add_argument("-wb", "--wandb", help="Enable WandB", action="store_true")
+
+parser.add_argument(
+    "-name",
+    "--wandb-name",
+    help="WandB group name",
+    type=str,
+    default="LLaMA-3.1 8B",
+)
+
+parser.add_argument(
+    "-mode",
+    "--wandb-mode",
+    help="WandB mode",
+    type=str,
+    default="online",
+    choices=["online", "offline", "disabled"],
+)
+
+parser.add_argument(
+    "-sub",
+    "--subsampling",
+    help="Quantity of data samples to load (for each dataset)",
+    type=int,
+    default=0,
+)
+
+parser.add_argument(
+    "-t",
+    "--train-batch-size",
+    help="Training batch size",
+    type=int,
+    default=4,
+)
+
+parser.add_argument(
+    "-v",
+    "--val-batch-size",
+    help="Validation batch size",
+    type=int,
+    default=1,
+)
+
+parser.add_argument(
+    "-ws",
+    "--workers",
+    help="Number of data loaders workers",
+    type=int,
+    default=2,
+)
+
+parser.add_argument(
+    "-lr",
+    "--learning-rate",
+    help="Learning rate",
+    type=float,
+    default=1e-4,
+)
+
+parser.add_argument(
+    "-wd",
+    "--weight-decay",
+    help="Weight decay",
+    type=float,
+    default=0,
+)
+
+parser.add_argument(
+    "-sz",
+    "--step-size",
+    help="Learning rate scheduler step size",
+    type=int,
+    default=1,
+)
+
+parser.add_argument(
+    "-g",
+    "--gamma",
+    help="Learning rate scheduler gamma",
+    type=float,
+    default=0.85,
+)
+
+parser.add_argument(
+    "-om",
+    "--output-model",
+    help="Saved model name",
+    type=str,
+    default=None,
+)
 
 
 def pretraining(args: argparse.Namespace) -> None:
@@ -254,155 +380,6 @@ def pretraining(args: argparse.Namespace) -> None:
 
 def main():
     """Argument parsing and training launch"""
-
-    parser = argparse.ArgumentParser(
-        prog="Cross-Facility Federated Learning (xFFL) - LLaMA example",
-        description="This xFFL example pre-trains a LLaMA-3.1 8B model on multiple HPC infrastructures.",
-    )
-
-    parser.add_argument(
-        "-m",
-        "--model",
-        help="Path to a saved model's folder",
-        type=FolderLike,
-        required=True,
-    )
-
-    parser.add_argument(
-        "-attn",
-        "--attention",
-        help="Type of attention implementation to use",
-        type=str,
-        default="flash_attention_2",
-        choices=["sdpa", "eager", "flash_attention_2"],
-    )
-
-    parser.add_argument(
-        "-d",
-        "--dataset",
-        help="Path to the dataset's folder",
-        type=FolderLike,
-        required=True,
-    )
-
-    parser.add_argument("-o", "--online", help="Online mode", action="store_true")
-
-    parser.add_argument(
-        "-s",
-        "--seed",
-        help="Random execution seed (for reproducibility purposes)",
-        type=int,
-        default=None,
-    )
-
-    parser.add_argument(
-        "-dbg",
-        "--debug",
-        help="Print of debugging statements",
-        action="store_const",
-        dest="loglevel",
-        const=logging.DEBUG,
-        default=logging.INFO,
-    )
-
-    parser.add_argument("-wb", "--wandb", help="Enable WandB", action="store_true")
-
-    parser.add_argument(
-        "-name",
-        "--wandb-name",
-        help="WandB group name",
-        type=str,
-        default="LLaMA-3.1 8B",
-    )
-
-    parser.add_argument(
-        "-mode",
-        "--wandb-mode",
-        help="WandB mode",
-        type=str,
-        default="online",
-        choices=["online", "offline", "disabled"],
-    )
-
-    parser.add_argument(
-        "-sub",
-        "--subsampling",
-        help="Quantity of data samples to load (for each dataset)",
-        type=int,
-        default=0,
-    )
-
-    parser.add_argument(
-        "-t",
-        "--train-batch-size",
-        help="Training batch size",
-        type=int,
-        default=4,
-    )
-
-    parser.add_argument(
-        "-v",
-        "--val-batch-size",
-        help="Validation batch size",
-        type=int,
-        default=1,
-    )
-
-    parser.add_argument(
-        "-w",
-        "--workers",
-        help="Number of data loaders workers",
-        type=int,
-        default=2,
-    )
-
-    parser.add_argument(
-        "-lr",
-        "--learning-rate",
-        help="Learning rate",
-        type=float,
-        default=1e-4,
-    )
-
-    parser.add_argument(
-        "-wd",
-        "--weight-decay",
-        help="Weight decay",
-        type=float,
-        default=0,
-    )
-
-    parser.add_argument(
-        "-sz",
-        "--step-size",
-        help="Learning rate scheduler step size",
-        type=int,
-        default=1,
-    )
-
-    parser.add_argument(
-        "-g",
-        "--gamma",
-        help="Learning rate scheduler gamma",
-        type=float,
-        default=0.85,
-    )
-
-    parser.add_argument(
-        "-om",
-        "--output-model",
-        help="Saved model name",
-        type=str,
-        default=None,
-    )
-
-    parser.add_argument(
-        "-op",
-        "--output-path",
-        help="Path to the model saving folder",
-        type=FolderLike,
-        default=os.getcwd(),
-    )
 
     try:
         pretraining(parser.parse_args())

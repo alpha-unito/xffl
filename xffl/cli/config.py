@@ -13,7 +13,7 @@ from pathlib import Path
 
 import yaml
 
-from xffl.custom.types import PathLike
+from xffl.custom.types import FolderLike
 from xffl.utils.constants import DEFAULT_xFFL_DIR
 from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
@@ -24,9 +24,127 @@ from xffl.workflow.templates.cwl import (
     TrainingStep,
 )
 from xffl.workflow.templates.streamflow import StreamFlowFile
+from xffl.workflow.utils import from_parser_to_cwl
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
+
+from argparse import ArgumentParser
+
+parser = ArgumentParser(
+    prog="Cross-Facility Federated Learning (xFFL) - LLaMA example",
+    description="This xFFL example pre-trains a LLaMA-3.1 8B model on multiple HPC infrastructures.",
+)
+
+parser.add_argument(
+    "-attn",
+    "--attention",
+    help="Type of attention implementation to use",
+    type=str,
+    default="flash_attention_2",
+    choices=["sdpa", "eager", "flash_attention_2"],
+)
+
+parser.add_argument("-on", "--online", help="Online mode", action="store_true")
+
+parser.add_argument(
+    "-s",
+    "--seed",
+    help="Random execution seed (for reproducibility purposes)",
+    type=int,
+    default=None,
+)
+
+parser.add_argument("-wb", "--wandb", help="Enable WandB", action="store_true")
+
+parser.add_argument(
+    "-name",
+    "--wandb-name",
+    help="WandB group name",
+    type=str,
+    default="LLaMA-3.1 8B",
+)
+
+parser.add_argument(
+    "-mode",
+    "--wandb-mode",
+    help="WandB mode",
+    type=str,
+    default="online",
+    choices=["online", "offline", "disabled"],
+)
+
+parser.add_argument(
+    "-sub",
+    "--subsampling",
+    help="Quantity of data samples to load (for each dataset)",
+    type=int,
+    default=0,
+)
+
+parser.add_argument(
+    "-t",
+    "--train-batch-size",
+    help="Training batch size",
+    type=int,
+    default=4,
+)
+
+parser.add_argument(
+    "-v",
+    "--val-batch-size",
+    help="Validation batch size",
+    type=int,
+    default=1,
+)
+
+parser.add_argument(
+    "-ws",
+    "--workers",
+    help="Number of data loaders workers",
+    type=int,
+    default=2,
+)
+
+parser.add_argument(
+    "-lr",
+    "--learning-rate",
+    help="Learning rate",
+    type=float,
+    default=1e-4,
+)
+
+parser.add_argument(
+    "-wd",
+    "--weight-decay",
+    help="Weight decay",
+    type=float,
+    default=0,
+)
+
+parser.add_argument(
+    "-sz",
+    "--step-size",
+    help="Learning rate scheduler step size",
+    type=int,
+    default=1,
+)
+
+parser.add_argument(
+    "-g",
+    "--gamma",
+    help="Learning rate scheduler gamma",
+    type=float,
+    default=0.85,
+)
+
+parser.add_argument(
+    "-om",
+    "--output-model",
+    help="Saved model name",
+    type=str,
+    default=None,
+)
 
 
 def config(args: argparse.Namespace):
@@ -35,24 +153,27 @@ def config(args: argparse.Namespace):
     :param args: Command line arguments
     :type args: argparse.Namespace
     :raises FileNotFoundError: If the command-line provided workdir does not exists
-    :raises FileExistsError: If the command-line provided project name already exists
+    :raises FileExistsError: If the command-line provided project folder already exists
     """
 
     # Project folder and path checks
-    workdir: PathLike = resolve_path(args.workdir)
-    if not Path(workdir).exists():
+    logger.debug(f"Verifying working directory {args.workdir}")
+    workdir: str = resolve_path(path=args.workdir)
+    if Path(workdir).exists():
+        workdir: FolderLike = os.path.join(workdir, args.project)
+        logger.debug(f"Verifying project directory {workdir}")
+        try:
+            os.makedirs(workdir)
+        except FileExistsError as e:
+            raise e
+    else:
         raise FileNotFoundError(
             f"The provided working directory path {workdir} does not exists"
         )
-    workdir = os.path.join(workdir, args.project)
-    if Path(workdir).exists():
-        raise FileExistsError(
-            f"Impossible creating project {args.project} inside {workdir}: directory already exists"
-        )
-    os.makedirs(workdir)
+    logger.info(f"Project directory successfully created at {workdir}")
 
-    # StreamFlow guided configuration
-    insert = True
+    # Guided StreamFlow configuration
+    logger.debug(f"Creating the StreamFlow and CWL templates")
     facilities = set()
 
     aggregate_cwl = AggregateStep()
@@ -61,33 +182,38 @@ def config(args: argparse.Namespace):
     round_cwl = RoundWorkflow()
     streamflow_config = StreamFlowFile()
     training_cwl = TrainingStep()
+    logger.debug(f"StreamFlow and CWL templates created")
 
     # todo: add user interaction
     cwl_config.content |= {
         "model": {"class": "Directory", "path": "llama3.1-8b"},
         "model_basename": "llama3",
         "max_rounds": 2,
-        "epochs": 1,
         "script_aggregation": {
             "class": "File",
             "path": os.path.join("py_scripts", "aggregation.py"),
         },
-        "executable": "examples/llama/client/src/training.py",
+        "executable": {
+            "class": "File",
+            "path": "/home/ubuntu/xffl/examples/llama/client/src/training.py",  # TODO: user interation
+        },
     }
+
+    insert = True
     while insert:
 
-        # name = check_input(
-        #     "Type facility's logic name: ",
-        #     "Facility name {} already used.",
-        #     lambda name: name not in facilities,
+        # facility = check_input(
+        #     "Type facility's logic facility: ",
+        #     "Facility facility {} already used.",
+        #     lambda facility: facility not in facilities,
         # )
-        # facilities.add(name)
+        # facilities.add(facility)
 
-        # address = input(f"Type {name}'s frontend node address [IP:port]: ")
-        # username = input(f"{name}'s username: ")
+        # address = input(f"Type {facility}'s frontend node address [IP:port]: ")
+        # username = input(f"{facility}'s username: ")
 
         # key = check_input(
-        #     f"Path to {name}'s SSH key file: ",
+        #     f"Path to {facility}'s SSH key file: ",
         #     "{} does not exists.",
         #     lambda key: os.path.exists(key),
         #     is_path=True,
@@ -97,14 +223,15 @@ def config(args: argparse.Namespace):
 
         # # todo: list the needed pragmas
         # slurm_template = check_input(
-        #     f"Path to {name}'s SLURM template with the required directives: ",
+        #     f"Path to {facility}'s SLURM template with the required directives: ",
         #     "{} does not exists.",
         #     lambda path: os.path.exists(path),
         #     is_path=True,
         # )
 
-        name = "leonardo"
-        facilities.add(name)
+        facility = "leonardo"
+        facilities.add(facility)
+
         address = "login.leonardo.cineca.it"
         username = "amulone1"
         key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
@@ -112,42 +239,70 @@ def config(args: argparse.Namespace):
         slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # todo: copy the template in the project dir?
 
         # todo: query to user
-        code_path = "/leonardo/home/userexternal/amulone1/xffl"
+        code_path = (
+            "/leonardo/home/userexternal/amulone1/xffl"  # TODO: potrebbe sparire
+        )
         dataset_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/datasets"
         image_path = "/leonardo_scratch/fast/EUHPC_B18_066/client.sif"
+        model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # TODO: sparirà
+        # TODO: passare output-dir
+
         val_batch_size = 1
         train_batch_size = 4
         subsampling = 16
-        model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # fixme: remote it
 
-        main_cwl.add_inputs(name)
-        round_cwl.add_inputs(name)
+        try:
+            # from examples.llama.client.src.training import (
+            #    parser as parser,  # TODO: questo sarà dinamico
+            # )
+
+            training_step_args, main_cwl_args, round_cwl_inputs, config_cwl_args = (
+                from_parser_to_cwl(parser=parser, arguments=args.arguments)
+            )
+        except Exception as e:
+            raise e
+
+        main_cwl.add_inputs(facility_name=facility, extra_inputs=main_cwl_args)
+        round_cwl.add_inputs(facility_name=facility, extra_inputs=round_cwl_inputs)
+        cwl_config.add_inputs(
+            facility_name=facility,
+            extra_inputs={
+                "code_path": os.path.basename(code_path),
+                "image_path": os.path.basename(image_path),
+                "dataset_path": os.path.basename(dataset_path),
+            }
+            | config_cwl_args,
+        )
+        training_cwl.add_inputs(facility_name=facility, extra_inputs=training_step_args)
 
         streamflow_config.add_deployment(
-            name, address, username, key, step_workdir, slurm_template
+            facility_name=facility,
+            address=address,
+            username=username,
+            ssh_key=key,
+            step_workdir=step_workdir,
+            slurm_template=slurm_template,
         )
-        streamflow_config.add_step_binding(
-            name, code_path, dataset_path, model_path, image_path
-        )
-        streamflow_config.add_inputs(name)
 
-        cwl_config.add_input_values(
-            name,
-            code_path,
-            image_path,
-            dataset_path,
-            val_batch_size,
-            train_batch_size,
-            subsampling,
+        # TODO: questi vanno chiesti interattivamente all'utente o inclusi in un file di configurazione
+        # TODO: va aggiunta anche la cartella di output?
+        streamflow_config.add_step_binding(
+            facility_name=facility,
+            mapping={
+                f"repository_{facility}": os.path.dirname(code_path),
+                f"dataset_{facility}": os.path.dirname(dataset_path),
+                f"image_{facility}": os.path.dirname(image_path),
+                "model": os.path.dirname(model_path),  # TODO: Verrà tolto
+            },
         )
-        cwl_config.add_inputs(name)
+        streamflow_config.add_inputs(facility_name=facility)
 
         logger.debug(
             "\n".join(
                 [
-                    f"Inserted the following record for {name} in the StreamFlow file:",
-                    json.dumps(streamflow_config.step_bindings[name], indent=2),
-                    json.dumps(streamflow_config.deployments[name], indent=2),
+                    f"Inserted the following record for {facility} in the StreamFlow file:",
+                    json.dumps(streamflow_config.step_bindings[facility], indent=2),
+                    json.dumps(streamflow_config.deployments[facility], indent=2),
                 ]
             )
         )
@@ -213,21 +368,23 @@ def main(args: argparse.Namespace) -> int:
     logger.info(
         "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
     )
+    exit_code = 0
     try:
-        config(args)
+        config(args=args)
     except Exception as e:
         logger.exception(e)
-        raise
+        exit_code = 1
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
         )
+        return exit_code
 
 
 if __name__ == "__main__":
     from xffl.cli.parser import config_parser
 
     try:
-        main(config_parser.parse_args())
+        main(args=config_parser.parse_args())
     except KeyboardInterrupt as e:
         logger.exception(e)

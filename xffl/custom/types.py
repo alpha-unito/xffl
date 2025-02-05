@@ -22,7 +22,7 @@ def PathLike(path: Any) -> PathLike:
     return resolve_path(path=path)
 
 
-FolderLike = TypeVar("FolderLike", str, Path, _PathLike)
+FolderLike = TypeVar("FolderLike", str, Path, _PathLike, PathLike)
 """Path to folder objects"""
 
 
@@ -40,7 +40,7 @@ def FolderLike(path: Any) -> FolderLike:
         raise ValueError
 
 
-FileLike = TypeVar("FileLike", str, Path, _PathLike)
+FileLike = TypeVar("FileLike", str, Path, _PathLike, PathLike)
 """Path to file objects"""
 
 

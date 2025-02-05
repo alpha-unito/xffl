@@ -1,17 +1,18 @@
+"""Collection of StreamFlow-related template code"""
+
 import os
-
-"""Collection of StreamFlow-related template code
-"""
-
 from collections.abc import MutableMapping
-from typing import Any
+from typing import Any, Optional
 
+from xffl.custom.types import FileLike, FolderLike
 from xffl.workflow.config import YamlConfig
 
 
 class StreamFlowFile(YamlConfig):
+    """Class modelling a StreamFlow configuration file as a YamlConfig object"""
 
     def __init__(self):
+        """Creates a new StreamFlowFile instance with empty deployments and step bindings"""
         super().__init__()
         self.deployments: MutableMapping[str, Any] = {}
         self.step_bindings: MutableMapping[str, Any] = {}
@@ -20,10 +21,9 @@ class StreamFlowFile(YamlConfig):
     def get_default_content(cls) -> MutableMapping[str, Any]:
         """Returns a basic StreamFlow configuration to be updated and saved into a .yml
 
-        :return: a basic StreamFlow configuration for xFFL
+        :return: Basic StreamFlow configuration for xFFL
         :rtype: MutableMapping[str, Any]
         """
-
         return {
             "version": "v1.0",
             "workflows": {
@@ -39,17 +39,47 @@ class StreamFlowFile(YamlConfig):
             "deployments": {},
         }
 
+    def add_inputs(self, facility_name: str) -> None:
+        """Adds a new facility to the StreamFlow configuration file
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        """
+        self.content["workflows"]["xffl"]["bindings"].extend(
+            self.step_bindings[facility_name]
+        )
+        self.content["deployments"] |= self.deployments[facility_name]
+
     def add_deployment(
         self,
         facility_name: str,
         address: str,
         username: str,
-        ssh_key: str,
-        step_workdir: str,
-        slurm_template: str,
+        ssh_key: FileLike,
+        step_workdir: FolderLike,
+        slurm_template: FileLike,
     ) -> None:
+        """Adds a new facility deployment to the StreamFlow configuration
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        :param address: Facility's address (IP, FQDN)
+        :type address: str
+        :param username: Username to use to log in the facility
+        :type username: str
+        :param ssh_key: SSH key to use to log in the facility
+        :type ssh_key: FileLike
+        :param step_workdir: Directory where to store temporary StreamFlow SSH files
+        :type step_workdir: FolderLike
+        :param slurm_template: Facility's SLURM file template
+        :type slurm_template: FileLike
+        :raises ValueError: If the facilty is already present in the StreamFlow configuration
+        """
         if facility_name in self.deployments.keys():
-            raise Exception(f"Facility {facility_name} was already added")
+            raise ValueError(
+                f"Facility {facility_name} is already present in the StreamFlow configuration"
+            )
+
         self.deployments[facility_name] = {
             f"{facility_name}-ssh": {
                 "type": "ssh",
@@ -71,13 +101,21 @@ class StreamFlowFile(YamlConfig):
     def add_step_binding(
         self,
         facility_name: str,
-        code_path: str,
-        dataset_path: str,
-        model_path: str,
-        image_path: str,
+        mapping: MutableMapping[str, str],
     ) -> None:
+        """Adds new step bindings to the StreamFlow configuration
+
+        :param facility_name: Facility's name
+        :type facility_name: str
+        :param mapping: Mapping between the StreamFlow binding names and their values
+        :type mapping: MutableMapping[str, str]
+        :raises ValueError: If the facilty is already present in the StreamFlow configuration
+        """
         if facility_name in self.step_bindings.keys():
-            raise Exception(f"Facility {facility_name} was already added")
+            raise ValueError(
+                f"Facility {facility_name} is already present in the StreamFlow configuration"
+            )
+
         self.step_bindings[facility_name] = [
             {
                 "step": f"/iteration/training_on_{facility_name}",
@@ -85,39 +123,33 @@ class StreamFlowFile(YamlConfig):
                     {"deployment": facility_name, "service": "pragma"},
                 ],
             },
-            {
-                "port": f"/repository_{facility_name}",
-                "target": {
-                    "deployment": facility_name,
-                    "workdir": os.path.dirname(code_path),
-                },
-            },
-            {
-                "port": f"/dataset_{facility_name}",
-                "target": {
-                    "deployment": facility_name,
-                    "workdir": os.path.dirname(dataset_path),
-                },
-            },
-            {
-                "port": f"/image_{facility_name}",
-                "target": {
-                    "deployment": facility_name,
-                    "workdir": os.path.dirname(image_path),
-                },
-            },
-            {
-                # fixme: remote it
-                "port": f"/model",
-                "target": {
-                    "deployment": facility_name,
-                    "workdir": os.path.dirname(model_path),
-                },
-            },
+        ] + [
+            self.create_binding(
+                name=name,
+                value=value,
+                facility=facility_name,
+            )
+            for name, value in mapping.items()
         ]
 
-    def add_inputs(self, facility_name: str) -> None:
-        self.content["workflows"]["xffl"]["bindings"].extend(
-            self.step_bindings[facility_name]
-        )
-        self.content["deployments"] |= self.deployments[facility_name]
+    def create_binding(
+        self, name: str, value: FolderLike, facility: Optional[str] = None
+    ) -> MutableMapping[str, Any]:
+        """Creates a new StreamFlow binding
+
+        :param name: Name of the StreamFlow binding
+        :type name: str
+        :param value: Value of the StreamFlow binding
+        :type value: FolderLike
+        :param facility: Facility's name, defaults to None
+        :type facility: Optional[str], optional
+        :return: A well-formattted StreamFlow binding
+        :rtype: MutableMapping[str, Any]
+        """
+        return {
+            "port": f"/{name}",
+            "target": {
+                "deployment": facility,
+                "workdir": value,
+            },
+        }

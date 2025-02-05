@@ -1,63 +1,49 @@
-"""Collection of CWL-related template code
-"""
+"""Collection of CWL-related template code"""
 
 import os
 from abc import ABC, abstractmethod
 from collections.abc import MutableMapping
 from typing import Any
 
+from xffl.custom.types import FileLike, FolderLike
 from xffl.workflow.config import YamlConfig
 
 
 class CWLConfig(YamlConfig):
+    """Class modelling a CWL configuration file as a YamlConfig object"""
 
     def __init__(self):
+        """Creates a new CWLConfig instance with empty facilities data"""
         super().__init__()
-        self.facility_data: MutableMapping[str, Any] = {}
 
     @classmethod
     def get_default_content(cls) -> MutableMapping[str, Any]:
+        """Returns a basic CWL configuration to be updated and saved into a .yml
+
+        :return: Basic CWL configuration for xFFL
+        :rtype: MutableMapping[str, Any]
+        """
         return {
             "script_train": {"class": "Directory", "path": "scripts"},
         }
 
-    def add_input_values(
-        self,
-        facility_name: str,
-        code_path: str,
-        image_path: str,
-        dataset_path: str,
-        val_batch_size: int,
-        train_batch_size: int,
-        subsampling: int,
+    def add_inputs(
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
     ) -> None:
-        self.facility_data[facility_name] = {
-            f"facility_{facility_name}": facility_name,
-            f"repository_{facility_name}": {
-                "class": "Directory",
-                "path": os.path.basename(code_path),
-            },
-            f"image_{facility_name}": {
-                "class": "File",
-                "path": os.path.basename(image_path),
-            },
-            f"dataset_{facility_name}": {
-                "class": "Directory",
-                "path": os.path.basename(dataset_path),
-            },
-            f"val_batch_size_{facility_name}": val_batch_size,
-            f"train_batch_size_{facility_name}": train_batch_size,
-            f"subsampling_{facility_name}": subsampling,
-        }
+        """Adds the CWL inputs to the YAML content
 
-    def add_inputs(self, facility_name: str) -> None:
-        self.content |= self.facility_data[facility_name]
+        :param facility_name: Facility's name
+        :type facility_name: str
+        """
+        self.content |= {f"facility_{facility_name}": facility_name} | {
+            f"{name}_{facility_name}": value for name, value in extra_inputs.items()
+        }
 
 
 class Workflow(ABC):
 
     def __init__(self):
-        # todo: change mutablemapping with cwl_utils objs (PR #3)
+        # todo: change mutablemapping to cwl_utils objs (PR #3)
         self.cwl: MutableMapping[str, Any] = type(self).get_default_definition()
 
     @classmethod
@@ -68,7 +54,9 @@ class Workflow(ABC):
         return self.cwl
 
     @abstractmethod
-    def add_inputs(self, facility_name: str) -> None: ...
+    def add_inputs(
+        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+    ) -> None: ...
 
 
 class AggregateStep(Workflow):
@@ -117,7 +105,9 @@ class AggregateStep(Workflow):
             },
         }
 
-    def add_inputs(self, facility_name: str) -> None:
+    def add_inputs(
+        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+    ) -> None:
         pass
 
 
@@ -143,8 +133,7 @@ class MainWorkflow(Workflow):
                 "script_train": "Directory",
                 "script_aggregation": "File",
                 "model": "Directory",
-                "executable": "string",
-                "epochs": "int",
+                "executable": "File",
                 "model_basename": "string",
                 "max_rounds": "int",
             },
@@ -162,7 +151,6 @@ class MainWorkflow(Workflow):
                         "script_aggregation": "script_aggregation",
                         "model": "model",
                         "executable": "executable",
-                        "epochs": "epochs",
                         "model_basename": "model_basename",
                         "round": {"default": 0},
                         "max_rounds": "max_rounds",
@@ -182,26 +170,24 @@ class MainWorkflow(Workflow):
             },
         }
 
-    def add_inputs(self, facility_name: str) -> None:
+    def add_inputs(
+        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+    ) -> None:
         self.cwl["inputs"] |= {
-            f"facility_{facility_name}": "string",
-            f"repository_{facility_name}": "Directory",
-            f"train_batch_size_{facility_name}": "int",
-            f"val_batch_size_{facility_name}": "int",
-            f"subsampling_{facility_name}": "int",
-            f"repository_{facility_name}": "Directory",
             f"image_{facility_name}": "File",
+            f"facility_{facility_name}": "string",
             f"dataset_{facility_name}": "Directory",
-        }
+            f"repository_{facility_name}": "Directory",
+        } | {f"{name}_{facility_name}": _type for name, _type in extra_inputs.items()}
+
         self.cwl["steps"]["iteration"]["in"] |= {
-            f"facility_{facility_name}": f"facility_{facility_name}",
-            f"repository_{facility_name}": f"repository_{facility_name}",
-            f"val_batch_size_{facility_name}": f"val_batch_size_{facility_name}",
-            f"train_batch_size_{facility_name}": f"train_batch_size_{facility_name}",
-            f"subsampling_{facility_name}": f"subsampling_{facility_name}",
-            f"repository_{facility_name}": f"repository_{facility_name}",
             f"image_{facility_name}": f"image_{facility_name}",
+            f"facility_{facility_name}": f"facility_{facility_name}",
             f"dataset_{facility_name}": f"dataset_{facility_name}",
+            f"repository_{facility_name}": f"repository_{facility_name}",
+        } | {
+            f"{name}_{facility_name}": f"{name}_{facility_name}"
+            for name in extra_inputs.keys()
         }
 
 
@@ -221,8 +207,7 @@ class RoundWorkflow(Workflow):
                 "script_train": "Directory",
                 "script_aggregation": "File",
                 "model": "Directory",
-                "executable": "string",
-                "epochs": "int",
+                "executable": "File",
                 "model_basename": "string",
                 "max_rounds": "int",
                 "round": "int",
@@ -270,37 +255,32 @@ class RoundWorkflow(Workflow):
             f"training_on_{name}": {
                 "run": "clt/training.cwl",
                 "in": {
-                    # todo: add `wandb` and `seed` inputs
                     "script": "script_train",
                     "executable": "executable",
+                    "model": "model",
                     "facility": f"facility_{name}",
-                    "train_batch_size": f"train_batch_size_{name}",
-                    "val_batch_size": f"val_batch_size_{name}",
-                    "subsampling": f"subsampling_{name}",
                     "repository": f"repository_{name}",
                     "image": f"image_{name}",
                     "dataset": f"dataset_{name}",
-                    "model": "model",
-                    "epochs": "epochs",
-                    "model_basename": "model_basename",
-                    "round": "round",
                 },
                 "out": ["output_model"],
             }
         }
 
-    def add_inputs(self, facility_name: str) -> None:
+    def add_inputs(
+        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+    ) -> None:
         self.cwl["inputs"] |= {
             f"facility_{facility_name}": "string",
             f"repository_{facility_name}": "Directory",
-            f"train_batch_size_{facility_name}": "int",
-            f"val_batch_size_{facility_name}": "int",
-            f"subsampling_{facility_name}": "int",
-            f"repository_{facility_name}": "Directory",
             f"image_{facility_name}": "File",
             f"dataset_{facility_name}": "Directory",
-        }
+        } | {f"{name}_{facility_name}": _type for name, _type in extra_inputs.items()}
         self.cwl["steps"] |= RoundWorkflow.get_training_step(facility_name)
+        self.cwl["steps"][f"training_on_{facility_name}"]["in"] |= {
+            f"{name}": f"{name}_{facility_name}" for name in extra_inputs.keys()
+        }
+        # rm -r project ; pip install . ;
         self.cwl["steps"]["merge"]["in"] |= {
             facility_name: f"training_on_{facility_name}/output_model"
         }
@@ -339,6 +319,7 @@ class TrainingStep(Workflow):
                         "IMAGE": "$(inputs.image.path)",
                         "FACILITY": "$(inputs.facility)",
                         "OUTPUT_FOLDER": "$(runtime.outdir)",
+                        "EXECUTABLE_FOLDER": "$(inputs.executable.dirname)",
                     }
                 },
             },
@@ -348,12 +329,12 @@ class TrainingStep(Workflow):
                     "valueFrom": "$(inputs.script.path)/facilitator.sh",
                 },
                 {
-                    "position": 8,
-                    "valueFrom": "$(inputs.model_basename)-round$(inputs.round)",
+                    "position": 3,
+                    "valueFrom": "$(inputs.model_basename)",
                     "prefix": "--output-model",
                 },
                 {
-                    "position": 9,
+                    "position": 4,
                     "valueFrom": "$(runtime.outdir)",
                     "prefix": "--output-path",
                 },
@@ -363,7 +344,7 @@ class TrainingStep(Workflow):
                     "type": "Directory",
                 },
                 "executable": {
-                    "type": "string",  # todo: fix me. It is a relative path of the `repository` input
+                    "type": "File",
                     "inputBinding": {"position": 2},
                 },
                 "image": {
@@ -381,35 +362,40 @@ class TrainingStep(Workflow):
                 "repository": {
                     "type": "Directory",
                 },
-                "train_batch_size": {
-                    "type": "int",
-                    "inputBinding": {"position": 3, "prefix": "--train-batch-size"},
-                },
-                "val_batch_size": {
-                    "type": "int",
-                    "inputBinding": {"position": 4, "prefix": "--val-batch-size"},
-                },
-                "subsampling": {
-                    "type": "int",
-                    "inputBinding": {"position": 5, "prefix": "--subsampling"},
-                },
-                "seed": {
-                    "type": "int",
-                    "inputBinding": {"position": 6, "prefix": "--seed"},
-                    "default": 42,
-                },
                 "model_basename": {"type": "string"},
-                "round": {"type": "int"},
+                "round": {"type": "int"},  # num of the current iteration
+                # "train_batch_size": {
+                #     "type": "int",
+                #     "inputBinding": {"position": 3, "prefix": "--train-batch-size"},
+                # },
+                # "val_batch_size": {
+                #     "type": "int",
+                #     "inputBinding": {"position": 4, "prefix": "--val-batch-size"},
+                # },
+                # "subsampling": {
+                #     "type": "int",
+                #     "inputBinding": {"position": 5, "prefix": "--subsampling"},
+                # },
+                # "seed": {
+                #     "type": "int",
+                #     "inputBinding": {"position": 6, "prefix": "--seed"},
+                #     "default": 42,
+                # },
             },
             "outputs": {
                 "output_model": {
                     "type": "Directory",
-                    "outputBinding": {
-                        "glob": "$(inputs.model_basename)-round$(inputs.round)"
-                    },
+                    "outputBinding": {"glob": "$(inputs.model_basename)"},
                 }
             },
         }
 
-    def add_inputs(self, facility_name: str) -> None:
-        pass
+    def add_inputs(
+        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+    ) -> None:
+        self.cwl["inputs"] |= {
+            f"facility": "string",
+            f"repository": "Directory",
+            f"image": "File",
+            f"dataset": "Directory",
+        } | {f"{name}": _type for name, _type in extra_inputs.items()}

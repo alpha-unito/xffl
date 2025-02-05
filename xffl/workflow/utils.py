@@ -5,7 +5,7 @@ from argparse import _HelpAction
 from types import MappingProxyType
 from typing import Any, Final, List, MutableMapping
 
-from xffl.custom.types import File, Folder
+from xffl.custom.types import FileLike, FolderLike
 
 
 def get_param_flag(list: List[str]) -> str:
@@ -31,7 +31,8 @@ def get_param_name(list: List[str], prefix: str = "-") -> str:
     :return: Full parameter name
     :rtype: str
     """
-    return get_param_flag(list=list).replace(prefix, "").replace("-", "_")
+
+    return get_param_flag(list=list).replace(prefix * 2, "").replace("-", "_")
 
 
 CWL_TYPE_MAPPING: Final[MappingProxyType[Any, str]] = MappingProxyType(
@@ -41,16 +42,16 @@ CWL_TYPE_MAPPING: Final[MappingProxyType[Any, str]] = MappingProxyType(
         float: "float",
         bool: "boolean",
         None: "boolean",
-        Folder: "Folder",
-        File: "File",
+        FolderLike: "Directory",
+        FileLike: "File",
     }
 )
 """An immutable dictionary mapping Python to CWL types"""
 
 
 def from_parser_to_cwl(
-    parser: argparse.ArgumentParser,
-) -> MutableMapping[str, MutableMapping[str, str | MutableMapping[str, str]]]:
+    parser: argparse.ArgumentParser, arguments=List[str], start_position: int = 0
+) -> MutableMapping[str, Any]:
     """Method that converts a Python ArgumentParser into a valid dictionary of CWL inputs entries
 
     :param parser: Python command line argument parser
@@ -58,17 +59,37 @@ def from_parser_to_cwl(
     :return: Dictionary of valid CWL inputs entries
     :rtype: MutableMapping[str, MutableMapping[str, str | MutableMapping[str, str]]]
     """
-    inputs = {}
-    for position, action in enumerate(parser._actions):
+    training_step_args, main_cwl_args, round_cwl_args, config_cwl_args = {}, {}, {}, {}
+
+    namespace = vars(parser.parse_args(arguments))
+
+    for position, action in enumerate(parser._actions, start=start_position):
         if not isinstance(action, _HelpAction):
-            inputs[get_param_name(action.option_strings, parser.prefix_chars)] = {
+            param_name = get_param_name(action.option_strings, parser.prefix_chars)
+
+            training_step_args[param_name] = {
                 "type": CWL_TYPE_MAPPING[action.type]
                 + ("" if action.required else "?"),
                 "inputBinding": {
                     "position": position,
                     "prefix": get_param_flag(action.option_strings),
                 },
-                "default": action.default,
+                "default": action.default if action.default is not None else "null",
             }
 
-    return inputs
+            main_cwl_args[param_name] = CWL_TYPE_MAPPING[action.type] + (
+                "" if action.required else "?"
+            )
+
+            config_cwl_args[param_name] = (
+                namespace[param_name]
+                if action.type not in [FolderLike, FileLike]
+                else {
+                    "class": CWL_TYPE_MAPPING[action.type],
+                    "path": namespace[param_name],
+                }
+            )
+
+    round_cwl_args = main_cwl_args
+
+    return training_step_args, main_cwl_args, round_cwl_args, config_cwl_args

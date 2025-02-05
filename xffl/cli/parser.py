@@ -92,6 +92,15 @@ run_parser.add_argument(
     "--quiet", help="Only prints results, warnings and errors", action="store_true"
 )
 
+run_parser.add_argument(
+    "-args",
+    "--arguments",
+    help="Command line arguments to be passed to the executable",
+    type=str,
+    nargs="+",
+    default=[],
+)
+
 
 # Subcommand: simulate
 simulate_parser = subparsers.add_parser(
