@@ -1,6 +1,5 @@
 """Collection of StreamFlow-related template code"""
 
-import os
 from collections.abc import MutableMapping
 from typing import Any, Optional
 

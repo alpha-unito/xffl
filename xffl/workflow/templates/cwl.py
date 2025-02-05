@@ -1,6 +1,5 @@
 """Collection of CWL-related template code"""
 
-import os
 from abc import ABC, abstractmethod
 from collections.abc import MutableMapping
 from typing import Any
