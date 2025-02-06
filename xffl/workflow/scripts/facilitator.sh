@@ -9,7 +9,8 @@
 #  - OUTPUT_FOLDER
 #  - EXECUTABLE_FOLDER
 
-source "$(dirname "$0")/env.sh"
+XFFL_SCRIPTS_FOLDER="$(dirname "$0")"
+source "${XFFL_SCRIPTS_FOLDER}/env.sh"
 
 # Set general env variables for distributed ML
 Derive_env
@@ -20,19 +21,19 @@ Gpu_detection
 Container_platform_detection
 
 # Set specific facility env variables
-FACILITY_SCRIPT="$(dirname "$0")/facilities/${FACILITY}.sh"
-if [ ! -f "${FACILITY_SCRIPT}" ]; then
-  echo "${FACILITY_SCRIPT} does not exist."
+XFFL_FACILITY_SCRIPT="${XFFL_SCRIPTS_FOLDER}/facilities/${XFFL_FACILITY}.sh"
+if [ ! -f "${XFFL_FACILITY_SCRIPT}" ]; then
+  echo "${XFFL_FACILITY_SCRIPT} does not exist."
   exit 1
 fi
-source "${FACILITY_SCRIPT}"
+source "${XFFL_FACILITY_SCRIPT}"
 
-if [ -z "${OUTPUT_FOLDER}" ] ; then 
-	OUTPUT_FOLDER=$LOCAL_TMPDIR
+if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then 
+	XFFL_OUTPUT_FOLDER=$XFFL_LOCAL_TMPDIR
 fi
 
 # Local simulation
-if [ "${FACILITY}" = "local" ] ; then
+if [ "${XFFL_FACILITY}" = "local" ] ; then
 	pids=()
 	for _RANK in $( seq 0 1 $(( WORLD_SIZE - 1 )) ) ; do
 		XFFL_RANKS="RANK=\"${_RANK}\" \
@@ -45,23 +46,23 @@ GROUP_RANK=\"${_RANK}\""
 		# Python virtual environment
 		if [ -n "$VENV" ] ; then
 			source "${VENV}"
-			COMMAND="$(pip show xffl | grep Location | awk '{print $2}')/$XFFL_RUN"
+			COMMAND="$(pip show xffl | grep Location | awk '{print $2}')/${XFFL_RUN}"
 		else
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
-				--mount type=bind,src=${CODE_FOLDER}/,dst=/code/ \
-				--mount type=bind,src=${MODEL_FOLDER}/,dst=/model/ \
-				--mount type=bind,src=${DATASET_FOLDER},dst=/datasets/ \
-				--mount type=bind,src=${LOCAL_TMPDIR}/,dst=/tmp/ \
-				--mount type=bind,src=${OUTPUT_FOLDER}/,dst=/output/ \
+				--mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
+				--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
+				--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets/ \
+				--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
+				--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
 				--home /code/ \
 				$GPU_FLAG \
-				$IMAGE \
-				/code/$XFFL_RUN"
+				${XFFL_IMAGE} \
+				/code/${XFFL_RUN}"
 		fi
 
 		# Run the local simulation process
-		eval "$XFFL_RANKS $XFFL_TASKSET $COMMAND $*" &
+		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND $*" &
 		pids[_RANK]=$!
 	done
 
@@ -73,15 +74,17 @@ GROUP_RANK=\"${_RANK}\""
 # StreamFlow execution
 else
 	COMMAND="${CONTAINER_PLT} exec \
-		--mount type=bind,src=${MODEL_FOLDER},dst=/model \
-		--mount type=bind,src=${DATASET_FOLDER},dst=/datasets \
-		--mount type=bind,src=${LOCAL_TMPDIR},dst=/tmp \
-		--mount type=bind,src=${OUTPUT_FOLDER},dst=${OUTPUT_FOLDER} \
-		--mount type=bind,src=${EXECUTABLE_FOLDER},dst=${EXECUTABLE_FOLDER} \
-		--home /code/ \
+		--mount type=bind,src=${XFFL_MODEL_FOLDER},dst=/model \
+		--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets \
+		--mount type=bind,src=${XFFL_LOCAL_TMPDIR},dst=/tmp \
+		--mount type=bind,src=${XFFL_OUTPUT_FOLDER},dst=${XFFL_OUTPUT_FOLDER} \
+		--mount type=bind,src=${XFFL_EXECUTABLE_FOLDER},dst=${XFFL_EXECUTABLE_FOLDER} \
+		--mount type=bind,src=${XFFL_SCRIPTS_FOLDER},dst=${XFFL_SCRIPTS_FOLDER} \
+		--mount type=bind,src=/leonardo/home/userexternal/amulone1/xffl/venv/,dst=/leonardo/home/userexternal/amulone1/xffl/venv/ \
+		--home /tmp/ \
 		$GPU_FLAG \
-		$IMAGE \
-		/code/xffl/workflow/scripts/run.sh $*"
+		${XFFL_IMAGE} \
+		${XFFL_SCRIPTS_FOLDER}/run.sh $*"
 	echo "[Rank $RANK] Executing: $COMMAND"		
 	eval "$COMMAND"
 fi

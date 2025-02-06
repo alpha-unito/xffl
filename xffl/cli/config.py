@@ -253,24 +253,32 @@ def config(args: argparse.Namespace):
             #    parser as parser,  # TODO: questo sarà dinamico
             # )
 
-            training_step_args, main_cwl_args, round_cwl_inputs, config_cwl_args = (
-                from_args_to_cwl(parser=parser, arguments=args.arguments)
+            arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
+                parser=parser,
+                arguments=args.arguments,
+                start_position=training_cwl.position,
             )
         except Exception as e:
             raise e
 
-        main_cwl.add_inputs(facility_name=facility, extra_inputs=main_cwl_args)
-        round_cwl.add_inputs(facility_name=facility, extra_inputs=round_cwl_inputs)
+        main_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
+        round_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
         cwl_config.add_inputs(
             facility_name=facility,
             extra_inputs={
-                "code_path": os.path.basename(code_path),
-                "image_path": os.path.basename(image_path),
-                "dataset_path": os.path.basename(dataset_path),
+                "repository": {
+                    "class": "Directory",
+                    "path": os.path.basename(code_path),
+                },
+                "image": {"class": "File", "path": os.path.basename(image_path)},
+                "dataset": {
+                    "class": "Directory",
+                    "path": os.path.basename(dataset_path),
+                },
             }
-            | config_cwl_args,
+            | arg_to_value,
         )
-        training_cwl.add_inputs(facility_name=facility, extra_inputs=training_step_args)
+        training_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_bidding)
 
         streamflow_config.add_deployment(
             facility_name=facility,

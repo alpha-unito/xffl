@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # LUMI specific environment variables
-LOCAL_TMPDIR="/tmp/"
+XFFL_LOCAL_TMPDIR="/tmp/"
 
 # MIOPEN needs some initialisation for the cache as the default location
 # does not work on LUMI as Lustre does not provide the necessary features.

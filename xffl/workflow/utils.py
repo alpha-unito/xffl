@@ -90,7 +90,7 @@ def from_args_to_cwl(
                     "position": position,
                     "prefix": get_param_flag(action.option_strings),
                 },
-                "default": action.default if action.default else "null",
+                "default": action.default,
             }
 
             # Argument name to CWL type

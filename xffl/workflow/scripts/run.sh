@@ -6,7 +6,7 @@
 
 EXECUTABLE=$1; shift
 
-if [ "${FACILITY}" = "local" ] ; then
+if [ "${XFFL_FACILITY}" = "local" ] ; then
 	if [ -n "${VENV}" ] ; then
 		COMMAND="python ${EXECUTABLE} $*"
 		eval "$COMMAND"
@@ -24,5 +24,5 @@ else
 
 	COMMAND="time python ${EXECUTABLE} --model /model/ --dataset /datasets/ $*"
 	echo "[Rank $RANK] $COMMAND"
-	PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/amulone1/xffl/venv/bin/xffl eval "$COMMAND" # TODO: Remove Path modification
+	PYTHONPATH=/leonardo/home/userexternal/amulone1/xffl/venv/bin/xffl:${PYTHONPATH} eval "$COMMAND" # TODO: Remove Path modification
 fi

@@ -117,7 +117,7 @@ class AggregateStep(Workflow):
                 "round": {"type": "int"},
             },
             "outputs": {
-                "output_model": {
+                "new_model": {
                     "type": "Directory",
                     "outputBinding": {
                         "glob": "$(inputs.model_basename)-merged-round$(inputs.round)"
@@ -167,9 +167,9 @@ class MainWorkflow(Workflow):
                 "max_rounds": "int",
             },
             "outputs": {
-                "output_model": {
+                "new_model": {
                     "type": "Directory",
-                    "outputSource": "iteration/output_model",
+                    "outputSource": "iteration/new_model",
                 }
             },
             "steps": {
@@ -184,13 +184,13 @@ class MainWorkflow(Workflow):
                         "round": {"default": 0},
                         "max_rounds": "max_rounds",
                     },
-                    "out": ["output_model"],
+                    "out": ["new_model"],
                     "requirements": {
                         "cwltool:Loop": {
                             "loopWhen": "$(inputs.round < inputs.max_rounds)",
                             "loop": {
                                 "round": {"valueFrom": "$(inputs.round + 1)"},
-                                "model": "output_model",
+                                "model": "new_model",
                             },
                             "outputMethod": "last",
                         }
@@ -250,9 +250,9 @@ class RoundWorkflow(Workflow):
                 "round": "int",
             },
             "outputs": {
-                "output_model": {
+                "new_model": {
                     "type": "Directory",
-                    "outputSource": "aggregate/output_model",
+                    "outputSource": "aggregate/new_model",
                 }
             },
             "steps": {
@@ -274,7 +274,7 @@ class RoundWorkflow(Workflow):
                         "script": "script_aggregation",
                         "models": "merge/models",
                     },
-                    "out": ["output_model"],
+                    "out": ["new_model"],
                 },
             },
         }
@@ -299,8 +299,10 @@ class RoundWorkflow(Workflow):
                     "repository": f"repository_{name}",
                     "image": f"image_{name}",
                     "dataset": f"dataset_{name}",
+                    "model_basename": "model_basename",
+                    "round": "round",
                 },
-                "out": ["output_model"],
+                "out": ["new_model"],
             }
         }
 
@@ -325,7 +327,7 @@ class RoundWorkflow(Workflow):
             f"{name}": f"{name}_{facility_name}" for name in extra_inputs.keys()
         }
         self.cwl["steps"]["merge"]["in"] |= {
-            facility_name: f"training_on_{facility_name}/output_model"
+            facility_name: f"training_on_{facility_name}/new_model"
         }
         self.cwl["steps"]["merge"]["run"]["inputs"] |= {facility_name: "Directory"}
         self.cwl["steps"]["merge"]["run"]["expression"].append(
@@ -344,6 +346,10 @@ class RoundWorkflow(Workflow):
 class TrainingStep(Workflow):
     """Workflow modelling a training step"""
 
+    def __init__(self):
+        super().__init__()
+        self.position = self.get_fst_position()
+
     @classmethod
     def get_default_definition(cls) -> MutableMapping[str, Any]:
         """Get the CWL file standard content for a xFFL application training step
@@ -358,13 +364,12 @@ class TrainingStep(Workflow):
                 "InlineJavascriptRequirement": {},
                 "EnvVarRequirement": {
                     "envDef": {
-                        "CODE_FOLDER": "$(inputs.repository.path)",
-                        "MODEL_FOLDER": "$(inputs.model.path)",
-                        "DATASET_FOLDER": "$(inputs.dataset.path)",
-                        "IMAGE": "$(inputs.image.path)",
-                        "FACILITY": "$(inputs.facility)",
-                        "OUTPUT_FOLDER": "$(runtime.outdir)",
-                        "EXECUTABLE_FOLDER": "$(inputs.executable.dirname)",
+                        "XFFL_MODEL_FOLDER": "$(inputs.model.path)",
+                        "XFFL_DATASET_FOLDER": "$(inputs.dataset.path)",
+                        "XFFL_IMAGE": "$(inputs.image.path)",
+                        "XFFL_FACILITY": "$(inputs.facility)",
+                        "XFFL_OUTPUT_FOLDER": "$(runtime.outdir)",
+                        "XFFL_EXECUTABLE_FOLDER": "$(inputs.executable.dirname)",
                     }
                 },
             },
@@ -411,7 +416,7 @@ class TrainingStep(Workflow):
                 "round": {"type": "int"},  # num of the current iteration
             },
             "outputs": {
-                "output_model": {
+                "new_model": {
                     "type": "Directory",
                     "outputBinding": {"glob": "$(inputs.model_basename)"},
                 }
@@ -434,3 +439,17 @@ class TrainingStep(Workflow):
             f"image": "File",
             f"dataset": "Directory",
         } | {f"{name}": _type for name, _type in extra_inputs.items()}
+
+    def get_fst_position(self) -> int:
+        position = 0
+        # TODO: change it when cwl_utils will be used
+        for _input in self.cwl["inputs"].values():
+            if position < (
+                curr_pos := _input.get("inputBinding", {}).get("position", 0)
+            ):
+                position = curr_pos
+        for _input in self.cwl["arguments"]:
+            if position < (curr_pos := _input.get("position", 0)):
+                position = curr_pos
+        print(position)
+        return position + 1

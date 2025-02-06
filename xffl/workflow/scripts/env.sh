@@ -5,7 +5,7 @@
 # We extract this information from the SLURM runtime environment through srun, but an equivalent setting is obtained through mpirun (mpi equivalent variables are indicated in comments)
 Derive_env () {
 
-    if [ "${FACILITY}" = "local" ] ; then
+    if [ "${XFFL_FACILITY}" = "local" ] ; then
         export LOCAL_WORLD_SIZE=$XFFL_WORLD_SIZE
         export WORLD_SIZE=$XFFL_WORLD_SIZE		 					
         export GROUP_WORLD_SIZE=$XFFL_WORLD_SIZE				
@@ -44,7 +44,7 @@ Derive_env () {
 
 # Due to PyTorch's aggressive thread policy OMP_NUM_THREADS should be manually set to the number of actually available cores (by default PyTorch would spawn a thread for each processor's core)
 Limit_PyTorch_threads () {
-    if [ "${FACILITY}" = "local" ] ; then
+    if [ "${XFFL_FACILITY}" = "local" ] ; then
 	    export OMP_NUM_THREADS=8 # TODO: Leonardo specific
     elif command -v srun > /dev/null ; then # Check SLURM
         export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -56,7 +56,7 @@ Limit_PyTorch_threads () {
 # To agevolate PyTorch's FSDP hybrid sharding is fundamental that each process knows how many other processes are allocated on the same machine (i.e., the number of local GPUs), so that inter-node sharding and inter-node replication is handled correctly
 # This is necessary since each process is run on only 1GPU, and some SLURM installation do not reset correctly the CUDA_VISIBLE_DEVICES variable
 Reset_visible_devices () {
-    if [ "${FACILITY}" = "local" ] ; then
+    if [ "${XFFL_FACILITY}" = "local" ] ; then
         VISIBLE_DEVICES=$( seq -s , 0 $(( 4 - 1 )) )
     elif command -v srun > /dev/null ; then # Check SLURM
         VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # todo: change SLURM_GPUS_PER_NODE for cloud environments
