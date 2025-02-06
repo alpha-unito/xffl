@@ -11,17 +11,10 @@ if [ "${XFFL_FACILITY}" = "local" ] ; then
 		COMMAND="python ${EXECUTABLE} $*"
 		eval "$COMMAND"
 	else
-		find "/model/" -type f -exec cat {} + > /dev/null & # Caching for improved performance
-		find "/datasets/" -type f -exec cat {} + > /dev/null & # Caching for improved performance
-
 		COMMAND="time python /code/${EXECUTABLE} --model /model/ --dataset /datasets/"
 		PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/gmittone/.local/bin eval "$COMMAND" # TODO: Remove Path modification
 	fi
 else
-	echo "[Rank $RANK] Pre-loading model and datasets..."
-	find "/model/" -type f -exec cat {} + > /dev/null & # Caching for improved performance
-	find "/datasets/" -type f -exec cat {} + > /dev/null & # Caching for improved performance
-
 	COMMAND="time python ${EXECUTABLE} --model /model/ --dataset /datasets/ $*"
 	echo "[Rank $RANK] $COMMAND"
 	PYTHONPATH=/leonardo/home/userexternal/amulone1/xffl/venv/bin/xffl:${PYTHONPATH} eval "$COMMAND" # TODO: Remove Path modification

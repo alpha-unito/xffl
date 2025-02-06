@@ -45,8 +45,11 @@ def pretraining(args: argparse.Namespace) -> None:
     """
 
     setup_time = time.perf_counter()
+
+    ### TEST PARAMETERS ###
     args.seed = 42
     args.subsampling = 16
+    #######################
 
     # Set the requested logging level
     setup_logging(log_level=args.loglevel)
@@ -63,6 +66,8 @@ def pretraining(args: argparse.Namespace) -> None:
     start_time = time.perf_counter()
     # PyTorch's distributed backend setup
     rank, local_rank, world_size = distributed.setup_distributed_process_group()
+    if local_rank == 0:  # Large data preloading
+        utils.preload([args.model, args.dataset])
     if torch.distributed.is_initialized():
         if rank == 0:
             logger.debug(

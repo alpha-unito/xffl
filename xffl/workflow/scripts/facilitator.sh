@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# PRELOADING
+if [ -n "$VENV" ] ; then
+	find "$(dirname "$(dirname "${VENV}")")" -type f -exec cat {} + > /dev/null &
+else
+	find "${XFFL_IMAGE}" -type f -exec cat {} + > /dev/null &
+fi
+
 # input environment variables: 
 #  - CODE_FOLDER 
 #  - MODEL_FOLDER
@@ -37,9 +44,9 @@ if [ "${XFFL_FACILITY}" = "local" ] ; then
 	pids=()
 	for _RANK in $( seq 0 1 $(( WORLD_SIZE - 1 )) ) ; do
 		XFFL_RANKS="RANK=\"${_RANK}\" \
-LOCAL_RANK=\"${_RANK}\" \
-ROLE_RANK=\"${_RANK}\" \
-GROUP_RANK=\"${_RANK}\""
+			LOCAL_RANK=\"${_RANK}\" \
+			ROLE_RANK=\"${_RANK}\" \
+			GROUP_RANK=\"${_RANK}\""
 		XFFL_TASKSET="taskset --cpu-list "$(( _RANK * OMP_NUM_THREADS ))"-"$(( _RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
 		XFFL_RUN="xffl/workflow/scripts/run.sh"
 

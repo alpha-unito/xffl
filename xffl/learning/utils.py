@@ -3,8 +3,10 @@
 import functools
 import os
 import random
+import subprocess
+import sys
 from logging import Logger, getLogger
-from typing import Optional
+from typing import List, Optional
 
 import numpy
 import torch
@@ -15,6 +17,8 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     checkpoint_wrapper,
 )
 from transformers import PreTrainedModel
+
+from xffl.custom.types import PathLike
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -123,3 +127,26 @@ def set_activation_checkpointing(
             check_fn=lambda submodule: isinstance(submodule, layer),
         )
         logger.debug("Activated non-reentrant model (gradient) checkpointing")
+
+
+def preload(files: List[PathLike]) -> None:
+    """Pre-loads the given list of files and folders
+
+    Particularly useful on HPC, where data can be moved near the computing nodes ahead of time
+
+    :param files: Paths of the files and folders to be preloaded
+    :type files: List[PathLike]
+    :raises OSError, ValueError: If the subprocess run fails
+    """
+    for file in files:
+        logger.debug(f"Preloading: {file}")
+        try:
+            subprocess.Popen(
+                f'find "{file}" -type f -exec cat {{}} + > /dev/null &',
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+                shell=True,
+                universal_newlines=True,
+            )
+        except (OSError, ValueError) as e:
+            raise e
