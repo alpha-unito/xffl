@@ -9,6 +9,7 @@ import functools
 import os
 import time
 from logging import Logger, getLogger
+from parser import parser
 from typing import Dict, Union
 
 import torch
@@ -29,8 +30,6 @@ from wandb.wandb_run import Run
 
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging
-
-from .parser import parser
 
 logger: Logger = getLogger(__name__)
 """Deafult xFFL logger"""
@@ -238,7 +237,7 @@ def pretraining(args: argparse.Namespace) -> None:
         world_size=world_size,
         lr_scheduler=scheduler,
         wandb_run=wandb_run,
-        save_path=args.output_path,
+        save_path=args.output,
         output_model_name=args.output_model,
     )
 

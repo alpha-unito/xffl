@@ -45,7 +45,7 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
 
     # Creating new environment variables based on the provided mapping
     env = setup_env(args=vars(args), mapping=env_mapping)
-    env["FACILITY"] = "local"
+    env["XFFL_FACILITY"] = "local"
 
     # New environment created - debug logging
     logger.debug(f"New local simulation xFFL environment variables: {env}")
