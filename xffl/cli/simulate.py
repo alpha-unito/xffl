@@ -113,9 +113,10 @@ def main(args: argparse.Namespace) -> int:
         simulate(args=args)
     except Exception as e:
         logger.exception(e)
-        raise
+        raise e
     finally:
         logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
+    return 0
 
 
 if __name__ == "__main__":

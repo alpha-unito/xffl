@@ -9,7 +9,6 @@ import json
 import os
 import shutil
 from logging import Logger, getLogger
-from pathlib import Path
 
 import yaml
 
@@ -25,128 +24,13 @@ from xffl.workflow.templates.cwl import (
     TrainingStep,
 )
 from xffl.workflow.templates.streamflow import StreamFlowFile
-from xffl.workflow.utils import from_args_to_cwl
+from xffl.workflow.utils import from_args_to_cwl, import_from_path
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
-parser = argparse.ArgumentParser(
-    prog="Cross-Facility Federated Learning (xFFL) - LLaMA example",
-    description="This xFFL example pre-trains a LLaMA-3.1 8B model on multiple HPC infrastructures.",
-)
 
-parser.add_argument(
-    "-attn",
-    "--attention",
-    help="Type of attention implementation to use",
-    type=str,
-    default="flash_attention_2",
-    choices=["sdpa", "eager", "flash_attention_2"],
-)
-
-parser.add_argument("-on", "--online", help="Online mode", action="store_true")
-
-parser.add_argument(
-    "-s",
-    "--seed",
-    help="Random execution seed (for reproducibility purposes)",
-    type=int,
-    default=None,
-)
-
-parser.add_argument("-wb", "--wandb", help="Enable WandB", action="store_true")
-
-parser.add_argument(
-    "-name",
-    "--wandb-name",
-    help="WandB group name",
-    type=str,
-    default="LLaMA-3.1 8B",
-)
-
-parser.add_argument(
-    "-mode",
-    "--wandb-mode",
-    help="WandB mode",
-    type=str,
-    default="online",
-    choices=["online", "offline", "disabled"],
-)
-
-parser.add_argument(
-    "-sub",
-    "--subsampling",
-    help="Quantity of data samples to load (for each dataset)",
-    type=int,
-    default=0,
-)
-
-parser.add_argument(
-    "-t",
-    "--train-batch-size",
-    help="Training batch size",
-    type=int,
-    default=4,
-)
-
-parser.add_argument(
-    "-v",
-    "--val-batch-size",
-    help="Validation batch size",
-    type=int,
-    default=1,
-)
-
-parser.add_argument(
-    "-ws",
-    "--workers",
-    help="Number of data loaders workers",
-    type=int,
-    default=2,
-)
-
-parser.add_argument(
-    "-lr",
-    "--learning-rate",
-    help="Learning rate",
-    type=float,
-    default=1e-4,
-)
-
-parser.add_argument(
-    "-wd",
-    "--weight-decay",
-    help="Weight decay",
-    type=float,
-    default=0,
-)
-
-parser.add_argument(
-    "-sz",
-    "--step-size",
-    help="Learning rate scheduler step size",
-    type=int,
-    default=1,
-)
-
-parser.add_argument(
-    "-g",
-    "--gamma",
-    help="Learning rate scheduler gamma",
-    type=float,
-    default=0.85,
-)
-
-parser.add_argument(
-    "-om",
-    "--output-model",
-    help="Saved model name",
-    type=str,
-    default=None,
-)
-
-
-def config(args: argparse.Namespace):
+def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
     """Gathers from the user all the necessary parameters to generate a valid StreamFlow file for xFFL
 
     :param args: Command line arguments
@@ -162,10 +46,12 @@ def config(args: argparse.Namespace):
     logger.debug(
         f"Verifying working directory {args.workdir} and project name {args.project}"
     )
-    workdir = check_and_create_workdir(
-        workdir_path=args.workdir, project_name=args.project
-    )
-    logger.info(f"Project directory successfully created: {workdir}")
+    try:
+        workdir = check_and_create_workdir(
+            workdir_path=args.workdir, project_name=args.project
+        )
+    except (FileExistsError, FileNotFoundError) as e:
+        raise e
 
     # Guided StreamFlow configuration
     logger.debug(f"Creating the StreamFlow and CWL templates")
@@ -179,7 +65,7 @@ def config(args: argparse.Namespace):
     training_cwl = TrainingStep()
     logger.debug(f"StreamFlow and CWL templates created")
 
-    # todo: add user interaction
+    # TODO: add user interaction
     cwl_config.content |= {
         "model": {"class": "Directory", "path": "llama3.1-8b"},
         "model_basename": "llama3",
@@ -231,31 +117,40 @@ def config(args: argparse.Namespace):
         username = "amulone1"
         key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
         step_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
-        slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # todo: copy the template in the project dir?
-
-        # todo: query to user
+        slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # TODO: copy the template in the project dir?
         code_path = (
             "/leonardo/home/userexternal/amulone1/xffl"  # TODO: potrebbe sparire
         )
         dataset_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/datasets"
         image_path = "/leonardo_scratch/fast/EUHPC_B18_066/client.sif"
         model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # TODO: sparirà
+        parser_path = "/leonardo_scratch/large/userexternal/gmittone/xffl/examples/llama/client/src/parser.py"
+        parser_name = "parser"
         # TODO: passare output-dir
         # TODO: far scegliere all'utente il numero di round
 
+        # Command line arguments extraction from user's parser arguments
+        logger.debug(
+            f"Dinamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
+        )
         try:
-            # from examples.llama.client.src.training import (
-            #    parser as parser,  # TODO: questo sarà dinamico
-            # )
+            executable_parser_module = import_from_path(
+                module_name=parser_name, file_path=parser_path
+            )
+            logger.info(
+                f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
+            )
 
             arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-                parser=parser,
+                parser=executable_parser_module.parser,  # TODO: the name "parser" is hardcoded
                 arguments=args.arguments,
                 start_position=training_cwl.position,
             )
         except Exception as e:
             raise e
 
+        # Creating CWL configuration
+        logger.debug(f"CWL configuration population...")
         main_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
         round_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
         cwl_config.add_inputs(
@@ -275,6 +170,8 @@ def config(args: argparse.Namespace):
         )
         training_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_bidding)
 
+        # Creating StreamFlow configuration
+        logger.debug(f"StreamFlow configuration population...")
         streamflow_config.add_deployment(
             facility_name=facility,
             address=address,
@@ -356,29 +253,31 @@ def config(args: argparse.Namespace):
         os.path.join(workdir, "cwl", "py_scripts"),
     )
 
+    return 0
+
 
 def main(args: argparse.Namespace) -> int:
     """xFFL project's guided configuration entrypoint
 
     :param args: Command line arguments
     :type args: argparse.Namespace
+    :raises e: Exception raised during the configuration
     :return: Exit code
     :rtype: int
     """
     logger.info(
         "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
     )
-    exit_code = 0
     try:
         config(args=args)
     except Exception as e:
         logger.exception(e)
-        exit_code = 1
+        raise e
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
         )
-        return exit_code
+    return 0
 
 
 if __name__ == "__main__":

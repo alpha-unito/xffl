@@ -1,6 +1,9 @@
 """Utility methods for the workflow configuration creation"""
 
 import argparse
+import importlib.util
+import sys
+import types
 from argparse import _HelpAction
 from types import MappingProxyType
 from typing import Any, Final, List, MutableMapping, Tuple
@@ -32,7 +35,7 @@ def get_param_name(list: List[str], prefix: str = "-") -> str:
     :rtype: str
     """
 
-    return get_param_flag(list=list).replace(prefix * 2, "").replace("-", "_")
+    return get_param_flag(list=list).lstrip("-").replace("-", "_")
 
 
 CWL_TYPE_MAPPING: Final[MappingProxyType[Any, str]] = MappingProxyType(
@@ -72,6 +75,7 @@ def from_args_to_cwl(
     # Parse the command line arguments and convert the namespace to a dictionary
     try:
         namespace = vars(parser.parse_args(arguments))
+        print(namespace)
     except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
         raise e
 
@@ -97,13 +101,36 @@ def from_args_to_cwl(
             arg_to_type[input] = cwl_type + ("" if required else "?")
 
             # Argument name to value (Directory and folder require different format)
+            namespace_input = (
+                input
+                if input in namespace
+                else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
+            )
             arg_to_value[input] = (
-                namespace[input]
+                namespace[namespace_input]
                 if action.type not in [FolderLike, FileLike]
                 else {
                     "class": cwl_type,
-                    "path": namespace[input],
+                    "path": namespace[namespace_input],
                 }
             )
 
     return arg_to_bidding, arg_to_type, arg_to_value
+
+
+def import_from_path(module_name: str, file_path: FileLike) -> types.ModuleType:
+    """Dinamically import a module from a file
+
+    :param module_name: Name of the module to be imported
+    :type module_name: str
+    :param file_path: Absolute path to the file containing the module
+    :type file_path: FileLike
+    :return: Imported Python module
+    :rtype: types.ModuleType
+    """
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+
+    return module

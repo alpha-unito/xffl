@@ -9,6 +9,7 @@ from xffl.custom.types import FolderLike
 
 
 class ArgumentParser(argparse.ArgumentParser):
+    """xFFL argument parser"""
 
     def __init__(
         self,
@@ -16,8 +17,8 @@ class ArgumentParser(argparse.ArgumentParser):
         usage=None,
         description=None,
         epilog=None,
-        parents=...,
-        formatter_class=...,
+        parents=[],
+        formatter_class=argparse.HelpFormatter,
         prefix_chars="-",
         fromfile_prefix_chars=None,
         argument_default=None,
@@ -26,6 +27,14 @@ class ArgumentParser(argparse.ArgumentParser):
         allow_abbrev=True,
         exit_on_error=True,
     ):
+        """Creates a new instance of the xFFL argument parser
+
+        The returned parser is an instance of the standard argparse.ArgumentParser with a few already added arguments, necessary for the xFFL inner workings:
+            -m/--model      Path to the model's folder
+            -d/--dataset    Path to the dataset's folder
+            -w/--workspace  Path to the folder containing the necessary Python scripts to run the training
+            -o/--output Path to the model saving folder
+        """
         super().__init__(
             prog,
             usage,
@@ -47,7 +56,7 @@ class ArgumentParser(argparse.ArgumentParser):
             "--model",
             help="Path to the model's folder",
             type=FolderLike,
-            deafult=None,
+            default=None,
         )
 
         self.add_argument(
@@ -55,7 +64,7 @@ class ArgumentParser(argparse.ArgumentParser):
             "--dataset",
             help="Path to the dataset's folder",
             type=FolderLike,
-            deafult=None,
+            default=None,
         )
 
         self.add_argument(
@@ -63,7 +72,7 @@ class ArgumentParser(argparse.ArgumentParser):
             "--workspace",
             help="Path to the folder containing the necessary Python scripts to run the training",
             type=FolderLike,
-            deafult=None,
+            default=None,
         )
 
         self.add_argument(
@@ -71,5 +80,5 @@ class ArgumentParser(argparse.ArgumentParser):
             "--output",
             help="Path to the model saving folder",
             type=FolderLike,
-            deafult=None,
+            default=None,
         )
