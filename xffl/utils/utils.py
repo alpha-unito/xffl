@@ -3,7 +3,11 @@
 
 import os
 from collections.abc import Callable
+from logging import Logger, getLogger
 from pathlib import Path
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 def resolve_path(path: str) -> str:
@@ -41,5 +45,5 @@ def check_input(
         if is_path:
             value = resolve_path(value)
         if not (condition := control(value)):
-            print(warning_msg.format(value))
+            logger.warning(warning_msg.format(value))
     return value

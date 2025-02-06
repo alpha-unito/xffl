@@ -13,9 +13,10 @@ from pathlib import Path
 
 import yaml
 
-from xffl.custom.types import FolderLike
+from xffl.cli.parser import config_parser
+from xffl.cli.utils import check_and_create_workdir, check_cli_arguments
 from xffl.utils.constants import DEFAULT_xFFL_DIR
-from xffl.utils.utils import check_input, resolve_path
+from xffl.utils.utils import check_input
 from xffl.workflow.templates.cwl import (
     AggregateStep,
     CWLConfig,
@@ -29,9 +30,7 @@ from xffl.workflow.utils import from_args_to_cwl
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
-from argparse import ArgumentParser
-
-parser = ArgumentParser(
+parser = argparse.ArgumentParser(
     prog="Cross-Facility Federated Learning (xFFL) - LLaMA example",
     description="This xFFL example pre-trains a LLaMA-3.1 8B model on multiple HPC infrastructures.",
 )
@@ -156,21 +155,17 @@ def config(args: argparse.Namespace):
     :raises FileExistsError: If the command-line provided project folder already exists
     """
 
+    # Check the CLI arguments
+    check_cli_arguments(args=args, parser=config_parser)
+
     # Project folder and path checks
-    logger.debug(f"Verifying working directory {args.workdir}")
-    workdir: str = resolve_path(path=args.workdir)
-    if Path(workdir).exists():
-        workdir: FolderLike = os.path.join(workdir, args.project)
-        logger.debug(f"Verifying project directory {workdir}")
-        try:
-            os.makedirs(workdir)
-        except FileExistsError as e:
-            raise e
-    else:
-        raise FileNotFoundError(
-            f"The provided working directory path {workdir} does not exists"
-        )
-    logger.info(f"Project directory successfully created at {workdir}")
+    logger.debug(
+        f"Verifying working directory {args.workdir} and project name {args.project}"
+    )
+    workdir = check_and_create_workdir(
+        workdir_path=args.workdir, project_name=args.project
+    )
+    logger.info(f"Project directory successfully created: {workdir}")
 
     # Guided StreamFlow configuration
     logger.debug(f"Creating the StreamFlow and CWL templates")
@@ -387,8 +382,6 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    from xffl.cli.parser import config_parser
-
     try:
         main(args=config_parser.parse_args())
     except KeyboardInterrupt as e:

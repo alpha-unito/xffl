@@ -451,5 +451,4 @@ class TrainingStep(Workflow):
         for _input in self.cwl["arguments"]:
             if position < (curr_pos := _input.get("position", 0)):
                 position = curr_pos
-        print(position)
         return position + 1

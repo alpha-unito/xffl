@@ -4,18 +4,15 @@ This script wraps StreamFlow with a simple Python CLI, offering a homogeneous in
 """
 
 import argparse
-import inspect
 import os
 import subprocess
 import sys
 import time
 from logging import Logger, getLogger
-from subprocess import PIPE
 from typing import Dict
 
-import xffl
 from xffl.cli.parser import simulate_parser
-from xffl.cli.utils import check_default_value, setup_env
+from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -26,34 +23,28 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
 
     :param args: CLI arguments
     :type args: argparse.Namespace
+    :raises ValueError: If not virtualization environment is provided # TODO: make possible to run bare-metal (useful for module)
     :return: Updated environment
     :rtype: Dict[str, str]
     """
-    # Updating the environment with the virtualization technology specified
-    env = {}
+    # Creating the environment mapping with the virtualization technology specified
     if args.venv:
         logger.debug(f"Using virtual environment: {args.venv}")
-        # Creating new environment variables based on the provided mapping
-        env_mapping = {
-            "XFFL_WORLD_SIZE": "world_size",
-        }
-        env = setup_env(args=vars(args), mapping=env_mapping, parser=simulate_parser)
-        env["VENV"] = check_default_value("venv", args.venv, simulate_parser)
+        env_mapping = {"XFFL_WORLD_SIZE": "world_size", "VENV": "venv"}
     elif args.image:
         logger.debug(f"Using container image: {args.venv}")
-        # Creating new environment variables based on the provided mapping
         env_mapping = {
             "CODE_FOLDER": "workdir",
             "MODEL_FOLDER": "model",
             "DATASET_FOLDER": "dataset",
             "XFFL_WORLD_SIZE": "world_size",
+            "IMAGE": "image",
         }
-        env = setup_env(args=vars(args), mapping=env_mapping, parser=simulate_parser)
-        env["IMAGE"] = check_default_value("image", args.image, simulate_parser)
     else:
-        logger.error(f"No execution environment specified [container/virtual env]")
+        raise ValueError("No execution environment specified [container/virtual env]")
 
-    # Specifying the local execution
+    # Creating new environment variables based on the provided mapping
+    env = setup_env(args=vars(args), mapping=env_mapping)
     env["FACILITY"] = "local"
 
     # New environment created - debug logging
@@ -62,28 +53,30 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     # Returning the old environment updated
     xffl_env = os.environ.copy()
     xffl_env.update(env)
+
     return xffl_env
 
 
 def simulate(
     args: argparse.Namespace,
 ) -> None:
+    # Check the CLI arguments
+    check_cli_arguments(args=args, parser=simulate_parser)
+
     # Environment creation
-    env = setup_simulation_env(args=args)
+    try:
+        env = setup_simulation_env(args=args)
+    except ValueError as e:
+        raise e
     logger.debug(f"Updated xFFL environment: {env}")
 
     # Simulation command creation
-    facilitator_script = os.path.join(
-        os.path.dirname(inspect.getfile(xffl.workflow)), "scripts", "facilitator.sh"
-    )
-    executable_script = check_default_value(
-        "executable", args.executable, simulate_parser
-    )
+    facilitator_script = get_facilitator_path()
 
     # Launch facilitator
     logger.info(f"Running local simulation...")
     command = " ".join(
-        [facilitator_script, executable_script] + [arg for arg in args.arguments]
+        [facilitator_script, args.executable] + [arg for arg in args.arguments]
     )
     logger.debug(f"Local simulation command: {command}")
     start_time = time.perf_counter()
@@ -126,8 +119,6 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    from xffl.cli.parser import simulate_parser
-
     try:
         main(simulate_parser.parse_args())
     except KeyboardInterrupt as e:
