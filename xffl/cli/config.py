@@ -66,6 +66,9 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
     logger.debug(f"StreamFlow and CWL templates created")
 
     # TODO: add user interaction
+
+    parser_path = "examples/llama/client/src/parser.py"
+    parser_name = "parser"
     cwl_config.content |= {
         "model": {"class": "Directory", "path": "llama3.1-8b"},
         "model_basename": "llama3",
@@ -77,6 +80,12 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
         "executable": {
             "class": "File",
             "path": "/home/ubuntu/xffl/examples/llama/client/src/training.py",  # TODO: user interation
+            "secondaryFiles": [
+                {
+                    "class": "File",
+                    "path": os.path.join("/home/ubuntu/xffl/", parser_path),
+                }
+            ],
         },
     }
 
@@ -118,14 +127,11 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
         key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
         step_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
         slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # TODO: copy the template in the project dir?
-        code_path = (
-            "/leonardo/home/userexternal/amulone1/xffl"  # TODO: potrebbe sparire
-        )
         dataset_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/datasets"
+
+        # TODO: these will be local path. They are currently remote for develop reasons
         image_path = "/leonardo_scratch/fast/EUHPC_B18_066/client.sif"
-        model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"  # TODO: sparirà
-        parser_path = "/leonardo_scratch/large/userexternal/gmittone/xffl/examples/llama/client/src/parser.py"
-        parser_name = "parser"
+        model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"
         # TODO: passare output-dir
         # TODO: far scegliere all'utente il numero di round
 
@@ -156,10 +162,6 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
         cwl_config.add_inputs(
             facility_name=facility,
             extra_inputs={
-                "repository": {
-                    "class": "Directory",
-                    "path": os.path.basename(code_path),
-                },
                 "image": {"class": "File", "path": os.path.basename(image_path)},
                 "dataset": {
                     "class": "Directory",
@@ -186,7 +188,6 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
         streamflow_config.add_step_binding(
             facility_name=facility,
             mapping={
-                f"repository_{facility}": os.path.dirname(code_path),
                 f"dataset_{facility}": os.path.dirname(dataset_path),
                 f"image_{facility}": os.path.dirname(image_path),
                 "model": os.path.dirname(model_path),  # TODO: Verrà tolto
