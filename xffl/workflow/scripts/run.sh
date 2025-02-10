@@ -11,12 +11,11 @@ if [ "${XFFL_FACILITY}" = "local" ] ; then
 		COMMAND="python ${EXECUTABLE} $*"
 		eval "$COMMAND"
 	else
-		COMMAND="time python /code/${EXECUTABLE} --model /model/ --dataset /datasets/"
+		COMMAND="time python ${EXECUTABLE} --model /model/ --dataset /datasets/"
 		PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/gmittone/.local/bin eval "$COMMAND" # TODO: Remove Path modification
 	fi
 else
-	COMMAND="time python ${EXECUTABLE} --model /model/ --dataset /datasets/ $*"
+	COMMAND="time python ${EXECUTABLE} $*"
 	echo "[Rank $RANK] $COMMAND"
-	source /leonardo/home/userexternal/amulone1/xffl/venv-py3.10/bin/activate
-	eval "$COMMAND" # TODO: Remove Path modification
+	PYTHONPATH=${PYTHONPATH}:/leonardo/home/userexternal/amulone1/.local/bin eval "$COMMAND" # TODO: Remove Path modification
 fi

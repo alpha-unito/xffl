@@ -91,15 +91,20 @@ def from_args_to_cwl(
             required = action.required
 
             # Model does not need to be added to the configurations, it is handled separately
-            if not input == "model":
+            if input not in ("model", "dataset"):  # TODO: add workspace?
                 # Argument name to CWL input bidding format
                 arg_to_bidding[input] = {
                     "type": cwl_type + ("" if required else "?"),
-                    "inputBinding": {
-                        "position": position,
-                        "prefix": get_param_flag(action.option_strings),
-                    },
-                }
+                } | (
+                    {
+                        "inputBinding": {
+                            "position": position,
+                            "prefix": get_param_flag(action.option_strings),
+                        }
+                    }
+                    if input != "workspace"
+                    else {}
+                )
 
                 if add_default_value := isinstance(
                     action.default, bool
@@ -119,13 +124,21 @@ def from_args_to_cwl(
                     else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
                 )
                 if add_default_value:
+                    if isinstance(namespace[namespace_input], str):
+                        in_value = namespace[namespace_input].replace(" ", "_")
+                    else:
+                        in_value = namespace[namespace_input]
                     arg_to_value[input] = (
-                        namespace[namespace_input]
+                        in_value
                         if action.type not in [FolderLike, FileLike]
-                        else {
-                            "class": cwl_type,
-                            "path": namespace[namespace_input],
-                        }
+                        else (
+                            {
+                                "class": cwl_type,
+                                "path": in_value,
+                            }
+                            if in_value is not None
+                            else None
+                        )
                     )
 
     return arg_to_bidding, arg_to_type, arg_to_value

@@ -365,7 +365,8 @@ class TrainingStep(Workflow):
                         "XFFL_IMAGE": "$(inputs.image.path)",
                         "XFFL_FACILITY": "$(inputs.facility)",
                         "XFFL_OUTPUT_FOLDER": "$(runtime.outdir)",
-                        "XFFL_EXECUTABLE_FOLDER": "$(inputs.executable.dirname)",
+                        # "XFFL_TMPDIR_FOLDER": "$(inputs.workspace == null ? runtime.tmpdir : inputs.workspace)",
+                        "XFFL_TMPDIR_FOLDER": "/tmp"
                     }
                 },
             },
@@ -375,14 +376,19 @@ class TrainingStep(Workflow):
                     "valueFrom": "$(inputs.script.path)/facilitator.sh",
                 },
                 {
-                    "position": 3,
+                    "position": 5,
                     "valueFrom": "$(inputs.model_basename)",
                     "prefix": "--output-model",
                 },
                 {
-                    "position": 4,
+                    "position": 6,
                     "valueFrom": "$(runtime.outdir)",
-                    "prefix": "--output-path",
+                    "prefix": "--output",
+                },
+                {
+                    "position": 7,
+                    "valueFrom": "/tmp", # "$(inputs.workspace == null ? runtime.tmpdir : inputs.workspace)",
+                    "prefix": "--workspace",
                 },
             ],
             "inputs": {
@@ -401,9 +407,11 @@ class TrainingStep(Workflow):
                 },
                 "model": {
                     "type": "Directory",
+                    "inputBinding": {"position": 3, "prefix": "--model"},
                 },
                 "dataset": {
                     "type": "Directory",
+                    "inputBinding": {"position": 4, "prefix": "--dataset"},
                 },
                 "model_basename": {"type": "string"},
                 "round": {"type": "int"},  # num of the current iteration
@@ -426,11 +434,7 @@ class TrainingStep(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
-        self.cwl["inputs"] |= {
-            f"facility": "string",
-            f"image": "File",
-            f"dataset": "Directory",
-        } | {f"{name}": _type for name, _type in extra_inputs.items()}
+        self.cwl["inputs"] |= {f"{name}": _type for name, _type in extra_inputs.items()}
 
     def get_fst_position(self) -> int:
         position = 0

@@ -8,13 +8,12 @@ else
 fi
 
 # input environment variables: 
-#  - CODE_FOLDER 
-#  - MODEL_FOLDER
-#  - DATASET_FOLDER
-#  - IMAGE
-#  - FACILITY
-#  - OUTPUT_FOLDER
-#  - EXECUTABLE_FOLDER
+#  - XFFL_MODEL_FOLDER
+#  - XFFL_DATASET_FOLDER
+#  - XFFL_IMAGE
+#  - XFFL_FACILITY
+#  - XFFL_OUTPUT_FOLDER
+#  - XFFL_TMPDIR_FOLDER
 
 XFFL_SCRIPTS_FOLDER="$(dirname "$0")"
 source "${XFFL_SCRIPTS_FOLDER}/env.sh"
@@ -57,7 +56,6 @@ if [ "${XFFL_FACILITY}" = "local" ] ; then
 		else
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
-				--mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
 				--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
 				--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets/ \
 				--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
@@ -80,16 +78,26 @@ if [ "${XFFL_FACILITY}" = "local" ] ; then
 
 # StreamFlow execution
 else
+	XFFL_EXECUTABLE_FOLDER=$(dirname $1)
+	XFFL_RESOLVED_MODEL_FOLDER=$(readlink -f ${XFFL_MODEL_FOLDER})
+	XFFL_RESOLVED_DATASET_FOLDER=$(readlink -f ${XFFL_DATASET_FOLDER})
+
+	# TODO: mount the whole workdir. It avoids to mount each single path to incluce the data are created by the step
+	#	however, if the data are not in the workdir (e.g. the dataset). It is necessary to mount also the real path
 	COMMAND="${CONTAINER_PLT} exec \
-		--mount type=bind,src=${XFFL_MODEL_FOLDER},dst=/model \
-		--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets \
+		--mount type=bind,src=${XFFL_MODEL_FOLDER},dst=${XFFL_MODEL_FOLDER} \
+		--mount type=bind,src=${XFFL_RESOLVED_MODEL_FOLDER},dst=${XFFL_RESOLVED_MODEL_FOLDER} \
+		--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=${XFFL_DATASET_FOLDER} \
+		--mount type=bind,src=${XFFL_RESOLVED_DATASET_FOLDER},dst=${XFFL_RESOLVED_DATASET_FOLDER} \
 		--mount type=bind,src=${XFFL_LOCAL_TMPDIR},dst=/tmp \
 		--mount type=bind,src=${XFFL_OUTPUT_FOLDER},dst=${XFFL_OUTPUT_FOLDER} \
+		--mount type=bind,src=${XFFL_TMPDIR_FOLDER}/,dst=${XFFL_TMPDIR_FOLDER}/ \
 		--mount type=bind,src=${XFFL_EXECUTABLE_FOLDER},dst=${XFFL_EXECUTABLE_FOLDER} \
 		--mount type=bind,src=${XFFL_SCRIPTS_FOLDER},dst=${XFFL_SCRIPTS_FOLDER} \
 		--mount type=bind,src=/leonardo/home/userexternal/amulone1/xffl/,dst=/leonardo/home/userexternal/amulone1/xffl/ \
-		--home /tmp/ \
-		$GPU_FLAG \
+		--mount type=bind,src=/leonardo/home/userexternal/amulone1/,dst=/home/ \
+		--home /home/ \
+		${GPU_FLAG} \
 		${XFFL_IMAGE} \
 		${XFFL_SCRIPTS_FOLDER}/run.sh $*"
 	echo "[Rank $RANK] Executing: $COMMAND"		
