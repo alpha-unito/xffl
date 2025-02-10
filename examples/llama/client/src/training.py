@@ -7,6 +7,7 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 import argparse
 import functools
 import os
+import sys
 import time
 from logging import Logger, getLogger
 from parser import parser
@@ -48,7 +49,7 @@ def pretraining(args: argparse.Namespace) -> None:
 
     ### TEST PARAMETERS ###
     args.seed = 42
-    args.subsampling = 16
+    args.subsampling = 1024
     #######################
 
     # Set the requested logging level
@@ -260,7 +261,7 @@ def main():
     """Argument parsing and training launch"""
 
     try:
-        pretraining(parser.parse_args())
+        pretraining(parser.parse_args(sys.argv[1:]))
     except KeyboardInterrupt:
         logger.exception("Unexpected keyboard interrupt")
 

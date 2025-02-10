@@ -87,33 +87,35 @@ def from_args_to_cwl(
             cwl_type = CWL_TYPE_MAPPING[action.type]
             required = action.required
 
-            # Argument name to CWL input bidding format
-            arg_to_bidding[input] = {
-                "type": cwl_type + ("" if required else "?"),
-                "inputBinding": {
-                    "position": position,
-                    "prefix": get_param_flag(action.option_strings),
-                },
-                "default": action.default,
-            }
-
-            # Argument name to CWL type
-            arg_to_type[input] = cwl_type + ("" if required else "?")
-
-            # Argument name to value (Directory and folder require different format)
-            namespace_input = (
-                input
-                if input in namespace
-                else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
-            )
-            arg_to_value[input] = (
-                namespace[namespace_input]
-                if action.type not in [FolderLike, FileLike]
-                else {
-                    "class": cwl_type,
-                    "path": namespace[namespace_input],
+            # Model does not need to be added to the configurations, it is handled separately
+            if not input == "model":
+                # Argument name to CWL input bidding format
+                arg_to_bidding[input] = {
+                    "type": cwl_type + ("" if required else "?"),
+                    "inputBinding": {
+                        "position": position,
+                        "prefix": get_param_flag(action.option_strings),
+                    },
+                    "default": action.default,
                 }
-            )
+
+                # Argument name to CWL type
+                arg_to_type[input] = cwl_type + ("" if required else "?")
+
+                # Argument name to value (Directory and folder require different format)
+                namespace_input = (
+                    input
+                    if input in namespace
+                    else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
+                )
+                arg_to_value[input] = (
+                    namespace[namespace_input]
+                    if action.type not in [FolderLike, FileLike]
+                    else {
+                        "class": cwl_type,
+                        "path": namespace[namespace_input],
+                    }
+                )
 
     return arg_to_bidding, arg_to_type, arg_to_value
 
