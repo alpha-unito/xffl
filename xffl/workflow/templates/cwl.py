@@ -213,14 +213,12 @@ class MainWorkflow(Workflow):
             f"image_{facility_name}": "File",
             f"facility_{facility_name}": "string",
             f"dataset_{facility_name}": "Directory",
-            f"repository_{facility_name}": "Directory",
         } | {f"{name}_{facility_name}": _type for name, _type in extra_inputs.items()}
 
         self.cwl["steps"]["iteration"]["in"] |= {
             f"image_{facility_name}": f"image_{facility_name}",
             f"facility_{facility_name}": f"facility_{facility_name}",
             f"dataset_{facility_name}": f"dataset_{facility_name}",
-            f"repository_{facility_name}": f"repository_{facility_name}",
         } | {
             f"{name}_{facility_name}": f"{name}_{facility_name}"
             for name in extra_inputs.keys()
@@ -296,7 +294,6 @@ class RoundWorkflow(Workflow):
                     "executable": "executable",
                     "model": "model",
                     "facility": f"facility_{name}",
-                    "repository": f"repository_{name}",
                     "image": f"image_{name}",
                     "dataset": f"dataset_{name}",
                     "model_basename": "model_basename",
@@ -318,7 +315,6 @@ class RoundWorkflow(Workflow):
         """
         self.cwl["inputs"] |= {
             f"facility_{facility_name}": "string",
-            f"repository_{facility_name}": "Directory",
             f"image_{facility_name}": "File",
             f"dataset_{facility_name}": "Directory",
         } | {f"{name}_{facility_name}": _type for name, _type in extra_inputs.items()}
@@ -409,9 +405,6 @@ class TrainingStep(Workflow):
                 "dataset": {
                     "type": "Directory",
                 },
-                "repository": {
-                    "type": "Directory",
-                },
                 "model_basename": {"type": "string"},
                 "round": {"type": "int"},  # num of the current iteration
             },
@@ -435,7 +428,6 @@ class TrainingStep(Workflow):
         """
         self.cwl["inputs"] |= {
             f"facility": "string",
-            f"repository": "Directory",
             f"image": "File",
             f"dataset": "Directory",
         } | {f"{name}": _type for name, _type in extra_inputs.items()}

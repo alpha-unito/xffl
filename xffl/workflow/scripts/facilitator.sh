@@ -87,7 +87,7 @@ else
 		--mount type=bind,src=${XFFL_OUTPUT_FOLDER},dst=${XFFL_OUTPUT_FOLDER} \
 		--mount type=bind,src=${XFFL_EXECUTABLE_FOLDER},dst=${XFFL_EXECUTABLE_FOLDER} \
 		--mount type=bind,src=${XFFL_SCRIPTS_FOLDER},dst=${XFFL_SCRIPTS_FOLDER} \
-		--mount type=bind,src=/leonardo/home/userexternal/amulone1/xffl/venv/,dst=/leonardo/home/userexternal/amulone1/xffl/venv/ \
+		--mount type=bind,src=/leonardo/home/userexternal/amulone1/xffl/,dst=/leonardo/home/userexternal/amulone1/xffl/ \
 		--home /tmp/ \
 		$GPU_FLAG \
 		${XFFL_IMAGE} \

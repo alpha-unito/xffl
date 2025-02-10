@@ -4,11 +4,14 @@ import argparse
 import importlib.util
 import sys
 import types
-from argparse import _HelpAction
+from argparse import _HelpAction, _StoreConstAction
+from logging import Logger, getLogger
 from types import MappingProxyType
 from typing import Any, Final, List, MutableMapping, Tuple
 
 from xffl.custom.types import FileLike, FolderLike
+
+logger: Logger = getLogger(__name__)
 
 
 def get_param_flag(list: List[str]) -> str:
@@ -96,9 +99,16 @@ def from_args_to_cwl(
                         "position": position,
                         "prefix": get_param_flag(action.option_strings),
                     },
-                    "default": action.default,
                 }
 
+                if add_default_value := isinstance(
+                    action.default, bool
+                ) or not isinstance(action, _StoreConstAction):
+                    arg_to_bidding[input]["default"] = action.default
+                else:
+                    logger.warning(
+                        f"Default value {action.default} NOT assigned to {input}"
+                    )
                 # Argument name to CWL type
                 arg_to_type[input] = cwl_type + ("" if required else "?")
 
@@ -108,14 +118,15 @@ def from_args_to_cwl(
                     if input in namespace
                     else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
                 )
-                arg_to_value[input] = (
-                    namespace[namespace_input]
-                    if action.type not in [FolderLike, FileLike]
-                    else {
-                        "class": cwl_type,
-                        "path": namespace[namespace_input],
-                    }
-                )
+                if add_default_value:
+                    arg_to_value[input] = (
+                        namespace[namespace_input]
+                        if action.type not in [FolderLike, FileLike]
+                        else {
+                            "class": cwl_type,
+                            "path": namespace[namespace_input],
+                        }
+                    )
 
     return arg_to_bidding, arg_to_type, arg_to_value
 
