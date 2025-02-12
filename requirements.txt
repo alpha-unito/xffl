@@ -1,8 +1,0 @@
-PyYAML==6.0.2
-streamflow==0.2.0.dev11
-torch
-transformers
-datasets
-wheel
-flash-attn
-wandb

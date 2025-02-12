@@ -3,14 +3,13 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "xFFL"
+name = "xffl"
 version = "v0.1.0"
 description = "Cross-Facility Federated Learning"
 keywords = ["federated learning", "cross facility", "cross-facility", "hpc", "cloud", "workflow", "streamflow"]
 
 readme = "README.md"
-license = {text = "LGPL-3.0-only"}
-# license-files = ["LICENSE", "LICENSE.LESSER"]
+license = {text = "LGPL-3.0-or-later"}
 
 requires-python = ">=3.9"
 
@@ -29,6 +28,8 @@ maintainers = [
 classifiers = [
     "Development Status :: 3 - Alpha",
 
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
 
@@ -41,6 +42,16 @@ classifiers = [
 
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: System :: Distributed Computing"
+]
+
+dependencies = [
+    "datasets",
+    "PyYAML==6.0.2",
+    "streamflow==0.2.0.dev11",
+    "torch",
+    "transformers",
+    "wheel",
+    "wandb"
 ]
 
 [project.scripts]
@@ -68,6 +79,3 @@ packages = [
 [tool.setuptools.package-data]
 "xffl.workflow.scripts" = ["*.sh"]
 "xffl.workflow.scripts.facilities" = ["*.sh"]
-
-[tool.setuptools.dynamic]
-dependencies = {file = "requirements.txt"}
