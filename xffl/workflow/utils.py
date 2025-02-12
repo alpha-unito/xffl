@@ -140,7 +140,6 @@ def from_args_to_cwl(
                             else None
                         )
                     )
-
     return arg_to_bidding, arg_to_type, arg_to_value
 
 

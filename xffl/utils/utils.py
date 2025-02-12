@@ -4,26 +4,36 @@
 import os
 from collections.abc import Callable
 from logging import Logger, getLogger
-from pathlib import Path
+from pathlib import Path, PurePath
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def resolve_path(path: str) -> str:
-    """Converts a relative, shortened path into an absolute one
+def resolve_path(path: str, is_local_path: bool = True) -> str:
+    """Check the path is well formed, otherwise tries to fix it.
+    Moreover, the path is resolve to the absolute form if it is defined as a local path
 
     :param path: abbreviated path
     :type path: str
+    :param is_local_path:
+    :type is_local_path: bool
     :return: expanded path
     :rtype: str
     """
-
-    return str(Path(os.path.expanduser(os.path.expandvars(path))).absolute())
+    return str(
+        Path(os.path.expanduser(os.path.expandvars(path))).absolute()
+        if is_local_path
+        else PurePath(path)
+    )
 
 
 def check_input(
-    text: str, warning_msg: str, control: Callable, is_path: bool = False
+    text: str,
+    warning_msg: str,
+    control: Callable,
+    is_path: bool = False,
+    is_local_path=True,
 ) -> str:
     """Receives and checks a user input based on the specified condition
 
@@ -43,7 +53,7 @@ def check_input(
     while not condition:
         value = input(text)
         if is_path:
-            value = resolve_path(value)
+            value = resolve_path(value, is_local_path)
         if not (condition := control(value)):
             logger.warning(warning_msg.format(value))
     return value

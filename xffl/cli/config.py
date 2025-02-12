@@ -7,6 +7,7 @@ necessary to run xFFL workloads across different HPCs
 import argparse
 import json
 import os
+import re
 import shutil
 from logging import Logger, getLogger
 
@@ -15,7 +16,7 @@ import yaml
 from xffl.cli.parser import config_parser
 from xffl.cli.utils import check_and_create_workdir, check_cli_arguments
 from xffl.utils.constants import DEFAULT_xFFL_DIR
-from xffl.utils.utils import check_input
+from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
     AggregateStep,
     CWLConfig,
@@ -65,75 +66,140 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
     training_cwl = TrainingStep()
     logger.debug(f"StreamFlow and CWL templates created")
 
-    # TODO: add user interaction
-
-    parser_path = "examples/llama/client/src/parser.py"
-    parser_name = "parser"
     cwl_config.content |= {
-        "model": {"class": "Directory", "path": "llama3.1-8b"},
-        "model_basename": "llama3",
-        "max_rounds": 2,
         "script_aggregation": {
             "class": "File",
             "path": os.path.join("py_scripts", "aggregation.py"),
         },
+    }
+
+    # Get executable file
+    executable_path = resolve_path(
+        check_input(
+            "xFFL requires the Python training scripts, that should be present in your local machine\nTraining script path: ",
+            "File {} does not exist. Insert an existing file",
+            lambda path: os.path.isfile(path),
+            is_path=True,
+        )
+    )
+    parser_path = resolve_path(
+        check_input(
+            "\nIt is necessary to indicate also the arguments parse of the training script\nCustom arguments parser path: ",
+            "File {} does not exist. Insert an existing file",
+            lambda path: os.path.isfile(path),
+            is_path=True,
+        )
+    )
+    parser_name = check_input(
+        "\nInput the arguments parser module name: ",
+        "The name can contain letters, numbers, dashs or underscores. Moreover, it can start only with a letter or number",
+        lambda x: re.match("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
+    )
+
+    # Get model
+    model_path = resolve_path(
+        check_input(
+            "\nxFFL requires the Python model, that should be present in your local machine\nModel path: ",
+            "File/directory {} does not exist. Insert an existing one",
+            lambda path: os.path.exists(path),
+            is_path=True,
+        )
+    )
+
+    # New model name
+    new_model_name = check_input(
+        "\nName of the new model: ",
+        "The name can contain letters, numbers, dashs or underscores. Moreover, it can start only with a letter or number",
+        lambda x: re.match("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
+    )
+
+    # Number of iteration of the training
+    num_of_iterations = int(
+        check_input(
+            "\nNumber of iterations to the federated training: ",
+            "Insert an integer",
+            lambda x: x.isdigit(),
+        )
+    )
+
+    cwl_config.content |= {
         "executable": {
             "class": "File",
-            "path": "/home/ubuntu/xffl/examples/llama/client/src/training.py",  # TODO: user interation
+            "path": executable_path,
             "secondaryFiles": [
                 {
                     "class": "File",
-                    "path": os.path.join("/home/ubuntu/xffl/", parser_path),
+                    "path": parser_path,
                 }
             ],
         },
+        "model": {
+            "class": "Directory" if os.path.isdir(model_path) else "File",
+            "path": model_path,
+        },
+        "model_basename": new_model_name,
+        "max_rounds": num_of_iterations,
     }
 
     insert = True
     while insert:
 
-        # facility = check_input(
-        #     "Type facility's logic facility: ",
-        #     "Facility facility {} already used.",
-        #     lambda facility: facility not in facilities,
-        # )
-        # facilities.add(facility)
-
-        # address = input(f"Type {facility}'s frontend node address [IP:port]: ")
-        # username = input(f"{facility}'s username: ")
-
-        # key = check_input(
-        #     f"Path to {facility}'s SSH key file: ",
-        #     "{} does not exists.",
-        #     lambda key: os.path.exists(key),
-        #     is_path=True,
-        # )
-
-        # workdir = input("Path to the facility's working directory: ")
-
-        # # todo: list the needed pragmas
-        # slurm_template = check_input(
-        #     f"Path to {facility}'s SLURM template with the required directives: ",
-        #     "{} does not exists.",
-        #     lambda path: os.path.exists(path),
-        #     is_path=True,
-        # )
-
-        facility = "leonardo"
+        # Facility name
+        facility = check_input(
+            "\nType facility's logic facility: ",
+            "Facility facility {} already used.",
+            lambda facility: facility not in facilities,
+        )
         facilities.add(facility)
 
-        address = "login.leonardo.cineca.it"
-        username = "amulone1"
-        key = "/home/ubuntu/.ssh/cineca-certificates/amulone1_ecdsa"
-        step_workdir = "/leonardo_scratch/fast/uToID_bench/tmp/streamflow/ssh"
-        slurm_template = "/home/ubuntu/xffl/examples/llama/client/slurm_templates/leonardo.slurm"  # TODO: copy the template in the project dir?
-        dataset_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/datasets"
+        # SSH information
+        address = input(
+            "\nType {}'s frontend node address [IP:port]: ".format(facility)
+        )
+        username = input(f"{facility}'s username: ")
+        ssh_key = check_input(
+            f"Path to {facility}'s SSH key file: ",
+            "{} does not exists.",
+            lambda ssh_key: os.path.exists(ssh_key),
+            is_path=True,
+        )
 
-        # TODO: these will be local path. They are currently remote for develop reasons
-        image_path = "/leonardo_scratch/fast/EUHPC_B18_066/client.sif"
-        model_path = "/leonardo_scratch/fast/uToID_bench/23_llama_sc24/worker/workspace/llama3.1-8b"
-        # TODO: passare output-dir
-        # TODO: far scegliere all'utente il numero di round
+        # SLURM template path for the facility
+        # TODO: list the needed pragmas
+        slurm_template = check_input(
+            "\nPath to {}'s SLURM template with the required directives: ".format(
+                facility
+            ),
+            "{} does not exists.",
+            lambda path: os.path.exists(path),
+            is_path=True,
+        )
+
+        # Remote paths
+        step_workdir = check_input(
+            "\nPath to the facility's working directory: ",
+            "The path is not well-formed",
+            lambda x: resolve_path(x, is_local_path=False),
+            is_path=True,
+            is_local_path=False,
+        )
+        image_path = check_input(
+            "\nPath to the facility's image file: ",
+            "The path is not well-formed",
+            lambda x: resolve_path(x, is_local_path=False),
+            is_path=True,
+            is_local_path=False,
+        )
+        dataset_path = check_input(
+            "\nPath to the facility's dataset directory: ",
+            "The path is not well-formed",
+            lambda x: resolve_path(x, is_local_path=False),
+            is_path=True,
+            is_local_path=False,
+        )
+
+        # TODO: output-dir?
+        # TODO: add user interation to the script argument values
 
         # Command line arguments extraction from user's parser arguments
         logger.debug(
@@ -178,19 +244,16 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
             facility_name=facility,
             address=address,
             username=username,
-            ssh_key=key,
+            ssh_key=ssh_key,
             step_workdir=step_workdir,
             slurm_template=slurm_template,
         )
 
-        # TODO: questi vanno chiesti interattivamente all'utente o inclusi in un file di configurazione
-        # TODO: va aggiunta anche la cartella di output?
         streamflow_config.add_step_binding(
             facility_name=facility,
             mapping={
                 f"dataset_{facility}": os.path.dirname(dataset_path),
                 f"image_{facility}": os.path.dirname(image_path),
-                "model": os.path.dirname(model_path),  # TODO: Verrà tolto
             },
         )
         streamflow_config.add_inputs(facility_name=facility)
@@ -245,7 +308,7 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
         os.path.join(DEFAULT_xFFL_DIR, "workflow", "scripts"),
         os.path.join(workdir, "cwl", "scripts"),
     )
-    # fixme: remove aggregation_script
+    # TODO: remove aggregation_script when docker image will be used
     os.makedirs(os.path.join(workdir, "cwl", "py_scripts"))
     shutil.copy(
         os.path.join(

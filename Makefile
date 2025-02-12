@@ -1,8 +1,4 @@
 
-
-
-
-
 format:
-	isort xffl examples/llama
-	black xffl examples/llama
+	isort xffl/ examples/
+	black xffl/ examples/

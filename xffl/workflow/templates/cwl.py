@@ -201,7 +201,7 @@ class MainWorkflow(Workflow):
 
     def add_inputs(
         self, facility_name: str, extra_inputs: MutableMapping[str, str]
-    ) -> None:  # TODO: remove all the redundancy
+    ) -> None:
         """Add the given extra inputs to the MainWorkflow definition
 
         :param facility_name: Facility's name
@@ -366,7 +366,8 @@ class TrainingStep(Workflow):
                         "XFFL_FACILITY": "$(inputs.facility)",
                         "XFFL_OUTPUT_FOLDER": "$(runtime.outdir)",
                         # "XFFL_TMPDIR_FOLDER": "$(inputs.workspace == null ? runtime.tmpdir : inputs.workspace)",
-                        "XFFL_TMPDIR_FOLDER": "/tmp"
+                        # TODO: an error is raised from torch when the tmp path is too long
+                        "XFFL_TMPDIR_FOLDER": "/tmp",
                     }
                 },
             },
@@ -387,7 +388,7 @@ class TrainingStep(Workflow):
                 },
                 {
                     "position": 7,
-                    "valueFrom": "/tmp", # "$(inputs.workspace == null ? runtime.tmpdir : inputs.workspace)",
+                    "valueFrom": "$XFFL_TMPDIR_FOLDER",
                     "prefix": "--workspace",
                 },
             ],

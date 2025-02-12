@@ -59,7 +59,7 @@ Reset_visible_devices () {
     if [ "${XFFL_FACILITY}" = "local" ] ; then
         VISIBLE_DEVICES=$( seq -s , 0 $(( 4 - 1 )) )
     elif command -v srun > /dev/null ; then # Check SLURM
-        VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # todo: change SLURM_GPUS_PER_NODE for cloud environments
+        VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # TODO: change SLURM_GPUS_PER_NODE for cloud environments
     fi
     export VISIBLE_DEVICES
 
