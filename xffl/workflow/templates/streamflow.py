@@ -128,7 +128,7 @@ class StreamFlowFile(YamlConfig):
             ),
             *(
                 self.create_binding(
-                    name=name,
+                    name=posixpath.join(posixpath.sep, name),
                     values={"workdir": value},
                     location=facility_name,
                     _type="port",

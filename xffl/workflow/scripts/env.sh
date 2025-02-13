@@ -45,7 +45,7 @@ Derive_env () {
 # Due to PyTorch's aggressive thread policy OMP_NUM_THREADS should be manually set to the number of actually available cores (by default PyTorch would spawn a thread for each processor's core)
 Limit_PyTorch_threads () {
     if [ "${XFFL_FACILITY}" = "local" ] ; then
-	    export OMP_NUM_THREADS=8 # TODO: Leonardo specific
+	    export OMP_NUM_THREADS=$(( $(nproc) / WORLD_SIZE ))
     elif command -v srun > /dev/null ; then # Check SLURM
         export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
     fi

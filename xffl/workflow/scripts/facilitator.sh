@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# PRELOADING
-if [ -n "$VENV" ] ; then
-	find "$(dirname "$(dirname "${VENV}")")" -type f -exec cat {} + > /dev/null &
-else
-	find "${XFFL_IMAGE}" -type f -exec cat {} + > /dev/null &
-fi
-
 # input environment variables: 
 #  - XFFL_MODEL_FOLDER
 #  - XFFL_DATASET_FOLDER

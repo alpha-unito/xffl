@@ -142,10 +142,20 @@ def preload(files: List[PathLike]) -> None:
         logger.debug(f"Preloading: {file}")
         try:
             subprocess.Popen(
-                f'find "{file}" -type f -exec cat {{}} + > /dev/null &',
+                [
+                    "find",
+                    file,
+                    "-type",
+                    "f",
+                    "-exec",
+                    "cat",
+                    "{{}}",
+                    "+",
+                    ">",
+                    "/dev/null," "&",
+                ],
                 stdout=sys.stdout,
                 stderr=sys.stderr,
-                shell=True,
                 universal_newlines=True,
             )
         except (OSError, ValueError) as e:

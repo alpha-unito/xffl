@@ -68,7 +68,7 @@ def pretraining(args: argparse.Namespace) -> None:
     # PyTorch's distributed backend setup
     rank, local_rank, world_size = distributed.setup_distributed_process_group()
     if local_rank == 0:  # Large data preloading
-        utils.preload([args.model, args.dataset])
+        utils.preload([args.model])
     if torch.distributed.is_initialized():
         if rank == 0:
             logger.debug(
