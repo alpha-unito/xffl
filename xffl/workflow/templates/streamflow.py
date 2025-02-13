@@ -1,5 +1,6 @@
 """Collection of StreamFlow-related template code"""
 
+import posixpath
 from collections.abc import MutableMapping
 from typing import Any, Optional
 
@@ -97,12 +98,12 @@ class StreamFlowFile(YamlConfig):
             },
         }
 
-    def add_step_binding(
+    def add_training_step(
         self,
         facility_name: str,
         mapping: MutableMapping[str, str],
     ) -> None:
-        """Adds new step bindings to the StreamFlow configuration
+        """Adds new training step bindings to the StreamFlow configuration
 
         :param facility_name: Facility's name
         :type facility_name: str
@@ -115,24 +116,47 @@ class StreamFlowFile(YamlConfig):
                 f"Facility {facility_name} is already present in the StreamFlow configuration"
             )
 
+        step_name = posixpath.join(
+            posixpath.sep, "iteration", f"training_on_{facility_name}"
+        )
         self.step_bindings[facility_name] = [
-            {
-                "step": f"/iteration/training_on_{facility_name}",
-                "target": [
-                    {"deployment": facility_name, "service": "pragma"},
-                ],
-            },
-        ] + [
             self.create_binding(
-                name=name,
-                value=value,
-                facility=facility_name,
-            )
-            for name, value in mapping.items()
+                name=step_name,
+                values={"service": "pragma"},
+                location=facility_name,
+                _type="step",
+            ),
+            *(
+                self.create_binding(
+                    name=name,
+                    values={"workdir": value},
+                    location=facility_name,
+                    _type="port",
+                )
+                for name, value in mapping.items()
+            ),
         ]
 
+    def add_root_step(self, workdir: str):
+        self.step_bindings[posixpath.sep] = [
+            self.create_binding(
+                name=posixpath.sep, values={}, location="local", _type="step"
+            )
+        ]
+        self.deployments["local"] = {
+            "local": {"type": "local", "config": {}, "workdir": workdir}
+        }
+        self.content["workflows"]["xffl"]["bindings"].extend(
+            self.step_bindings[posixpath.sep]
+        )
+        self.content["deployments"] |= self.deployments["local"]
+
     def create_binding(
-        self, name: str, value: FolderLike, facility: Optional[str] = None
+        self,
+        name: str,
+        values: MutableMapping[str, Any],
+        location: Optional[str] = None,
+        _type: str = "step",
     ) -> MutableMapping[str, Any]:
         """Creates a new StreamFlow binding
 
@@ -140,15 +164,12 @@ class StreamFlowFile(YamlConfig):
         :type name: str
         :param value: Value of the StreamFlow binding
         :type value: FolderLike
-        :param facility: Facility's name, defaults to None
+        :param location: Facility's name, defaults to None
         :type facility: Optional[str], optional
         :return: A well-formattted StreamFlow binding
         :rtype: MutableMapping[str, Any]
         """
         return {
-            "port": f"/{name}",
-            "target": {
-                "deployment": facility,
-                "workdir": value,
-            },
+            _type: name,
+            "target": {"deployment": location or "local", **values},
         }

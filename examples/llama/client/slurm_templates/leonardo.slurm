@@ -5,7 +5,7 @@
 #SBATCH --output=llama.out
 #SBATCH --nodes=1
 #SBATCH --ntasks=4					# Nodes x GPUs x 1 node
-#SBATCH --time=00:05:00
+#SBATCH --time=00:08:00
 #SBATCH --account=EUHPC_B18_066
 #SBATCH --partition=boost_usr_prod
 #SBATCH --ntasks-per-node=4			# GPUs x 1 node
