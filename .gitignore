@@ -138,4 +138,5 @@ dmypy.json
 # Others
 .*
 *.out
+*.err
 logs

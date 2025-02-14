@@ -13,7 +13,10 @@ from streamflow.config.config import WorkflowConfig
 from streamflow.config.validator import SfValidator
 from streamflow.cwl.main import main as cwl_main
 from streamflow.ext.utils import load_extensions
+from streamflow.log_handler import logger as sf_logger
 from streamflow.main import build_context
+
+from xffl.utils.logging import set_external_loggers
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -30,10 +33,13 @@ async def run_streamflow(args: argparse.Namespace) -> None:
     args.name = args.project
     args.outdir = os.path.join(args.workdir, args.project)
     streamflow_file = os.path.join(args.workdir, args.project, "streamflow.yml")
+
+    # Logger
+    set_external_loggers()
     if args.loglevel == logging.WARNING:
-        args.quiet = True
+        sf_logger.setLevel(logging.WARNING)
     elif args.loglevel == logging.DEBUG:
-        args.debug = logging.DEBUG
+        sf_logger.setLevel(logging.DEBUG)
 
     # StreamFlow run
     load_extensions()  # Load 2FA extension
@@ -48,5 +54,6 @@ async def run_streamflow(args: argparse.Namespace) -> None:
                 workflow_tasks.append(
                     asyncio.create_task(cwl_main(workflow_config, context, args))
                 )
+        await asyncio.gather(*workflow_tasks)
     finally:
         await context.close()
