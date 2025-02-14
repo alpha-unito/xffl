@@ -75,10 +75,9 @@ def simulate(
 
     # Launch facilitator
     logger.info(f"Running local simulation...")
-    command = " ".join(
-        [facilitator_script, args.executable] + [arg for arg in args.arguments]
-    )
-    logger.debug(f"Local simulation command: {command}")
+    command = [facilitator_script, args.executable] + [arg for arg in args.arguments]
+    command_str = " ".join(command)
+    logger.debug(f"Local simulation command: {command_str}")
     start_time = time.perf_counter()
     try:
         return_code = subprocess.Popen(
@@ -86,7 +85,6 @@ def simulate(
             env=env,
             stdout=sys.stdout,
             stderr=sys.stderr,
-            shell=True,
             universal_newlines=True,
         ).wait()
     except (OSError, ValueError) as e:

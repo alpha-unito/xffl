@@ -6,7 +6,6 @@ This script wraps StreamFlow with a simple Python CLI, offering a homogeneous in
 import argparse
 import asyncio
 from logging import Logger, getLogger
-from subprocess import run
 
 from xffl.cli.parser import run_parser
 from xffl.cli.utils import check_cli_arguments

@@ -69,7 +69,7 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
     cwl_config.content |= {
         "script_aggregation": {
             "class": "File",
-            "path": os.path.join("py_scripts", "aggregation.py"),
+            "path": os.path.join("py_scripts", "aggregation_application.py"),
         },
     }
 
@@ -112,6 +112,20 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
         "The name can contain letters, numbers, dashs or underscores. Moreover, it can start only with a letter or number",
         lambda x: re.match("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
+
+    # Local workdir
+    local_workdir = check_input(
+        "\nLocal workdir (if you leave blank the default $TMPDIR is used): ",
+        "Insert a valid directory path or leave it blank for default",
+        lambda path: path == "" or resolve_path(path),
+    )
+    local_workdir = (
+        resolve_path(local_workdir)
+        if local_workdir
+        else os.environ.get("TMPDIR", "/tmp")
+    )
+    logger.info(f"local_workdir: {local_workdir}")
+    streamflow_config.add_root_step(local_workdir)
 
     # Number of iteration of the training
     num_of_iterations = int(
@@ -249,7 +263,7 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
             slurm_template=slurm_template,
         )
 
-        streamflow_config.add_step_binding(
+        streamflow_config.add_training_step(
             facility_name=facility,
             mapping={
                 f"dataset_{facility}": os.path.dirname(dataset_path),

@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# PRELOADING
-if [ -n "$VENV" ] ; then
-	find "$(dirname "$(dirname "${VENV}")")" -type f -exec cat {} + > /dev/null &
-else
-	find "${XFFL_IMAGE}" -type f -exec cat {} + > /dev/null &
-fi
-
 # input environment variables: 
 #  - XFFL_MODEL_FOLDER
 #  - XFFL_DATASET_FOLDER
@@ -81,7 +74,8 @@ else
 	XFFL_EXECUTABLE_FOLDER=$(dirname $1)
 	XFFL_RESOLVED_MODEL_FOLDER=$(readlink -f ${XFFL_MODEL_FOLDER})
 	XFFL_RESOLVED_DATASET_FOLDER=$(readlink -f ${XFFL_DATASET_FOLDER})
-
+	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(readlink -f $1)
+	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(dirname ${XFFL_RESOLVED_EXECUTABLE_FOLDER})
 	# TODO: mount the whole workdir. It avoids to mount each single path to incluce the data are created by the step
 	#	however, if the data are not in the workdir (e.g. the dataset). It is necessary to mount also the real path
 	COMMAND="${CONTAINER_PLT} exec \
@@ -93,6 +87,7 @@ else
 		--mount type=bind,src=${XFFL_OUTPUT_FOLDER},dst=${XFFL_OUTPUT_FOLDER} \
 		--mount type=bind,src=${XFFL_TMPDIR_FOLDER}/,dst=${XFFL_TMPDIR_FOLDER}/ \
 		--mount type=bind,src=${XFFL_EXECUTABLE_FOLDER},dst=${XFFL_EXECUTABLE_FOLDER} \
+		--mount type=bind,src=${XFFL_RESOLVED_EXECUTABLE_FOLDER},dst=${XFFL_RESOLVED_EXECUTABLE_FOLDER} \
 		--mount type=bind,src=${XFFL_SCRIPTS_FOLDER},dst=${XFFL_SCRIPTS_FOLDER} \
 		--mount type=bind,src=/leonardo/home/userexternal/amulone1/xffl/,dst=/leonardo/home/userexternal/amulone1/xffl/ \
 		--mount type=bind,src=/leonardo/home/userexternal/amulone1/,dst=/home/ \
