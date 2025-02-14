@@ -149,7 +149,7 @@ def preload(files: List[PathLike]) -> None:
                     "f",
                     "-exec",
                     "cat",
-                    "{{}}",
+                    "{}",
                     "+",
                     ">",
                     "/dev/null," "&",
