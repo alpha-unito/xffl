@@ -52,6 +52,8 @@ def set_external_loggers():
         datasets.utils.logging._get_library_root_logger().handlers = []
         datasets.utils.logging._get_library_root_logger().propagate = True
 
-    external_loggers = ["cwltool", "salad", "streamflow"]
-    for logger_name in external_loggers:
-        logging.getLogger(logger_name).handlers = []
+    for logger_name in logging.root.manager.loggerDict:
+        if not (logger_name.startswith("xffl") or logger_name.startswith("streamflow")):
+            curr_logger = logging.getLogger(logger_name)
+            curr_logger.handlers.clear()
+            curr_logger.propagate = False
