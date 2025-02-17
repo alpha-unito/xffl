@@ -35,9 +35,7 @@ def setup_distributed_process_group(
     :rtype: Tuple[int, int, int]
     """
     rank = int(os.environ.get("RANK")) if not rank else rank
-    local_rank = (
-        int(rank or os.environ.get("LOCAL_RANK")) if not local_rank else local_rank
-    )
+    local_rank = int(os.environ.get("LOCAL_RANK")) if not local_rank else local_rank
     world_size = int(os.environ.get("WORLD_SIZE")) if not world_size else world_size
 
     # Requires MASTER_ADDR and MASTER_PORT environmental variables to be set

@@ -34,12 +34,14 @@ fi
 # Local simulation
 if [ "${XFFL_FACILITY}" = "local" ] ; then
 	pids=()
-	for _RANK in $( seq 0 1 $(( WORLD_SIZE - 1 )) ) ; do
-		XFFL_RANKS="RANK=\"${_RANK}\" \
-			LOCAL_RANK=\"$(( _RANK % LOCAL_WORLD_SIZE ))\" \
-			ROLE_RANK=\"${_RANK}\" \
-			GROUP_RANK=\"$(( _RANK / LOCAL_WORLD_SIZE ))\""
-		XFFL_TASKSET="taskset --cpu-list "$(( _RANK * OMP_NUM_THREADS ))"-"$(( _RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
+	for _RANK in $( seq $(( XFFL_NODEID * LOCAL_WORLD_SIZE )) 1 $(( XFFL_NODEID * LOCAL_WORLD_SIZE + LOCAL_WORLD_SIZE - 1 )) ) ; do
+		RANK=$_RANK
+		LOCAL_RANK=$(( _RANK % LOCAL_WORLD_SIZE ))
+		ROLE_RANK=$_RANK
+		GROUP_RANK=$(( _RANK / LOCAL_WORLD_SIZE ))
+
+		XFFL_RANKS="RANK=$RANK LOCAL_RANK=$LOCAL_RANK ROLE_RANK=$ROLE_RANK GROUP_RANK=$ROLE_RANK"
+		XFFL_TASKSET="taskset --cpu-list "$(( LOCAL_RANK * OMP_NUM_THREADS ))"-"$(( LOCAL_RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
 		XFFL_RUN="xffl/workflow/scripts/run.sh"
 
 		# Python virtual environment

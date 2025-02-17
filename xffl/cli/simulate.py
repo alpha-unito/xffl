@@ -33,7 +33,6 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
         env_mapping = {
             "XFFL_WORLD_SIZE": "world_size",
             "XFFL_NUM_NODES": "num_nodes",
-            "XFFL_NODELIST": "nodelist",
             "MASTER_ADDR": "masteraddr",
             "VENV": "venv",
         }
@@ -45,7 +44,6 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
             "DATASET_FOLDER": "dataset",
             "XFFL_WORLD_SIZE": "world_size",
             "XFFL_NUM_NODES": "num_nodes",
-            "XFFL_NODELIST": "nodelist",
             "MASTER_ADDR": "masteraddr",
             "IMAGE": "image",
         }
@@ -77,6 +75,7 @@ def simulate(
     args = check_cli_arguments(args=args, parser=simulate_parser)
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
+    args
 
     # Environment creation
     try:
@@ -95,7 +94,7 @@ def simulate(
         processes = []
         return_code = 0
 
-        for node in args.nodelist:
+        for index, node in enumerate(args.nodelist):
             command = (
                 [
                     "ssh",
@@ -103,6 +102,7 @@ def simulate(
                     node,
                     '"',
                     env,
+                    f"XFFL_NODEID={index}",
                     facilitator_script,
                     args.executable,
                 ]
