@@ -140,3 +140,5 @@ dmypy.json
 *.out
 *.err
 logs
+datasets
+models

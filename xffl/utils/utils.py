@@ -5,9 +5,37 @@ import os
 from collections.abc import Callable
 from logging import Logger, getLogger
 from pathlib import Path, PurePath
+from typing import List
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
+
+
+def get_param_flag(list: List[str]) -> str:
+    """Gets the full command line parameter flag
+
+    :param list: List of the parameter's flags
+    :type list: List[str]
+    :return: The full parameter flag
+    :rtype: str
+    """
+    return max(list, key=len)
+
+
+def get_param_name(list: List[str], prefix: str = "-") -> str:
+    """Returns a the command line parameter full name given its flag list
+
+     This method also replaces scores with underscores
+
+    :param list: List of the parameter's flags
+    :type list: List[str]
+    :param prefix: Prefix symbol preceding a flag, defaults to "-"
+    :type prefix: str
+    :return: Full parameter name
+    :rtype: str
+    """
+
+    return get_param_flag(list=list).lstrip(prefix).replace(prefix, "_")
 
 
 def resolve_path(path: str, is_local_path: bool = True) -> str:

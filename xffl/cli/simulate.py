@@ -30,7 +30,13 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     # Creating the environment mapping with the virtualization technology specified
     if args.venv:
         logger.debug(f"Using virtual environment: {args.venv}")
-        env_mapping = {"XFFL_WORLD_SIZE": "world_size", "VENV": "venv"}
+        env_mapping = {
+            "XFFL_WORLD_SIZE": "world_size",
+            "XFFL_NUM_NODES": "num_nodes",
+            "XFFL_NODELIST": "nodelist",
+            "MASTER_ADDR": "masteraddr",
+            "VENV": "venv",
+        }
     elif args.image:
         logger.debug(f"Using container image: {args.venv}")
         env_mapping = {
@@ -38,6 +44,9 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
             "MODEL_FOLDER": "model",
             "DATASET_FOLDER": "dataset",
             "XFFL_WORLD_SIZE": "world_size",
+            "XFFL_NUM_NODES": "num_nodes",
+            "XFFL_NODELIST": "nodelist",
+            "MASTER_ADDR": "masteraddr",
             "IMAGE": "image",
         }
     else:
@@ -51,17 +60,23 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     logger.debug(f"New local simulation xFFL environment variables: {env}")
 
     # Returning the old environment updated
-    xffl_env = os.environ.copy()
-    xffl_env.update(env)
+    # xffl_env = os.environ.copy()
+    # xffl_env.update(env)
 
-    return xffl_env
+    env_str = ""
+    for key in env:
+        env_str += f"{key}={env[key]} "
+
+    return env_str
 
 
 def simulate(
     args: argparse.Namespace,
 ) -> None:
     # Check the CLI arguments
-    check_cli_arguments(args=args, parser=simulate_parser)
+    args = check_cli_arguments(args=args, parser=simulate_parser)
+    args.num_nodes = len(args.nodelist)
+    args.masteraddr = args.nodelist[0]
 
     # Environment creation
     try:
@@ -75,18 +90,41 @@ def simulate(
 
     # Launch facilitator
     logger.info(f"Running local simulation...")
-    command = [facilitator_script, args.executable] + [arg for arg in args.arguments]
-    command_str = " ".join(command)
-    logger.debug(f"Local simulation command: {command_str}")
     start_time = time.perf_counter()
     try:
-        return_code = subprocess.Popen(
-            command,
-            env=env,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            universal_newlines=True,
-        ).wait()
+        processes = []
+        return_code = 0
+
+        for node in args.nodelist:
+            command = (
+                [
+                    "ssh",
+                    "-oStrictHostKeyChecking=no",
+                    node,
+                    '"',
+                    env,
+                    facilitator_script,
+                    args.executable,
+                ]
+                + [arg for arg in args.arguments]
+                + ['"']
+            )
+            command_str = " ".join(command)
+            logger.debug(f"Simulation command on {node}: {command_str}")
+
+            processes.append(
+                subprocess.Popen(
+                    command_str,
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    shell=True,
+                    universal_newlines=True,
+                )
+            )
+
+        for process in processes:
+            return_code += process.wait()
+
     except (OSError, ValueError) as e:
         logger.exception(e)
         return 1
@@ -95,7 +133,7 @@ def simulate(
             f"Total simulation execution time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
-    return return_code
+    return 0 if return_code == 0 else 1
 
 
 def main(args: argparse.Namespace) -> int:

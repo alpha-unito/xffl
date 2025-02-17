@@ -117,7 +117,7 @@ simulate_parser.add_argument(
 simulate_parser.add_argument(
     "executable",
     help="Name of the Python execultable file",
-    type=str,
+    type=PathLike,
     default=None,
 )
 
@@ -127,22 +127,6 @@ simulate_parser.add_argument(
     help="Working directory path",
     type=PathLike,
     default=os.getcwd(),
-)
-
-simulate_parser.add_argument(
-    "-m",
-    "--model",
-    help="Model path (if saved to disk)",
-    type=PathLike,
-    default=None,
-)
-
-simulate_parser.add_argument(
-    "-d",
-    "--dataset",
-    help="Dataset path (if saved to disk)",
-    type=PathLike,
-    default=None,
 )
 
 virtualisation_group = simulate_parser.add_mutually_exclusive_group()
@@ -169,6 +153,14 @@ simulate_parser.add_argument(
     help="Number of process to spawn (max. number of available GPUs)",
     type=int,
     default=1,
+)
+
+simulate_parser.add_argument(
+    "-n",
+    "--nodelist",
+    help="List of available computing nodes",
+    nargs="+",
+    default=["localhost"],
 )
 
 simulate_parser.add_argument(

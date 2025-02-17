@@ -6,18 +6,16 @@
 Derive_env () {
 
     if [ "${XFFL_FACILITY}" = "local" ] ; then
-        export LOCAL_WORLD_SIZE=$XFFL_WORLD_SIZE
+        export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # We assume an equal allocation
         export WORLD_SIZE=$XFFL_WORLD_SIZE		 					
-        export GROUP_WORLD_SIZE=$XFFL_WORLD_SIZE				
+        export GROUP_WORLD_SIZE=$XFFL_NUM_NODES				
         export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE 						
         export ROLE_NAME="default"
 
         # RANKs are set in the facilitator
 
-        export MASTER_ADDR=localhost
         export MASTER_PORT=29500
 
-        export GROUP_RANK=0
     elif command -v srun > /dev/null ; then # Check SLURM
         if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS

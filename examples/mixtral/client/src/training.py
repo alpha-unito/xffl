@@ -1,4 +1,4 @@
-"""LLaMA-3.1 training example script
+"""Mixtral-8x7B training example script
 
 Inspired from llama-recipes' finetuning.py script: 
 https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetuning.py
@@ -24,8 +24,8 @@ from torch.distributed.fsdp import (
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoModelForCausalLM, LlamaForCausalLM, default_data_collator
-from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+from transformers import AutoModelForCausalLM, MixtralForCausalLM, default_data_collator
+from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 from wandb.wandb_run import Run
 
 from datasets import Dataset, DatasetDict
@@ -37,7 +37,7 @@ logger: Logger = getLogger(__name__)
 
 
 def pretraining(args: argparse.Namespace) -> None:
-    """Pre-training script for LLaMA-3.1
+    """Pre-training script for Mixtral-8x7B
 
     This is not considered finetuning since no parameter reduction/quantization technique is applied
 
@@ -46,6 +46,11 @@ def pretraining(args: argparse.Namespace) -> None:
     """
 
     setup_time = time.perf_counter()
+
+    ### TEST PARAMETERS ###
+    args.seed = 42
+    args.subsampling = 1024
+    #######################
 
     # Set the requested logging level
     setup_logging(log_level=args.loglevel)
@@ -82,18 +87,18 @@ def pretraining(args: argparse.Namespace) -> None:
         project="xFFL",
         group=args.wandb_name,
         name=f"client_{rank}",
-        notes="LLaMA-3.1 8B pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
-        tags=["xFFL", "LLaMA", "clean_mc4_it"],
+        notes="Mixtral-8x7B pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
+        tags=["xFFL", "Mixtral", "clean_mc4_it"],
         mode=(
             args.wandb_mode if args.wandb else "disabled"
         ),  # Set to "disable" to execute without wandb
         config=args,
     )
 
-    # LLaMA loading from saved model
+    # Mixtral loading from saved model
     start_time = time.perf_counter()
     model_name: str = os.path.basename(args.model)
-    model: LlamaForCausalLM = (
+    model: MixtralForCausalLM = (
         AutoModelForCausalLM.from_pretrained(  # Configuration is automatically loaded from the JSON file inside the model folder
             pretrained_model_name_or_path=args.model,
             use_cache=False,
@@ -103,11 +108,6 @@ def pretraining(args: argparse.Namespace) -> None:
             torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
         )
     )
-
-    # Activation checkpointing 2.69s/it ENTRAMBI: 3.11s/it
-    # utils.set_activation_checkpointing(
-    #    model=model, layer=LlamaDecoderLayer
-    # )  # This can also be called aftes FSDP specifying the layer to wrap (e.g., LlamaDecoderLayer)
 
     # Print model's weights
     if rank == 0:
@@ -125,7 +125,7 @@ def pretraining(args: argparse.Namespace) -> None:
         sharding_strategy=ShardingStrategy.FULL_SHARD,  # TODO: Enable HybridShard and HSDP
         auto_wrap_policy=functools.partial(
             wrap.transformer_auto_wrap_policy,
-            transformer_layer_cls={LlamaDecoderLayer},
+            transformer_layer_cls={MixtralDecoderLayer},
         ),
         device_id=torch.cuda.current_device(),
         forward_prefetch=True,  # 2.50s/it
@@ -140,7 +140,7 @@ def pretraining(args: argparse.Namespace) -> None:
 
     # Activation checkpointing 2.51s/it
     utils.set_activation_checkpointing(
-        model=model, layer=LlamaDecoderLayer
+        model=model, layer=MixtralDecoderLayer
     )  # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
 
     if rank == 0:
@@ -156,7 +156,7 @@ def pretraining(args: argparse.Namespace) -> None:
             "train": os.path.join(args.dataset, "train"),
             "val": os.path.join(args.dataset, "val"),
         }
-    )  # Original LLaMA training packs the datasets
+    )
     if rank == 0:
         logger.debug(
             f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds"

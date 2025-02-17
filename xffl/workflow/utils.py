@@ -10,35 +10,9 @@ from types import MappingProxyType
 from typing import Any, Final, List, MutableMapping, Tuple
 
 from xffl.custom.types import FileLike, FolderLike
+from xffl.utils.utils import get_param_flag, get_param_name
 
 logger: Logger = getLogger(__name__)
-
-
-def get_param_flag(list: List[str]) -> str:
-    """Gets the full command line parameter flag
-
-    :param list: List of the parameter's flags
-    :type list: List[str]
-    :return: The full parameter flag
-    :rtype: str
-    """
-    return max(list, key=len)
-
-
-def get_param_name(list: List[str], prefix: str = "-") -> str:
-    """Returns a the command line parameter full name given its flag list
-
-     This method also replaces scores with underscores
-
-    :param list: List of the parameter's flags
-    :type list: List[str]
-    :param prefix: Prefix symbol preceding a flag, defaults to "-"
-    :type prefix: str
-    :return: Full parameter name
-    :rtype: str
-    """
-
-    return get_param_flag(list=list).lstrip("-").replace("-", "_")
 
 
 CWL_TYPE_MAPPING: Final[MappingProxyType[Any, str]] = MappingProxyType(

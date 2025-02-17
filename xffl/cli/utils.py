@@ -5,11 +5,12 @@ import inspect
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Dict
+from types import SimpleNamespace
+from typing import Any, Dict, List
 
 import xffl
 from xffl.custom.types import FileLike, FolderLike, PathLike
-from xffl.utils.utils import resolve_path
+from xffl.utils.utils import get_param_name, resolve_path
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -47,8 +48,8 @@ def check_default_value(
 
 def check_cli_arguments(  # TODO: add checks on Path, File and Folder objects so that is not done elsewhere
     args: argparse.Namespace, parser: argparse.ArgumentParser
-) -> None:
-    """Checks which cli arguments have the default value
+) -> SimpleNamespace:
+    """Checks which cli arguments have the default value and expands relative path into absolte ones
 
     :param args: Command line arguments
     :type args: argparse.Namespace
@@ -57,6 +58,45 @@ def check_cli_arguments(  # TODO: add checks on Path, File and Folder objects so
     """
     for key, value in vars(args).items():
         check_default_value(argument_name=key, argument_value=value, parser=parser)
+
+    namespace = vars(args)
+    for action in parser._actions:
+        if action.type in [FolderLike, FileLike, PathLike]:
+            namespace_input = (
+                get_param_name(action.option_strings, parser.prefix_chars)
+                if input in namespace
+                else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
+            )
+            namespace[namespace_input] = (
+                os.path.abspath(namespace[namespace_input])
+                if namespace[namespace_input]
+                else None
+            )
+    if "arguments" in namespace:
+        namespace["arguments"] = expand_paths_in_args(namespace["arguments"])
+
+    return SimpleNamespace(**namespace)
+
+
+def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
+    """Exapnds relative paths in absolute one when variable type is not available
+
+    :param args: List of command-line arguments
+    :type args: List[str]
+    :param prefix: Prefix symbol preceding a flag, defaults to "-"
+    :type prefix: str, optional
+    :raises FileExistsError: If the file path does not exists
+    :raises FileNotFoundError: If the file path is not found
+    :return: List of command-line arguments with expanded paths
+    :rtype: List[str]
+    """
+    for index, arg in enumerate(args):
+        if arg[0] != prefix:
+            if os.path.isfile(arg) or os.path.isdir(arg) or os.path.exists(arg):
+                if not os.path.isabs(arg):
+                    args[index] = os.path.abspath(arg)
+
+    return args
 
 
 def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:

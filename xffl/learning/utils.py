@@ -140,22 +140,27 @@ def preload(files: List[PathLike]) -> None:
     """
     for file in files:
         logger.debug(f"Preloading: {file}")
+        command = " ".join(
+            [
+                "find",
+                file,
+                "-type",
+                "f",
+                "-exec",
+                "cat",
+                "{}",
+                "+",
+                ">",
+                "/dev/null",
+                "&",
+            ]
+        )
         try:
             subprocess.Popen(
-                [
-                    "find",
-                    file,
-                    "-type",
-                    "f",
-                    "-exec",
-                    "cat",
-                    "{}",
-                    "+",
-                    ">",
-                    "/dev/null," "&",
-                ],
+                command,
                 stdout=sys.stdout,
                 stderr=sys.stderr,
+                shell=True,
                 universal_newlines=True,
             )
         except (OSError, ValueError) as e:
