@@ -1,17 +1,7 @@
-fairscale
-fire
-sentencepiece
-accelerate
-appdirs
-loralib
-black
-black[jupyter]
 datasets
-peft
-transformers>=4.34.1
-sentencepiece
-py7zr
-scipy
-optimum
-matplotlib
+PyYAML==6.0.2
+streamflow @ git+https://github.com/alpha-unito/streamflow@master
+torch
+transformers
+wheel
 wandb
