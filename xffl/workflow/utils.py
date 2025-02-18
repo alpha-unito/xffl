@@ -30,7 +30,7 @@ CWL_TYPE_MAPPING: Final[MappingProxyType[Any, str]] = MappingProxyType(
 
 
 def from_args_to_cwl(
-    parser: argparse.ArgumentParser, arguments: List[str], start_position: int = 0
+    parser: argparse.ArgumentParser, arguments: List[str]
 ) -> Tuple[
     MutableMapping[str, Any], MutableMapping[str, str], MutableMapping[str, Any]
 ]:
@@ -40,8 +40,6 @@ def from_args_to_cwl(
     :type parser: argparse.ArgumentParser
     :param arguments: Command line arguments
     :type arguments: List[str]
-    :param start_position: Starting number for the enumeration of arguments, defaults to 0
-    :type start_position: int, optional
     :raises (argparse.ArgumentError, argparse.ArgumentTypeError): Argument parsering exceptions
     :return: Three dictionaries with the arguments name as keys and different values: CWL input bidding, CWL type, CWL value
     :rtype: Tuple[MutableMapping[str, Any], MutableMapping[str, str], MutableMapping[str, Any]]
@@ -57,7 +55,7 @@ def from_args_to_cwl(
         raise e
 
     # Itarate over the parser's declared arguments and compile the three dictionaries
-    for position, action in enumerate(parser._actions, start=start_position):
+    for action in parser._actions:
         if not isinstance(action, _HelpAction):
             # Convert the action attributes into useful parameter informations
             input = get_param_name(action.option_strings, parser.prefix_chars)
@@ -71,10 +69,7 @@ def from_args_to_cwl(
                     "type": cwl_type + ("" if required else "?"),
                 } | (
                     {
-                        "inputBinding": {
-                            "position": position,
-                            "prefix": get_param_flag(action.option_strings),
-                        }
+                        "prefix": get_param_flag(action.option_strings),
                     }
                     if input != "workspace"
                     else {}

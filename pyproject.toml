@@ -47,7 +47,7 @@ classifiers = [
 dependencies = [
     "datasets",
     "PyYAML==6.0.2",
-    "streamflow==0.2.0.dev11",
+    "streamflow @ git+https://github.com/alpha-unito/streamflow@master", 
     "torch",
     "transformers",
     "wheel",
@@ -79,3 +79,6 @@ packages = [
 [tool.setuptools.package-data]
 "xffl.workflow.scripts" = ["*.sh"]
 "xffl.workflow.scripts.facilities" = ["*.sh"]
+
+[tool.isort]
+profile = "black"

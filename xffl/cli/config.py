@@ -230,7 +230,6 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
             arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
                 parser=executable_parser_module.parser,  # TODO: the name "parser" is hardcoded
                 arguments=args.arguments,
-                start_position=training_cwl.position,
             )
         except Exception as e:
             raise e

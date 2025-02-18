@@ -89,6 +89,14 @@ run_parser.add_argument(
 )
 
 run_parser.add_argument(
+    "-o",
+    "--outdir",
+    help="Output directory",
+    type=str,
+    default=None,
+)
+
+run_parser.add_argument(
     "--quiet", help="Only prints results, warnings and errors", action="store_true"
 )
 
