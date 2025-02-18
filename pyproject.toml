@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xffl"
-version = "v0.1.0"
 description = "Cross-Facility Federated Learning"
 keywords = ["federated learning", "cross facility", "cross-facility", "hpc", "cloud", "workflow", "streamflow"]
 
@@ -43,16 +42,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: System :: Distributed Computing"
 ]
-
-dependencies = [
-    "datasets",
-    "PyYAML==6.0.2",
-    "streamflow @ git+https://github.com/alpha-unito/streamflow@master", 
-    "torch",
-    "transformers",
-    "wheel",
-    "wandb"
-]
+dynamic = ["dependencies", "optional-dependencies", "version"]
 
 [project.scripts]
 xffl = "xffl.cli.cli:run"
@@ -75,6 +65,13 @@ packages = [
     "xffl.workflow.scripts.facilities",
     "xffl.workflow.templates",
 ]
+
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
+version = {attr = "xffl.utils.constants.VERSION"}
+
+[tool.setuptools.dynamic.optional-dependencies]
+lint = {file = "lint-requirements.txt"}
 
 [tool.setuptools.package-data]
 "xffl.workflow.scripts" = ["*.sh"]

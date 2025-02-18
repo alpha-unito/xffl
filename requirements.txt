@@ -1,0 +1,7 @@
+datasets
+PyYAML==6.0.2
+streamflow @ git+https://github.com/alpha-unito/streamflow@master
+torch
+transformers
+wheel
+wandb
