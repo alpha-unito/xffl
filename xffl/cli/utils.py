@@ -46,7 +46,7 @@ def check_default_value(
         )
 
 
-def check_cli_arguments(  # TODO: add checks on Path, File and Folder objects so that is not done elsewhere
+def check_cli_arguments(
     args: argparse.Namespace, parser: argparse.ArgumentParser
 ) -> SimpleNamespace:
     """Checks which cli arguments have the default value and expands relative path into absolte ones
@@ -119,7 +119,7 @@ def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
 
 
 def check_and_create_workdir(
-    workdir_path: FolderLike, project_name: PathLike  # TODO: Project name str or path?
+    workdir_path: FolderLike, project_name: PathLike
 ) -> FolderLike:
     """Checks the working directory path, the project name, and created the project folder accordingly
 

@@ -31,7 +31,7 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
+def config(args: argparse.Namespace) -> None:
     """Gathers from the user all the necessary parameters to generate a valid StreamFlow file for xFFL
 
     :param args: Command line arguments
@@ -212,9 +212,6 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
             is_local_path=False,
         )
 
-        # TODO: output-dir?
-        # TODO: add user interation to the script argument values
-
         # Command line arguments extraction from user's parser arguments
         logger.debug(
             f"Dinamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
@@ -228,7 +225,7 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
             )
 
             arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-                parser=executable_parser_module.parser,  # TODO: the name "parser" is hardcoded
+                parser=executable_parser_module.parser,
                 arguments=args.arguments,
             )
         except Exception as e:
@@ -321,7 +318,6 @@ def config(args: argparse.Namespace) -> None:  # TODO: check exceptions raised
         os.path.join(DEFAULT_xFFL_DIR, "workflow", "scripts"),
         os.path.join(workdir, "cwl", "scripts"),
     )
-    # TODO: remove aggregation_script when docker image will be used
     os.makedirs(os.path.join(workdir, "cwl", "py_scripts"))
     shutil.copy(
         os.path.join(

@@ -63,7 +63,7 @@ def from_args_to_cwl(
             required = action.required
 
             # Model does not need to be added to the configurations, it is handled separately
-            if input not in ("model", "dataset"):  # TODO: add workspace?
+            if input not in ("model", "dataset"):
                 # Argument name to CWL input bidding format
                 arg_to_bidding[input] = {
                     "type": cwl_type + ("" if required else "?"),

@@ -46,7 +46,6 @@ class Workflow(ABC):
 
     def __init__(self):
         """Creates a new Workflow instance with empty cwl data"""
-        # todo: change mutablemapping to cwl_utils objs (PR #3)
         self.cwl: cwl.Process = type(self).get_default_definition()
 
     @classmethod
