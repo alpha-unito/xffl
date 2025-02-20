@@ -1,11 +1,10 @@
-"""LLaMA-3.1 training example script
+"""LLM training example script
 
 Inspired from llama-recipes' finetuning.py script: 
 https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetuning.py
 """
 
 import argparse
-import functools
 import os
 import sys
 import time
@@ -19,25 +18,24 @@ from torch.distributed.fsdp import (
     FullyShardedDataParallel,
     MixedPrecision,
     ShardingStrategy,
-    wrap,
 )
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoModelForCausalLM, LlamaForCausalLM, default_data_collator
-from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+from transformers import AutoModelForCausalLM, default_data_collator
 from wandb.wandb_run import Run
 
 from datasets import Dataset, DatasetDict
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging
+from xffl.custom import MODELS, DATASETS
 
 logger: Logger = getLogger(__name__)
 """Deafult xFFL logger"""
 
 
-def pretraining(args: argparse.Namespace) -> None:
-    """Pre-training script for LLaMA-3.1
+def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
+    """LLM pre-training script
 
     This is not considered finetuning since no parameter reduction/quantization technique is applied
 
@@ -63,7 +61,7 @@ def pretraining(args: argparse.Namespace) -> None:
     # PyTorch's distributed backend setup
     rank, local_rank, world_size = distributed.setup_distributed_process_group()
     if local_rank == 0:  # Large data preloading
-        utils.preload([args.model])
+        utils.preload([model_info.path])
     if torch.distributed.is_initialized():
         if rank == 0:
             logger.debug(
@@ -86,20 +84,19 @@ def pretraining(args: argparse.Namespace) -> None:
         project="xFFL",
         group=args.wandb_name,
         name=f"client_{rank}",
-        notes="LLaMA-3.1 8B pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
-        tags=["xFFL", "LLaMA", "clean_mc4_it"],
+        notes=f"{args.model_name} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
+        tags=["xFFL", f"{args.model_name}", "clean_mc4_it"],
         mode=(
             args.wandb_mode if args.wandb else "disabled"
         ),  # Set to "disable" to execute without wandb
         config=args,
     )
 
-    # LLaMA loading from saved model
+    # LLM loading from saved model
     start_time = time.perf_counter()
-    model_name: str = os.path.basename(args.model)
-    model: LlamaForCausalLM = (
+    model: AutoModelForCausalLM = (
         AutoModelForCausalLM.from_pretrained(  # Configuration is automatically loaded from the JSON file inside the model folder
-            pretrained_model_name_or_path=args.model,
+            pretrained_model_name_or_path=model_info.path,
             use_cache=False,
             # output_loading_info=True #TODO: to add to verbose mode
             local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
@@ -110,18 +107,13 @@ def pretraining(args: argparse.Namespace) -> None:
         )
     )
 
-    # Activation checkpointing 2.69s/it ENTRAMBI: 3.11s/it
-    # utils.set_activation_checkpointing(
-    #    model=model, layer=LlamaDecoderLayer
-    # )  # This can also be called aftes FSDP specifying the layer to wrap (e.g., LlamaDecoderLayer)
-
     # Print model's weights
     if rank == 0:
         logger.debug(
             f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
         logger.debug(
-            f"Training {model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
+            f"Training {args.model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
 
     # FSDP setup
@@ -129,10 +121,7 @@ def pretraining(args: argparse.Namespace) -> None:
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=model,
         sharding_strategy=ShardingStrategy.FULL_SHARD,  # TODO: Enable HybridShard and HSDP
-        auto_wrap_policy=functools.partial(
-            wrap.transformer_auto_wrap_policy,
-            transformer_layer_cls={LlamaDecoderLayer},
-        ),
+        auto_wrap_policy=model_info.wrapping_policy,
         device_id=torch.cuda.current_device(),
         forward_prefetch=True,  # 2.50s/it
         limit_all_gathers=False,  # 2.50s/it
@@ -150,7 +139,7 @@ def pretraining(args: argparse.Namespace) -> None:
 
     # Activation checkpointing 2.51s/it
     utils.set_activation_checkpointing(
-        model=model, layer=LlamaDecoderLayer
+        model=model, layer=model_info.decoder_layer
     )  # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
 
     if rank == 0:
@@ -161,11 +150,7 @@ def pretraining(args: argparse.Namespace) -> None:
     # Dataset loading
     start_time = time.perf_counter()
     datasets: Dict[str, Union[Dataset, DatasetDict]] = data.load_datasets_from_disk(
-        paths={
-            # todo: hardcoded paths?
-            "train": os.path.join(args.dataset, "train"),
-            "val": os.path.join(args.dataset, "val"),
-        }
+        splits=dataset_info.splits, base_path=dataset_info.path
     )  # Original LLaMA training packs the datasets
     if rank == 0:
         logger.debug(
@@ -266,7 +251,14 @@ def main():
     """Argument parsing and training launch"""
 
     try:
-        pretraining(parser.parse_args(sys.argv[1:]))
+        args = parser.parse_args(sys.argv[1:])
+        pretraining(
+            args=args,
+            model_info=MODELS[args.model_name](path=args.model_path),
+            dataset_info=DATASETS[args.dataset_name](path=args.dataset_path),
+        )
+    except KeyboardInterrupt as e:
+        logger.exception(e)
     except Exception as e:
         logger.exception(e)
 

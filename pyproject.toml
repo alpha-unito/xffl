@@ -58,6 +58,8 @@ packages = [
     "xffl",
     "xffl.cli",
     "xffl.custom",
+    "xffl.custom.models",
+    "xffl.custom.datasets",
     "xffl.learning",
     "xffl.utils",
     "xffl.workflow",
