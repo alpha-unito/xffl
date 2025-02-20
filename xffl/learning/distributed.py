@@ -3,8 +3,10 @@
 import os
 from logging import Logger, getLogger
 from typing import Optional, Tuple
+from datetime import timedelta
 
 import torch.distributed as dist
+from torch.distributed import ProcessGroupNCCL
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -38,17 +40,23 @@ def setup_distributed_process_group(
     local_rank = int(os.environ.get("LOCAL_RANK")) if not local_rank else local_rank
     world_size = int(os.environ.get("WORLD_SIZE")) if not world_size else world_size
 
+    options = ProcessGroupNCCL.Options()
+    options.is_high_priority_stream = True
+    options._timeout = timedelta(seconds=60)
+
     # Requires MASTER_ADDR and MASTER_PORT environmental variables to be set
     logger.debug(
         f"Setting up process with global rank {rank}, local rank {local_rank} and world size {world_size} through {backend}"
     )
-    dist.init_process_group(backend=backend, world_size=world_size, rank=rank)
+    dist.init_process_group(
+        backend=backend,
+        world_size=world_size,
+        rank=rank,
+        pg_options=options,
+        timeout=timedelta(seconds=60),
+    )
 
-    return (
-        rank,
-        local_rank,
-        world_size,
-    )  # TODO: Verify with PyTorch methods the effective rank assignment
+    return rank, local_rank, world_size
 
 
 def cleanup_distributed_process_group() -> None:
@@ -56,4 +64,10 @@ def cleanup_distributed_process_group() -> None:
 
     To be called AFTER the various processes have completed their work and by ALL processes
     """
-    dist.destroy_process_group()
+    import time
+
+    # dist.barrier()
+    rank = dist.get_rank()
+    logger.debug(f"[RANK {rank}] calls destroy_process_group")
+
+    dist.destroy_process_group(dist.GroupMember.WORLD)
