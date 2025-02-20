@@ -69,6 +69,10 @@ def pretraining(args: argparse.Namespace) -> None:
             logger.debug(
                 f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
             )
+            init_device: torch.DeviceObjType = torch.device("cpu")
+        else:
+            init_device: torch.DeviceObjType = torch.device("meta")
+
         if torch.cuda.is_available():
             utils.setup_gpu(local_rank)
             if rank == 0:
@@ -101,6 +105,8 @@ def pretraining(args: argparse.Namespace) -> None:
             local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
             attn_implementation=args.attention,
             torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
+            device_map=init_device,
+            use_safetensors=True,
         )
     )
 
@@ -135,6 +141,10 @@ def pretraining(args: argparse.Namespace) -> None:
             reduce_dtype=default_precision,
             buffer_dtype=default_precision,
             cast_forward_inputs=True,
+        ),
+        sync_module_states=True,
+        param_init_fn=lambda module: module.to_empty(
+            device=torch.cuda.current_device(), recurse=False
         ),
     )
 
@@ -257,8 +267,8 @@ def main():
 
     try:
         pretraining(parser.parse_args(sys.argv[1:]))
-    except KeyboardInterrupt:
-        logger.exception("Unexpected keyboard interrupt")
+    except Exception as e:
+        logger.exception(e)
 
 
 if __name__ == "__main__":
