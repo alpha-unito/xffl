@@ -44,7 +44,11 @@ def setup_distributed_process_group(
     )
     dist.init_process_group(backend=backend, world_size=world_size, rank=rank)
 
-    return rank, local_rank, world_size
+    return (
+        rank,
+        local_rank,
+        world_size,
+    )  # TODO: Verify with PyTorch methods the effective rank assignment
 
 
 def cleanup_distributed_process_group() -> None:
