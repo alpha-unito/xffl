@@ -5,6 +5,7 @@ The custom xFFL argument parser is essentially a Python standard ArgumentParser,
 
 import argparse
 
+from xffl.custom import DATASETS, MODELS
 from xffl.custom.types import FolderLike
 
 
@@ -30,10 +31,12 @@ class ArgumentParser(argparse.ArgumentParser):
         """Creates a new instance of the xFFL argument parser
 
         The returned parser is an instance of the standard argparse.ArgumentParser with a few already added arguments, necessary for the xFFL inner workings:
-            -m/--model      Path to the model's folder
-            -d/--dataset    Path to the dataset's folder
-            -w/--workspace  Path to the folder containing the necessary Python scripts to run the training
-            -o/--output Path to the model saving folder
+            -mn/--model-name      Model's name
+            -mp/--model-path      Path to the model's folder
+            -dn/--dataset-name    Dataset's name
+            -dp/--dataset-path    Path to the dataset's folder
+            -w/--workspace        Path to the folder containing the necessary Python scripts to run the training
+            -o/--output           Path to the model saving folder
         """
         super().__init__(
             prog,
@@ -52,19 +55,39 @@ class ArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
-            "-m",
-            "--model",
+            "-mp",
+            "--model-path",
             help="Path to the model's folder",
             type=FolderLike,
             default=None,
         )
 
         self.add_argument(
-            "-d",
-            "--dataset",
+            "-mn",
+            "--model-name",
+            help="Model's name",
+            type=str,
+            default=None,
+            required=True,
+            choices=list(MODELS.keys()),
+        )
+
+        self.add_argument(
+            "-dp",
+            "--dataset-path",
             help="Path to the dataset's folder",
             type=FolderLike,
             default=None,
+        )
+
+        self.add_argument(
+            "-dn",
+            "--dataset-name",
+            help="Dataset's name",
+            type=str,
+            default=None,
+            required=True,
+            choices=list(DATASETS.keys()),
         )
 
         self.add_argument(
