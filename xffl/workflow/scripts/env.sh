@@ -5,16 +5,14 @@
 # We extract this information from the SLURM runtime environment through srun, but an equivalent setting is obtained through mpirun (mpi equivalent variables are indicated in comments)
 Derive_env () {
 
-    if [ "${XFFL_FACILITY}" = "local" ] ; then
+    export ROLE_NAME="default"
+    export MASTER_PORT=29500
+
+    if [ "${XFFL_SIMULATION}" = "true" ] ; then
         export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # We assume an equal allocation
         export WORLD_SIZE=$XFFL_WORLD_SIZE		 					
         export GROUP_WORLD_SIZE=$XFFL_NUM_NODES				
         export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE 						
-        export ROLE_NAME="default"
-
-        # RANKs are set in the facilitator
-
-        export MASTER_PORT=29500
 
     elif command -v srun > /dev/null ; then # Check SLURM
         if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
@@ -25,16 +23,13 @@ Derive_env () {
         export WORLD_SIZE=$SLURM_NTASKS			 					# OMPI_COMM_WORLD_SIZE
         export GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES				# OMPI_MCA_orte_num_nodes 
         export ROLE_WORLD_SIZE=$SLURM_NTASKS 						# OMPI_COMM_WORLD_SIZE
-        export ROLE_NAME="default"
 
         export LOCAL_RANK=$SLURM_LOCALID 							# OMPI_COMM_WORLD_LOCAL_RANK
         export RANK=$SLURM_PROCID 									# OMPI_COMM_WORLD_RANK
         export ROLE_RANK=$RANK										# $OMPI_COMM_WORLD_RANK
         export GROUP_RANK=$(( RANK / SLURM_NTASKS_PER_NODE ))
         
-
         export MASTER_ADDR=$SLURM_SRUN_COMM_HOST
-        export MASTER_PORT=29500
     fi
 
     return 0
@@ -42,7 +37,7 @@ Derive_env () {
 
 # Due to PyTorch's aggressive thread policy OMP_NUM_THREADS should be manually set to the number of actually available cores (by default PyTorch would spawn a thread for each processor's core)
 Limit_PyTorch_threads () {
-    if [ "${XFFL_FACILITY}" = "local" ] ; then
+    if [ "${XFFL_SIMULATION}" = "true" ] ; then
 	    export OMP_NUM_THREADS=$(( $(nproc) / LOCAL_WORLD_SIZE ))
     elif command -v srun > /dev/null ; then # Check SLURM
         export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -54,7 +49,7 @@ Limit_PyTorch_threads () {
 # To agevolate PyTorch's FSDP hybrid sharding is fundamental that each process knows how many other processes are allocated on the same machine (i.e., the number of local GPUs), so that inter-node sharding and inter-node replication is handled correctly
 # This is necessary since each process is run on only 1GPU, and some SLURM installation do not reset correctly the CUDA_VISIBLE_DEVICES variable
 Reset_visible_devices () {
-    if [ "${XFFL_FACILITY}" = "local" ] ; then
+    if [ "${XFFL_SIMULATION}" = "true" ] ; then
         VISIBLE_DEVICES=$( seq -s , 0 $(( 4 - 1 )) )
     elif command -v srun > /dev/null ; then # Check SLURM
         VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # TODO: change SLURM_GPUS_PER_NODE for cloud environments

@@ -137,6 +137,14 @@ simulate_parser.add_argument(
     default=os.getcwd(),
 )
 
+simulate_parser.add_argument(
+    "-f",
+    "--facility",
+    help="Facility's name",
+    type=str,
+    default=None,
+)
+
 virtualisation_group = simulate_parser.add_mutually_exclusive_group()
 
 virtualisation_group.add_argument(
