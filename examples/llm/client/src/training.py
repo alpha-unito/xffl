@@ -25,9 +25,9 @@ from transformers import AutoModelForCausalLM, default_data_collator
 from wandb.wandb_run import Run
 
 from datasets import Dataset, DatasetDict
+from xffl.custom import DATASETS, MODELS
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging
-from xffl.custom import MODELS, DATASETS
 
 logger: Logger = getLogger(__name__)
 """Deafult xFFL logger"""
@@ -42,9 +42,8 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     :type args: argparse.Namespace
     """
 
-    setup_time = time.perf_counter()
-
     # Set the requested logging level
+    setup_time = time.perf_counter()
     setup_logging(log_level=args.loglevel)
 
     # The whole training is done in bfloat16
@@ -56,9 +55,11 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         generator = utils.set_deterministic_execution(args.seed)
         logger.info(f"RNGs seed set to: {args.seed}")
 
-    start_time = time.perf_counter()
     # PyTorch's distributed backend setup
-    rank, local_rank, world_size = distributed.setup_distributed_process_group()
+    start_time = time.perf_counter()
+    rank, local_rank, world_size, device_mesh = (
+        distributed.setup_distributed_process_group(hsdp=args.hsdp)
+    )
     if local_rank == 0:  # Large data preloading
         utils.preload([model_info.path])
     if torch.distributed.is_initialized():
@@ -115,11 +116,15 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
             f"Training {args.model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
 
-    # FSDP setup
+    # FSDP/HSDP setup
     start_time = time.perf_counter()
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=model,
-        sharding_strategy=ShardingStrategy.FULL_SHARD,  # TODO: Enable HybridShard and HSDP
+        sharding_strategy=(
+            ShardingStrategy.HYBRID_SHARD
+            if device_mesh
+            else ShardingStrategy.FULL_SHARD
+        ),
         auto_wrap_policy=model_info.wrapping_policy,
         device_id=torch.cuda.current_device(),
         forward_prefetch=True,  # 2.50s/it
@@ -134,6 +139,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         param_init_fn=lambda module: module.to_empty(
             device=torch.cuda.current_device(), recurse=False
         ),
+        device_mesh=device_mesh,
     )
 
     # Activation checkpointing 2.51s/it
