@@ -20,7 +20,7 @@ def setup_logging(log_level: int = logging.INFO):
         force=True,
     )
 
-    set_external_loggers()
+    # set_external_loggers()
 
 
 def get_default_handler(log_level: int = logging.INFO) -> logging.StreamHandler:

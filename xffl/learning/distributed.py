@@ -77,38 +77,27 @@ def setup_distributed_process_group(
     )
 
     # 2D device mesh creation for HSDP - Sharding intra-group, replicating inter-groups
-    mesh = None
+    mesh: DeviceMesh = None
     if hsdp:
-        local_world_size: int = (
-            int(os.environ.get("LOCAL_WORLD_SIZE"))
-            if not local_world_size
-            else local_world_size
-        )
-        if local_world_size != hsdp:
-            logger.warning(
-                f"Specified HSDP replica group size {hsdp} differs from retrieved local world size {local_world_size}"
-            )
+        group_world_size: int = world_size // hsdp
 
-        group_world_size: int = (
-            int(os.environ.get("GROUP_WORLD_SIZE"))
-            if not group_world_size
-            else group_world_size
-        )
-
-        if hsdp * group_world_size == world_size:
-            logger.debug(
-                f"Setting up HSDP device mesh with local world size {local_world_size} and group world size {group_world_size}"
-            )
-            mesh: DeviceMesh = init_device_mesh(
+        if group_world_size > 0 and world_size % hsdp == 0:
+            if rank == 0:
+                logger.debug(
+                    f"Setting up HSDP device mesh with replica group size {hsdp} and group world size {group_world_size}"
+                )
+            mesh = init_device_mesh(
                 device_type="cuda",
-                mesh_shape=[group_world_size, local_world_size],
+                mesh_shape=[group_world_size, hsdp],
                 mesh_dim_names=["replica", "shard"],
             )
-            logger.debug(f"Obtained HSDP mesh: {mesh}")
+            if rank == 0:
+                logger.debug(f"Obtained HSDP mesh: {mesh}")
         else:
-            logger.error(
-                f"Impossible setting up HSDP device mesh with local world size {hsdp} and group world size {group_world_size}: world size is not divisible by local world size into the requested group number."
-            )
+            if rank == 0:
+                logger.error(
+                    f"Impossible setting up HSDP device mesh with replica group size {hsdp} and group world size {group_world_size}: world size is not divisible by local world size into the requested group number.\nFalling back to FSDP."
+                )
 
     return rank, local_rank, world_size, mesh
 
@@ -121,7 +110,7 @@ def cleanup_distributed_process_group() -> None:
     import time
 
     # dist.barrier()
-    rank = dist.get_rank()
-    logger.debug(f"[RANK {rank}] calls destroy_process_group")
+    rank: int = dist.get_rank()
+    logger.debug(f"Rank {rank} calls destroy_process_group")
 
     dist.destroy_process_group(dist.GroupMember.WORLD)
