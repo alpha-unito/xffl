@@ -55,7 +55,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     rank, local_rank, world_size, device_mesh = (
-        distributed.setup_distributed_process_group(hsdp=args.hsdp, backend="gloo")
+        distributed.setup_distributed_process_group(hsdp=args.hsdp)
     )
     if rank == 0 and torch.distributed.is_initialized():
         logger.debug(
