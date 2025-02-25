@@ -4,6 +4,8 @@ import logging
 
 from xffl.custom.parser import ArgumentParser
 
+# ADD EPOCH PARAMETER
+
 ### Argument parser
 parser = ArgumentParser(
     prog="Cross-Facility Federated Learning (xFFL) - LLM example",
@@ -27,6 +29,14 @@ parser.add_argument(
     help="Random execution seed (for reproducibility purposes)",
     type=int,
     default=None,
+)
+
+parser.add_argument(
+    "-e",
+    "--epoch",
+    help="Number of training epochs",
+    type=int,
+    default=1,
 )
 
 parser.add_argument(

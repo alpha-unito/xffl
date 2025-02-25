@@ -6,7 +6,6 @@ from logging import Logger, getLogger
 from typing import Literal, Optional, Tuple
 
 import torch.distributed as dist
-from torch.distributed import ProcessGroupNCCL
 from torch.distributed.device_mesh import DeviceMesh, init_device_mesh
 
 logger: Logger = getLogger(__name__)
@@ -17,7 +16,6 @@ def setup_distributed_process_group(
     rank: Optional[int] = None,
     local_rank: Optional[int] = None,
     world_size: Optional[int] = None,
-    local_world_size: Optional[int] = None,
     group_world_size: Optional[int] = None,
     backend: Optional[Literal["nccl", "gloo", "mpi"]] = "nccl",
     hsdp: Optional[int] = 0,
@@ -35,8 +33,6 @@ def setup_distributed_process_group(
     :type local_rank: Optional[int], optional
     :param world_size: Global world size, otherwise obtained from the environment, defaults to None
     :type world_size: Optional[int], optional
-    :param local_world_size: Local world size, otherwise obtained from the environment, defaults to None
-    :type local_world_size: Optional[int], optional
     :param group_world_size: Group world size, otherwise obtained from the environment, defaults to None
     :type group_world_size: Optional[int], optional
     :param backend: Communication backend to be used, defaults to "nccl" (distributed GPU training)
@@ -60,13 +56,13 @@ def setup_distributed_process_group(
         int(os.environ.get("WORLD_SIZE")) if not world_size else world_size
     )
 
-    options = ProcessGroupNCCL.Options()
-    options.is_high_priority_stream = True
-    options._timeout = timedelta(seconds=60)
-
-    options = ProcessGroupNCCL.Options()
-    options.is_high_priority_stream = True
-    options._timeout = timedelta(seconds=60)
+    options = None
+    if backend=="nccl":
+        from torch.distributed import ProcessGroupNCCL
+        
+        options = ProcessGroupNCCL.Options()
+        options.is_high_priority_stream = True
+        options._timeout = timedelta(seconds=60)
 
     # Requires MASTER_ADDR and MASTER_PORT environmental variables to be set
     logger.debug(
