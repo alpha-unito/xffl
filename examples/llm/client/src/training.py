@@ -238,7 +238,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         wandb_run=wandb_run,
         save_path=args.output,
         output_model_name=args.output_model,
-        epochs=args.epoch,
+        epochs=args.epochs,
     )
 
     if rank == 0:
