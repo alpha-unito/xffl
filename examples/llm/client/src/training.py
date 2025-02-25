@@ -12,6 +12,7 @@ from parser import parser
 from typing import Dict, Union
 
 import torch
+import torch._dynamo
 import wandb
 from torch.distributed.fsdp import (
     FullyShardedDataParallel,
@@ -25,9 +26,9 @@ from transformers import AutoModelForCausalLM, default_data_collator
 from wandb.wandb_run import Run
 
 from datasets import Dataset, DatasetDict
+from xffl.custom import DATASETS, MODELS
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging
-from xffl.custom import MODELS, DATASETS
 
 logger: Logger = getLogger(__name__)
 """Deafult xFFL logger"""
@@ -41,42 +42,37 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     :param args: Command-line arguments
     :type args: argparse.Namespace
     """
+    torch._dynamo.config.suppress_errors = True
 
     setup_time = time.perf_counter()
 
     # Set the requested logging level
     setup_logging(log_level=args.loglevel)
 
-    # The whole training is done in bfloat16
-    default_precision: torch.dtype = torch.bfloat16
-
     # Sets RNGs seeds and force PyTorch's deterinistic execution
     generator: torch.Generator = None
     if args.seed:
-        generator = utils.set_deterministic_execution(args.seed)
-        logger.info(f"RNGs seed set to: {args.seed}")
+        generator = utils.set_deterministic_execution(seed=args.seed)
 
-    start_time = time.perf_counter()
     # PyTorch's distributed backend setup
-    rank, local_rank, world_size = distributed.setup_distributed_process_group()
-    if local_rank == 0:  # Large data preloading
-        utils.preload([model_info.path])
-    if torch.distributed.is_initialized():
-        if rank == 0:
-            logger.debug(
-                f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
-            )
-            init_device: torch.DeviceObjType = torch.device("cpu")
-        else:
-            init_device: torch.DeviceObjType = torch.device("meta")
+    start_time = time.perf_counter()
+    rank, local_rank, world_size, device_mesh = (
+        distributed.setup_distributed_process_group(hsdp=args.hsdp)
+    )
+    if rank == 0 and torch.distributed.is_initialized():
+        logger.debug(
+            f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
+        )
 
-        if torch.cuda.is_available():
-            utils.setup_gpu(local_rank)
-            if rank == 0:
-                logger.info(f"Assigned GPUs to ranks and GPUs cache cleared")
-            logger.debug(
-                f"Rank {rank} located on local GPU {torch.cuda.current_device()}"
-            )
+    # Large data preloading in background
+    if local_rank == 0:
+        utils.preload(files=[model_info.path])
+
+    # Devices setup
+    if torch.cuda.is_available():
+        current_device, init_device = utils.setup_devices(
+            rank=rank, local_rank=local_rank
+        )
 
     # WandB setup
     wandb_run: Run = wandb.init(  # Default entity
@@ -90,6 +86,9 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         ),  # Set to "disable" to execute without wandb
         config=args,
     )
+
+    # The whole training is done in bfloat16
+    default_precision: torch.dtype = torch.bfloat16
 
     # LLM loading from saved model
     start_time = time.perf_counter()
@@ -114,16 +113,24 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         logger.debug(
             f"Training {args.model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
+        if device_mesh:
+            logger.debug(f"Activating HYBRID_SHARD strategy")
+        else:
+            logger.debug(f"Activating FULL_SHARD sharding strategy")
 
-    # FSDP setup
+    # FSDP/HSDP setup
     start_time = time.perf_counter()
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=model,
-        sharding_strategy=ShardingStrategy.FULL_SHARD,  # TODO: Enable HybridShard and HSDP
+        sharding_strategy=(
+            ShardingStrategy.HYBRID_SHARD
+            if device_mesh
+            else ShardingStrategy.FULL_SHARD
+        ),
         auto_wrap_policy=model_info.wrapping_policy,
-        device_id=torch.cuda.current_device(),
-        forward_prefetch=True,  # 2.50s/it
-        limit_all_gathers=False,  # 2.50s/it
+        device_id=current_device,
+        forward_prefetch=True,
+        limit_all_gathers=False,
         mixed_precision=MixedPrecision(
             param_dtype=default_precision,
             reduce_dtype=default_precision,
@@ -132,11 +139,12 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         ),
         sync_module_states=True,
         param_init_fn=lambda module: module.to_empty(
-            device=torch.cuda.current_device(), recurse=False
+            device=current_device, recurse=False
         ),
+        device_mesh=device_mesh,
     )
 
-    # Activation checkpointing 2.51s/it
+    # Activation checkpointing
     utils.set_activation_checkpointing(
         model=model, layer=model_info.decoder_layer
     )  # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
@@ -156,15 +164,11 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
             f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
-    # No memory pinning and non_blocking: 2.49s/it
-    # Memory pinning and non_blocking: 2.49s/it
-
     # Dataloaders creation
     start_time = time.perf_counter()
     dataloaders: Dict[str, DataLoader] = {}
-    for split in ["train", "val"]:
+    for split in dataset_info.splits:
 
-        # Subsampling
         if args.subsampling:
             datasets[split] = datasets[split].select(list(range(0, args.subsampling)))
 
@@ -184,7 +188,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
                 seed=args.seed if args.seed else None,
                 drop_last=True,
             ),
-            num_workers=args.workers,  # 1: 2.47s/it #2: 2.46s/it # 4: 2.46s/it
+            num_workers=args.workers,
             collate_fn=default_data_collator,
             pin_memory=True,
             drop_last=True,
@@ -208,9 +212,9 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         params=model.parameters(),
         lr=args.learning_rate,
         weight_decay=args.weight_decay,
-        # No optimisation 2.51s/it
-        # foreach=True,  # Optimizes performances but uses more memory # 2.51s/it
-        # fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16 # 2.48s/it
+        # No optimisation
+        # foreach=True,  # Optimizes performances but uses more memory
+        # fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
     scheduler: lr_scheduler.StepLR = lr_scheduler.StepLR(
         optimizer=optimizer, step_size=args.step_size, gamma=args.gamma
@@ -234,6 +238,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         wandb_run=wandb_run,
         save_path=args.output,
         output_model_name=args.output_model,
+        epochs=args.epochs,
     )
 
     if rank == 0:

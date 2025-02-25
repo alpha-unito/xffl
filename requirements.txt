@@ -2,7 +2,7 @@ accelerate>=0.26.0
 datasets
 PyYAML==6.0.2
 streamflow @ git+https://github.com/alpha-unito/streamflow@master
-torch
+torch>=2.2
 transformers
 wheel
 wandb

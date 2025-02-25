@@ -35,6 +35,8 @@ def set_deterministic_execution(seed: int) -> torch.Generator:
     :return: PyTorch RNG
     :rtype: torch.Generator
     """
+    logger.debug(f"Setting RNGs seed to {seed}")
+
     random.seed(seed)
     numpy.random.seed(seed)
     generator = torch.manual_seed(seed)
@@ -52,21 +54,36 @@ def set_deterministic_execution(seed: int) -> torch.Generator:
 
 def set_nondeterministic_execution() -> None:
     """Deactivate deterministic execution and deterministic memory filling to improve performance"""
+    logger.debug(f"Setting PyTorch deterministic execution")
     torch.utils.deterministic.fill_uninitialized_memory = False
     torch.use_deterministic_algorithms(mode=False)
 
 
-def setup_gpu(rank: Optional[int] = None) -> None:
+def setup_devices(rank: Optional[int] = None, local_rank: Optional[int] = None) -> None:
     """PyTorch GPU setup
 
     Sets the GPU for the current process and empties its cache
     If None defaults to "cuda"
 
-    :param rank: Rank of the current process (local rank for multi-node trainings), defaults to None
+    :param rank: Global rank of the current process (local rank for multi-node trainings), defaults to None
     :type rank: Optional[int], optional
+    :param local_rank: Logal ank of the current process (local rank for multi-node trainings), defaults to None
+    :type local_rank: Optional[int], optional
     """
-    torch.cuda.set_device(rank if rank is not None else "cuda")
+    torch.cuda.set_device(local_rank if local_rank is not None else "cuda")
     torch.cuda.empty_cache()
+
+    init_device: torch.DeviceObjType = torch.device(
+        "cpu"
+        if local_rank == 0
+        else "meta"  # TODO: in case of multi-node HSDP replica group, should this be local_group_rank==0?
+    )
+
+    logger.debug(
+        f"Rank {rank} assigned to local GPU {local_rank} and initialisation device set to {init_device}"
+    )
+
+    return torch.cuda.current_device(), init_device
 
 
 def get_model_size(model: nn.Module) -> int:

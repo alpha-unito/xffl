@@ -16,4 +16,4 @@ class clean_mc4_it:
             "val": "val",
         }
     )
-    path: FolderLike = "/path/to/llama/model"
+    path: FolderLike = "/path/to/clean_mc4_it/dataset"

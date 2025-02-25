@@ -1,4 +1,4 @@
-"""Command line argument parser for the xFFL-LLaMA example"""
+"""Command line argument parser for the xFFL-LLM example"""
 
 import logging
 
@@ -6,8 +6,8 @@ from xffl.custom.parser import ArgumentParser
 
 ### Argument parser
 parser = ArgumentParser(
-    prog="Cross-Facility Federated Learning (xFFL) - LLaMA example",
-    description="This xFFL example pre-trains a LLaMA-3.1 8B model on multiple HPC infrastructures.",
+    prog="Cross-Facility Federated Learning (xFFL) - LLM example",
+    description="This xFFL example pre-trains an LLM on multiple HPC infrastructures.",
 )
 
 parser.add_argument(
@@ -27,6 +27,14 @@ parser.add_argument(
     help="Random execution seed (for reproducibility purposes)",
     type=int,
     default=None,
+)
+
+parser.add_argument(
+    "-e",
+    "--epochs",
+    help="Number of training epochs",
+    type=int,
+    default=1,
 )
 
 parser.add_argument(
@@ -127,5 +135,13 @@ parser.add_argument(
     "--output-model",
     help="Saved model name",
     type=str,
+    default=None,
+)
+
+parser.add_argument(
+    "-hsdp",
+    "--hsdp",
+    help="Enable Hybrid Sharding Data Parallel (HSDP) with the specified replica group size",
+    type=int,
     default=None,
 )
