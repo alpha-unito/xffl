@@ -35,6 +35,7 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
             "XFFL_NUM_NODES": "num_nodes",
             "MASTER_ADDR": "masteraddr",
             "VENV": "venv",
+            "XFFL_FACILITY": "facility"
         }
     elif args.image:
         logger.debug(f"Using container image: {args.venv}")
@@ -46,13 +47,14 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
             "XFFL_NUM_NODES": "num_nodes",
             "MASTER_ADDR": "masteraddr",
             "IMAGE": "image",
+            "XFFL_FACILITY": "facility"
         }
     else:
         raise ValueError("No execution environment specified [container/virtual env]")
 
     # Creating new environment variables based on the provided mapping
     env = setup_env(args=vars(args), mapping=env_mapping)
-    env["XFFL_FACILITY"] = "local"
+    env["XFFL_SIMULATION"] = "true"
 
     # New environment created - debug logging
     logger.debug(f"New local simulation xFFL environment variables: {env}")
@@ -75,7 +77,6 @@ def simulate(
     args = check_cli_arguments(args=args, parser=simulate_parser)
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
-    args
 
     # Environment creation
     try:

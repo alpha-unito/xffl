@@ -64,6 +64,10 @@ def setup_distributed_process_group(
     options.is_high_priority_stream = True
     options._timeout = timedelta(seconds=60)
 
+    options = ProcessGroupNCCL.Options()
+    options.is_high_priority_stream = True
+    options._timeout = timedelta(seconds=60)
+
     # Requires MASTER_ADDR and MASTER_PORT environmental variables to be set
     logger.debug(
         f"Setting up process with global rank {rank}, local rank {local_rank} and world size {world_size} through {backend}"

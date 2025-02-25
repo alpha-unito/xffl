@@ -17,7 +17,9 @@ Limit_PyTorch_threads
 Reset_visible_devices
 LLaMA_default_env
 Gpu_detection
-Container_platform_detection
+if [ ! -n "$VENV" ] ; then
+	Container_platform_detection
+fi
 
 # Set specific facility env variables
 XFFL_FACILITY_SCRIPT="${XFFL_SCRIPTS_FOLDER}/facilities/${XFFL_FACILITY}.sh"
@@ -32,8 +34,13 @@ if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then
 fi
 
 # Local simulation
-if [ "${XFFL_FACILITY}" = "local" ] ; then
+if [ "${XFFL_SIMULATION}" = "true" ] ; then
 	pids=()
+
+	if [ -n "${VENV}" ] ; then
+		source ${VENV}
+	fi
+
 	for _RANK in $( seq $(( XFFL_NODEID * LOCAL_WORLD_SIZE )) 1 $(( XFFL_NODEID * LOCAL_WORLD_SIZE + LOCAL_WORLD_SIZE - 1 )) ) ; do
 		RANK=$_RANK
 		LOCAL_RANK=$(( _RANK % LOCAL_WORLD_SIZE ))
@@ -42,12 +49,10 @@ if [ "${XFFL_FACILITY}" = "local" ] ; then
 
 		XFFL_RANKS="RANK=$RANK LOCAL_RANK=$LOCAL_RANK ROLE_RANK=$ROLE_RANK GROUP_RANK=$GROUP_RANK"
 		XFFL_TASKSET="taskset --cpu-list "$(( LOCAL_RANK * OMP_NUM_THREADS ))"-"$(( LOCAL_RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
-		XFFL_RUN="xffl/workflow/scripts/run.sh"
 
 		# Python virtual environment
 		if [ -n "$VENV" ] ; then
-			source "${VENV}"
-			COMMAND="$(pip show xffl | grep Location | awk '{print $2}')/${XFFL_RUN}"
+			COMMAND="${XFFL_SCRIPTS_FOLDER}/run.sh"
 		else
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
@@ -58,7 +63,7 @@ if [ "${XFFL_FACILITY}" = "local" ] ; then
 				--home /code/ \
 				$GPU_FLAG \
 				${XFFL_IMAGE} \
-				/code/${XFFL_RUN}"
+				/code/xffl/workflow/scripts/run.sh"
 		fi
 
 		# Run the local simulation process

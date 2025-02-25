@@ -6,7 +6,7 @@
 
 EXECUTABLE=$1; shift
 
-if [ "${XFFL_FACILITY}" = "local" ] ; then
+if [ "${XFFL_SIMULATION}" = "true" ] ; then
 	if [ -n "${VENV}" ] ; then
 		COMMAND="python ${EXECUTABLE} $*"
 		eval "$COMMAND"
