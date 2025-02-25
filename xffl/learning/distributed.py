@@ -16,7 +16,6 @@ def setup_distributed_process_group(
     rank: Optional[int] = None,
     local_rank: Optional[int] = None,
     world_size: Optional[int] = None,
-    group_world_size: Optional[int] = None,
     backend: Optional[Literal["nccl", "gloo", "mpi"]] = "nccl",
     hsdp: Optional[int] = 0,
 ) -> Tuple[int, int, int, Optional[DeviceMesh]]:
@@ -33,8 +32,6 @@ def setup_distributed_process_group(
     :type local_rank: Optional[int], optional
     :param world_size: Global world size, otherwise obtained from the environment, defaults to None
     :type world_size: Optional[int], optional
-    :param group_world_size: Group world size, otherwise obtained from the environment, defaults to None
-    :type group_world_size: Optional[int], optional
     :param backend: Communication backend to be used, defaults to "nccl" (distributed GPU training)
     :type backend: Optional[Literal["nccl", "gloo", "mpi"]], optional
     :param hsdp: Activate Hybrid Sharding Distributed Parallelism with specified replica group size, defaults to 0
@@ -43,11 +40,6 @@ def setup_distributed_process_group(
     :return: Rank and local rank of the calling process and global world size
     :rtype: Tuple[int, int, int, Optional[DeviceMesh]]
     """
-
-    if backend not in ["nccl", "gloo", "mpi"]:
-        logger.error(f"Specified backend not in [nccl, gloo, mpi]")
-        raise AttributeError(f"Specified backend not in [nccl, gloo, mpi]")
-
     rank: int = int(os.environ.get("RANK")) if not rank else rank
     local_rank: int = (
         int(os.environ.get("LOCAL_RANK")) if not local_rank else local_rank
@@ -57,9 +49,9 @@ def setup_distributed_process_group(
     )
 
     options = None
-    if backend=="nccl":
+    if backend == "nccl":
         from torch.distributed import ProcessGroupNCCL
-        
+
         options = ProcessGroupNCCL.Options()
         options.is_high_priority_stream = True
         options._timeout = timedelta(seconds=60)
@@ -107,9 +99,6 @@ def cleanup_distributed_process_group() -> None:
 
     To be called AFTER the various processes have completed their work and by ALL processes
     """
-    import time
-
-    # dist.barrier()
     rank: int = dist.get_rank()
     logger.debug(f"Rank {rank} calls destroy_process_group")
 

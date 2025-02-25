@@ -12,6 +12,7 @@ from parser import parser
 from typing import Dict, Union
 
 import torch
+import torch._dynamo
 import wandb
 from torch.distributed.fsdp import (
     FullyShardedDataParallel,
@@ -41,6 +42,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     :param args: Command-line arguments
     :type args: argparse.Namespace
     """
+    torch._dynamo.config.suppress_errors = True
 
     setup_time = time.perf_counter()
 
@@ -236,7 +238,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         wandb_run=wandb_run,
         save_path=args.output,
         output_model_name=args.output_model,
-        epochs=args.epoch
+        epochs=args.epoch,
     )
 
     if rank == 0:

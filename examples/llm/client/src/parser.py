@@ -4,8 +4,6 @@ import logging
 
 from xffl.custom.parser import ArgumentParser
 
-# ADD EPOCH PARAMETER
-
 ### Argument parser
 parser = ArgumentParser(
     prog="Cross-Facility Federated Learning (xFFL) - LLM example",

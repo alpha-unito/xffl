@@ -73,7 +73,11 @@ def setup_devices(rank: Optional[int] = None, local_rank: Optional[int] = None) 
     torch.cuda.set_device(local_rank if local_rank is not None else "cuda")
     torch.cuda.empty_cache()
 
-    init_device: torch.DeviceObjType = torch.device("cpu" if rank == 0 else "meta")
+    init_device: torch.DeviceObjType = torch.device(
+        "cpu"
+        if local_rank == 0
+        else "meta"  # TODO: in case of multi-node HSDP replica group, should this be local_group_rank==0?
+    )
 
     logger.debug(
         f"Rank {rank} assigned to local GPU {local_rank} and initialisation device set to {init_device}"
