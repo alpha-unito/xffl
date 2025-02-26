@@ -12,7 +12,6 @@ from parser import parser
 from typing import Dict, Union
 
 import torch
-import torch._dynamo
 import wandb
 from torch.distributed.fsdp import (
     FullyShardedDataParallel,
@@ -54,8 +53,10 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
-    rank, local_rank, world_size, device_mesh = (
-        distributed.setup_distributed_process_group(hsdp=args.hsdp)
+    rank, local_rank, world_size, device_mesh, federated_groups = (
+        distributed.setup_distributed_process_group(
+            hsdp=args.hsdp, federated=args.federated_scaling
+        )
     )
     if rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -237,6 +238,8 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         save_path=args.output,
         output_model_name=args.output_model,
         epochs=args.epochs,
+        federated_groups=federated_groups,
+        federated_span=args.federated_span,
     )
 
     if rank == 0:

@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 import torch
 import torch.distributed as dist
 from torch import nn
+from torch.distributed.distributed_c10d import ProcessGroup
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
@@ -14,6 +15,7 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
+from xffl.learning.distributed import federated_averaging
 from xffl.learning.modelling import save_FSDP_model
 
 logger: Logger = getLogger(__name__)
@@ -28,6 +30,8 @@ def fsdp_training(
     rank: int,
     local_rank: int,
     world_size: int,
+    federated_groups: Optional[List[ProcessGroup]] = None,
+    federated_span: Optional[int] = 0,
     validate: bool = True,
     epochs: int = 1,
     save_path: Optional[PathLike] = None,
@@ -52,6 +56,10 @@ def fsdp_training(
     :type local_rank: int
     :param world_size: World size of the processes taking part to the FSDP training
     :type world_size: int
+    :param federated_groups: List of process group to run federated scaling on
+    :type federated_groups: Optional[List[ProcessGroup]]
+    :param federated_span: Number of training batched to process between two federated averaging
+    :type federated_span: Optional[int]
     :param validate: Activate validation, defaults to True
     :type validate: bool, optional
     :param epochs: Number of epochs to train, defaults to 1
@@ -111,7 +119,7 @@ def fsdp_training(
             train_step_perplexity.append(float(torch.exp(loss.detach().float())))
 
             loss.backward()
-            optimizer.step()
+            optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
             pbar.update(1)
 
@@ -125,9 +133,42 @@ def fsdp_training(
                 )
 
             pbar.set_description(
-                f"Training Epoch: {epoch+1}/{epochs}, step {step}/{len(train_dataloader)} completed (loss: {loss.detach().float()})"
+                f"Training Epoch: {epoch+1}/{epochs}, step {step}/{len(train_dataloader)} completed (loss: {loss.detach().float():.4f})"
             )
 
+            if (
+                federated_groups
+                and step != 0
+                and federated_span != 0
+                and step % federated_span == 0
+            ):
+                federated_averaging(
+                    model=model,
+                    federated_groups=federated_groups,
+                    local_rank=local_rank,
+                )
+
+            # if local_rank == 0:
+            #    for parameter in model.named_parameters():
+            #        logger.warning(parameter)
+            #        break
+            # if local_rank == 1:
+            #    for parameter in model.named_parameters():
+            #        logger.error(parameter)
+            #        break
+            # if local_rank == 2:
+            #    for parameter in model.named_parameters():
+            #        logger.debug(parameter)
+            #        break
+            # if local_rank == 3:
+            #    for parameter in model.named_parameters():
+            #        logger.info(parameter)
+            #        break
+
+        if federated_groups:
+            federated_averaging(
+                model=model, federated_groups=federated_groups, local_rank=local_rank
+            )
         pbar.close()
 
         epoch_end_time = time.perf_counter() - epoch_start_time

@@ -145,3 +145,15 @@ parser.add_argument(
     type=int,
     default=None,
 )
+
+parser.add_argument(
+    "-fs", "--federated-scaling", help="Federated scaling", action="store_true"
+)
+
+parser.add_argument(
+    "-fspan",
+    "--federated-span",
+    help="Number of training batched to process between two federated averaging",
+    type=int,
+    default=0,
+)
