@@ -6,7 +6,7 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy
 import torch
@@ -19,6 +19,7 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
 from transformers import PreTrainedModel
 
 from xffl.custom.types import PathLike
+from xffl.learning.distributed import DistributedState
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -59,28 +60,37 @@ def set_nondeterministic_execution() -> None:
     torch.use_deterministic_algorithms(mode=False)
 
 
-def setup_devices(rank: Optional[int] = None, local_rank: Optional[int] = None) -> None:
-    """PyTorch GPU setup
+def setup_devices(
+    state: DistributedState,
+) -> Tuple[torch.DeviceObjType, torch.DeviceObjType]:
+    """PyTorch device setup
 
     Sets the GPU for the current process and empties its cache
-    If None defaults to "cuda"
+    Also, returns the best initialisation device to load large model distributely with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
 
-    :param rank: Global rank of the current process (local rank for multi-node trainings), defaults to None
-    :type rank: Optional[int], optional
-    :param local_rank: Logal ank of the current process (local rank for multi-node trainings), defaults to None
-    :type local_rank: Optional[int], optional
+    :param state: Instantiated distributed state
+    :type state: DistributedState
+    :return: Two devices, one for computation and the other for model loading
+    :rtype: Tuple[torch.DeviceObjType, torch.DeviceObjType]
     """
-    torch.cuda.set_device(local_rank if local_rank is not None else "cuda")
+
+    device: str = (
+        (state.group_local_rank if state.group_local_rank is not None else "cuda")
+        if torch.cuda.is_available()
+        else "cpu"
+    )
+
+    torch.cuda.set_device(device)
     torch.cuda.empty_cache()
 
-    init_device: torch.DeviceObjType = torch.device(
-        "cpu"
-        if local_rank == 0
-        else "meta"  # TODO: in case of multi-node HSDP replica group, should this be local_group_rank==0?
+    init_device: torch.DeviceObjType = (
+        torch.device("cpu" if state.replica_local_rank == 0 else "meta")
+        if torch.distributed.is_initialized()
+        else torch.cuda.current_device()
     )
 
     logger.debug(
-        f"Rank {rank} assigned to local GPU {local_rank} and initialisation device set to {init_device}"
+        f"[Rank {state.rank}] assigned to local device {device} and initialisation device set to {init_device}"
     )
 
     return torch.cuda.current_device(), init_device

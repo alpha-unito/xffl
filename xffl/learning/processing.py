@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Tuple
 import torch
 import torch.distributed as dist
 from torch import nn
-from torch.distributed.distributed_c10d import ProcessGroup
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
@@ -15,22 +14,19 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.learning.distributed import federated_averaging
+from xffl.learning.distributed import DistributedState, federated_averaging
 from xffl.learning.modelling import save_FSDP_model
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def fsdp_training(
+def distributed_training(
     model: nn.Module,
     optimizer: Optimizer,
     train_dataloader: DataLoader,
     eval_dataloader: DataLoader,
-    rank: int,
-    local_rank: int,
-    world_size: int,
-    federated_groups: Optional[List[ProcessGroup]] = None,
+    state: DistributedState,
     federated_span: Optional[int] = 0,
     validate: bool = True,
     epochs: int = 1,
@@ -50,14 +46,8 @@ def fsdp_training(
     :type train_dataloader: DataLoader
     :param eval_dataloader: Validation dataset data loader
     :type eval_dataloader: DataLoader
-    :param rank: Global rank of the calling process
-    :type rank: int
-    :param local_rank: Local rank of the calling process
-    :type local_rank: int
-    :param world_size: World size of the processes taking part to the FSDP training
-    :type world_size: int
-    :param federated_groups: List of process group to run federated scaling on
-    :type federated_groups: Optional[List[ProcessGroup]]
+    :param state: Instantiated distributed state
+    :type state: DistributedState
     :param federated_span: Number of training batched to process between two federated averaging
     :type federated_span: Optional[int]
     :param validate: Activate validation, defaults to True
@@ -66,14 +56,12 @@ def fsdp_training(
     :type epochs: int, optional
     :param save_path: Path where to save the trained model, defaults to None
     :type save_path: Optional[PathLike], optional
-    :param model_name: Name to use for the saved trained model, defaults to None
-    :type model_name: Optional[str], optional
+    :param output_model_name: Name to use for the saved trained model, defaults to None
+    :type output_model_name: Optional[str], optional
     :param lr_scheduler: Learning rate scheduler, defaults to None
     :type lr_scheduler: Optional[LRScheduler], optional
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
     :type wandb_run: Optional[wandb.Run], optional
-    :param precision: Precision to use for PyTorch's automatic mixed precision context manager, defaults to None
-    :type precision: Optional[torch.dtype], optional
     :param verbose: Enable verbose output, defaults to None
     :type verbose: Optional[bool], optional
     :return: Dictionary of metrics names and achieved values
@@ -111,7 +99,9 @@ def fsdp_training(
         )
         for step, batch in enumerate(train_dataloader):
             for key in batch.keys():
-                batch[key] = batch[key].to(device=local_rank, non_blocking=True)
+                batch[key] = batch[key].to(
+                    device=torch.cuda.current_device(), non_blocking=True
+                )
             loss = model(**batch).loss
 
             total_loss += loss.detach().float()
@@ -123,7 +113,7 @@ def fsdp_training(
             optimizer.zero_grad()
             pbar.update(1)
 
-            if wandb_run and rank == 0:
+            if wandb_run and state.rank == 0:
                 wandb_run.log(
                     {
                         "train/epoch": epoch + 1,
@@ -137,38 +127,15 @@ def fsdp_training(
             )
 
             if (
-                federated_groups
+                state.federated_mesh
                 and step != 0
                 and federated_span != 0
                 and step % federated_span == 0
             ):
-                federated_averaging(
-                    model=model,
-                    federated_groups=federated_groups,
-                    local_rank=local_rank,
-                )
+                federated_averaging(model=model, state=state)
 
-            # if local_rank == 0:
-            #    for parameter in model.named_parameters():
-            #        logger.warning(parameter)
-            #        break
-            # if local_rank == 1:
-            #    for parameter in model.named_parameters():
-            #        logger.error(parameter)
-            #        break
-            # if local_rank == 2:
-            #    for parameter in model.named_parameters():
-            #        logger.debug(parameter)
-            #        break
-            # if local_rank == 3:
-            #    for parameter in model.named_parameters():
-            #        logger.info(parameter)
-            #        break
-
-        if federated_groups:
-            federated_averaging(
-                model=model, federated_groups=federated_groups, local_rank=local_rank
-            )
+        if state.federated_mesh:
+            federated_averaging(model=model, state=state)
         pbar.close()
 
         epoch_end_time = time.perf_counter() - epoch_start_time
@@ -177,7 +144,7 @@ def fsdp_training(
         if torch.cuda.device_count():
             dist.all_reduce(total_loss, op=dist.ReduceOp.SUM)
 
-        train_epoch_loss = (total_loss / len(train_dataloader)) / world_size
+        train_epoch_loss = (total_loss / len(train_dataloader)) / state.world_size
         train_perplexity = torch.exp(train_epoch_loss)
 
         train_prep.append(float(train_perplexity))
@@ -189,7 +156,10 @@ def fsdp_training(
         if validate:
             eval_ppl, eval_epoch_loss, temp_val_loss, temp_step_perplexity = (
                 fsdp_evaluation(
-                    model, eval_dataloader, local_rank, world_size, wandb_run
+                    model=model,
+                    eval_dataloader=eval_dataloader,
+                    state=state,
+                    wandb_run=wandb_run,
                 )
             )
 
@@ -203,7 +173,7 @@ def fsdp_training(
                     optimizer=optimizer,
                     path=save_path,
                     name=output_model_name,
-                    rank=rank,
+                    rank=state.rank,
                     epoch=epoch,
                 )
                 # TODO: possible barrier?
@@ -212,12 +182,12 @@ def fsdp_training(
 
             if eval_epoch_loss < best_val_loss:
                 best_val_loss = eval_epoch_loss
-                if verbose and rank == 0:
+                if verbose and state.rank == 0:
                     logger.info(f"best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(best_val_loss))
             val_prep.append(float(eval_ppl))
 
-        if rank == 0:
+        if state.rank == 0:
             logger.info(
                 f"Epoch {epoch+1}: train_perplexity={train_perplexity:.4f}, train_epoch_loss={train_epoch_loss:.4f}, epoch time {epoch_end_time}s"
             )
@@ -243,8 +213,7 @@ def fsdp_training(
 def fsdp_evaluation(
     model: nn.Module,
     eval_dataloader: DataLoader,
-    local_rank: int,
-    world_size: int,
+    state: DistributedState,
     wandb_run: Optional[Run] = None,
 ) -> Tuple[float, float, List[float], List[float]]:
     """Genreric evaluation cycle for FSDP models
@@ -253,10 +222,8 @@ def fsdp_evaluation(
     :type model: nn.Module
     :param eval_dataloader: Validation dataset data loader
     :type eval_dataloader: DataLoader
-    :param local_rank: Local rank of the calling process
-    :type local_rank: int
-    :param world_size: World size of the processes taking part to the FSDP training
-    :type world_size: int
+    :param state: Instantiated distributed state
+    :type state: DistributedState
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
     :type wandb_run: Optional[wandb.Run], optional
     :return: perplexity, epoch loss, step loff, step perplexity
@@ -275,7 +242,9 @@ def fsdp_evaluation(
         )
     ):
         for key in batch.keys():
-            batch[key] = batch[key].to(device=f"cuda:{local_rank}", non_blocking=True)
+            batch[key] = batch[key].to(
+                device=torch.cuda.current_device(), non_blocking=True
+            )
 
         with torch.no_grad():
             outputs = model(**batch)
@@ -289,10 +258,10 @@ def fsdp_evaluation(
         dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
 
     eval_epoch_loss = eval_loss / len(eval_dataloader)
-    eval_epoch_loss = eval_epoch_loss / world_size
+    eval_epoch_loss = eval_epoch_loss / state.world_size
     eval_ppl = torch.exp(eval_epoch_loss)
 
-    if local_rank == 0:
+    if state.group_local_rank == 0:
         logger.info(f" {eval_ppl=} {eval_epoch_loss=}")
 
     if wandb_run:

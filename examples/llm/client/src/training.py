@@ -1,6 +1,6 @@
 """LLM training example script
 
-Inspired from llama-recipes' finetuning.py script: 
+Inspired from llama-recipes' finetuning.py script:
 https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetuning.py
 """
 
@@ -27,6 +27,7 @@ from wandb.wandb_run import Run
 from datasets import Dataset, DatasetDict
 from xffl.custom import DATASETS, MODELS
 from xffl.learning import data, distributed, processing, utils
+from xffl.learning.distributed import DistributedState
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -53,31 +54,26 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
-    rank, local_rank, world_size, device_mesh, federated_groups = (
-        distributed.setup_distributed_process_group(
-            hsdp=args.hsdp, federated=args.federated_scaling
-        )
+    state: DistributedState = distributed.setup_distributed_process_group(
+        hsdp=args.hsdp, federated=args.federated_scaling
     )
-    if rank == 0 and torch.distributed.is_initialized():
+    if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
             f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
     # Large data preloading in background
-    if local_rank == 0:
+    if state.group_local_rank == 0:
         utils.preload(files=[model_info.path])
 
     # Devices setup
-    if torch.cuda.is_available():
-        current_device, init_device = utils.setup_devices(
-            rank=rank, local_rank=local_rank
-        )
+    current_device, init_device = utils.setup_devices(state=state)
 
     # WandB setup
     wandb_run: Run = wandb.init(  # Default entity
         project="xFFL",
         group=args.wandb_name,
-        name=f"client_{rank}",
+        name=f"client_{state.rank}",
         notes=f"{args.model_name} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
         tags=["xFFL", f"{args.model_name}", "clean_mc4_it"],
         mode=(
@@ -105,14 +101,14 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     )
 
     # Print model's weights
-    if rank == 0:
+    if state.rank == 0:
         logger.debug(
             f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
         logger.debug(
             f"Training {args.model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
-        if device_mesh:
+        if state.device_mesh:
             logger.debug(f"Activating HYBRID_SHARD strategy")
         else:
             logger.debug(f"Activating FULL_SHARD sharding strategy")
@@ -123,7 +119,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         module=model,
         sharding_strategy=(
             ShardingStrategy.HYBRID_SHARD
-            if device_mesh
+            if state.device_mesh
             else ShardingStrategy.FULL_SHARD
         ),
         auto_wrap_policy=model_info.wrapping_policy,
@@ -140,7 +136,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         param_init_fn=lambda module: module.to_empty(
             device=current_device, recurse=False
         ),
-        device_mesh=device_mesh,
+        device_mesh=state.device_mesh,
     )
 
     # Activation checkpointing
@@ -148,7 +144,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         model=model, layer=model_info.decoder_layer
     )  # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
 
-    if rank == 0:
+    if state.rank == 0:
         logger.debug(
             f"FSDP wrapping setup time: {(time.perf_counter() - start_time):.2f} seconds"
         )
@@ -158,7 +154,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     datasets: Dict[str, Union[Dataset, DatasetDict]] = data.load_datasets_from_disk(
         splits=dataset_info.splits, base_path=dataset_info.path
     )  # Original LLaMA training packs the datasets
-    if rank == 0:
+    if state.rank == 0:
         logger.debug(
             f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
@@ -171,7 +167,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         if args.subsampling:
             datasets[split] = datasets[split].select(list(range(0, args.subsampling)))
 
-        if rank == 0:
+        if state.rank == 0:
             logger.debug(f"{split} set size: {len(datasets[split])} samples")
 
         dataloaders[split] = DataLoader(
@@ -181,8 +177,8 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
             ),
             sampler=DistributedSampler(
                 dataset=datasets[split],
-                num_replicas=world_size,
-                rank=rank,
+                num_replicas=state.world_size,
+                rank=state.rank,
                 shuffle=split == "train",
                 seed=args.seed if args.seed else None,
                 drop_last=True,
@@ -197,11 +193,11 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
             generator=generator if args.seed else None,  # Necessary for reproducibility
         )
 
-        if rank == 0:
+        if state.rank == 0:
             logger.debug(
                 f"{split} dataloader size: {len(dataloaders[split])} minibatches"
             )
-    if rank == 0:
+    if state.rank == 0:
         logger.debug(
             f"Dataloaders creation time: {(time.perf_counter() - start_time):.2f} seconds"
         )
@@ -219,37 +215,34 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         optimizer=optimizer, step_size=args.step_size, gamma=args.gamma
     )
 
-    if rank == 0:
+    if state.rank == 0:
         logger.debug(
             f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds"
         )
 
     # Main training function
-    results = processing.fsdp_training(
+    results = processing.distributed_training(
         model=model,
+        state=state,
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
         eval_dataloader=dataloaders["val"],
-        rank=rank,
-        local_rank=local_rank,
-        world_size=world_size,
         lr_scheduler=scheduler,
         wandb_run=wandb_run,
         save_path=args.output,
         output_model_name=args.output_model,
         epochs=args.epochs,
-        federated_groups=federated_groups,
         federated_span=args.federated_span,
     )
 
-    if rank == 0:
+    if state.rank == 0:
         [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
         if args.wandb:
             for k, v in results.items():
                 wandb_run.summary[k] = v
 
     # PyTorch's distributed backend cleanup
-    distributed.cleanup_distributed_process_group()
+    distributed.cleanup_distributed_process_group(state=state)
 
 
 def main():

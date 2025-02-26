@@ -2,11 +2,10 @@
 
 import os
 from logging import Logger, getLogger
-from typing import Dict, Union, Optional
+from typing import Dict, Optional, Union
 
 from datasets import Dataset, DatasetDict, load_from_disk
-
-from xffl.custom.types import PathLike, FolderLike
+from xffl.custom.types import FolderLike, PathLike
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""

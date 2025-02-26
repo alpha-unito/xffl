@@ -35,7 +35,7 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
             "XFFL_NUM_NODES": "num_nodes",
             "MASTER_ADDR": "masteraddr",
             "VENV": "venv",
-            "XFFL_FACILITY": "facility"
+            "XFFL_FACILITY": "facility",
         }
     elif args.image:
         logger.debug(f"Using container image: {args.venv}")
@@ -47,7 +47,7 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
             "XFFL_NUM_NODES": "num_nodes",
             "MASTER_ADDR": "masteraddr",
             "IMAGE": "image",
-            "XFFL_FACILITY": "facility"
+            "XFFL_FACILITY": "facility",
         }
     else:
         raise ValueError("No execution environment specified [container/virtual env]")
