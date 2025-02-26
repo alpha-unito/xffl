@@ -42,8 +42,6 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     :param args: Command-line arguments
     :type args: argparse.Namespace
     """
-    torch._dynamo.config.suppress_errors = True
-
     setup_time = time.perf_counter()
 
     # Set the requested logging level
