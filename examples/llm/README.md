@@ -35,7 +35,7 @@ source .venv/bin/activate
 pip install .
 ```
 
-Optionally, install flash attention (this example uses it by default, but the type of attention layer can be specified as a command line parameter; check the [requirements](https://pypi.org/project/flash-attn/)):
+Optionally, install flash attention (this example uses it by default, but the type of attention layer can be specified as a command line parameter; check the [requirements](https://pypi.org/project/flash-attn/))(not supported on ROCm at the time of writing):
 ```bash
 pip install flash-attn --no-build-isolation
 ```
