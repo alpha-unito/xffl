@@ -202,6 +202,8 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         )
 
     # Main training function
+    logger.debug(f"[Rank {state.rank}]: --- STARTING TRAINING ---")
+
     results = processing.distributed_training(
         model=model,
         state=state,

@@ -3,11 +3,10 @@
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional
 
 import torch
 from torch import nn
-from torch.distributed import ProcessGroup, new_group
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
@@ -31,6 +30,23 @@ def create_fsdp_model(
     mixed_precision: Optional[MixedPrecision] = None,
     meta_initialization: Optional[bool] = False,
 ) -> FullyShardedDataParallel:
+    """Creates an FSDP model
+
+    :param module: FSDP-wrapped model to be saved
+    :type module: nn.Module | AutoModelForCausalLM
+    :param state: Instantiated distributed state
+    :type state: DistributedState
+    :param model_info: Dataclass with model's information
+    :type model_info: _type_
+    :param current_device: Current device used by the module, defaults to None
+    :type current_device: Optional[torch.DeviceObjType], optional
+    :param mixed_precision: Precision to use for the module, defaults to None
+    :type mixed_precision: Optional[MixedPrecision], optional
+    :param meta_initialization: If the module uses meta devices for efficient distributed initialization, defaults to False
+    :type meta_initialization: Optional[bool], optional
+    :return: The original module wrapped by FSDP
+    :rtype: FullyShardedDataParallel
+    """
 
     device_mesh: Optional[bool] = None
     if state.federated_group:
@@ -38,11 +54,6 @@ def create_fsdp_model(
     else:
         if state.hsdp_mesh:  # TODO: Add 2D FSDP-TP parallelism support
             device_mesh = state.hsdp_mesh
-
-    if state.rank < 4:
-        import time
-
-        time.sleep(60)
 
     logger.debug(f"[Rank {state.rank}]: is calling FSDP on device mesh {device_mesh}")
     model: FullyShardedDataParallel = FullyShardedDataParallel(
@@ -61,7 +72,7 @@ def create_fsdp_model(
         ),
         device_mesh=device_mesh,
     )
-    logger.warning(f"[Rank {state.rank}]: STARTING TRAINING ---------------------")
+
     return model
 
 

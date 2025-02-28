@@ -334,11 +334,24 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
                     )
                 )
 
-                state.hsdp_mesh = DeviceMesh(
+                state.fsdp_mesh = DeviceMesh.from_group(
                     device_type=state.device,
+                    group=[
+                        create_process_group(
+                            ranks=mesh[state.federated_rank, state.replica_rank],
+                            state=state,
+                            group_desc=f"Federated sharding group #{state.federated_rank}",
+                        ),
+                        create_process_group(
+                            ranks=mesh[
+                                state.federated_rank, :, state.replica_local_rank
+                            ],
+                            state=state,
+                            group_desc=f"Federated replica group #{state.federated_rank}",
+                        ),
+                    ],
                     mesh=mesh[state.federated_rank],
                     mesh_dim_names=["replica", "shard"],
-                    _init_backend=False,
                 )
 
                 state.federated_group = create_process_group(
@@ -348,7 +361,7 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
                 )
             else:
                 mesh: torch.Tensor = create_device_mesh(
-                    (
+                    mesh_shape=(
                         state.federated_world_size,
                         state.world_size // state.federated_world_size,
                     )
@@ -392,6 +405,7 @@ def create_process_group(
     :return: Process group handle
     :rtype: ProcessGroup
     """
+    logger.debug(f"[Rank {state.rank}]: Creating process group {ranks}")
     return dist.new_group(
         ranks=ranks,
         timeout=get_timeout(),
