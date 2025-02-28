@@ -3,17 +3,66 @@
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 import torch
+from torch import nn
+from torch.distributed import ProcessGroup, new_group
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
-from torch.distributed.fsdp import FullyShardedDataParallel
+from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
+from transformers import AutoModelForCausalLM
 
 from xffl.custom.types import PathLike
+from xffl.learning.distributed import (
+    DistributedState,
+    get_appropriate_sharding_strategy,
+)
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
+
+
+def create_fsdp_model(
+    module: nn.Module | AutoModelForCausalLM,
+    state: DistributedState,
+    model_info,
+    current_device: Optional[torch.DeviceObjType] = None,
+    mixed_precision: Optional[MixedPrecision] = None,
+    meta_initialization: Optional[bool] = False,
+) -> FullyShardedDataParallel:
+
+    device_mesh: Optional[bool] = None
+    if state.federated_group:
+        device_mesh = state.hsdp_mesh if state.hsdp_mesh else state.fsdp_mesh
+    else:
+        if state.hsdp_mesh:  # TODO: Add 2D FSDP-TP parallelism support
+            device_mesh = state.hsdp_mesh
+
+    if state.rank < 4:
+        import time
+
+        time.sleep(60)
+
+    logger.debug(f"[Rank {state.rank}]: is calling FSDP on device mesh {device_mesh}")
+    model: FullyShardedDataParallel = FullyShardedDataParallel(
+        module=module,
+        sharding_strategy=get_appropriate_sharding_strategy(state=state),
+        auto_wrap_policy=model_info.wrapping_policy,
+        device_id=current_device if current_device else torch.cuda.current_device(),
+        forward_prefetch=True,
+        limit_all_gathers=False,
+        mixed_precision=mixed_precision,
+        sync_module_states=meta_initialization,
+        param_init_fn=lambda module: (
+            module.to_empty(device=current_device, recurse=False)
+            if meta_initialization
+            else None
+        ),
+        device_mesh=device_mesh,
+    )
+    logger.warning(f"[Rank {state.rank}]: STARTING TRAINING ---------------------")
+    return model
 
 
 def save_FSDP_model(

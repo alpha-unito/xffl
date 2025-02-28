@@ -83,17 +83,19 @@ def setup_devices(
     torch.cuda.set_device(device)
     torch.cuda.empty_cache()
 
+    exec_device: torch.DeviceObjType = torch.cuda.current_device()
     init_device: torch.DeviceObjType = (
         torch.device("cpu" if state.replica_local_rank == 0 else "meta")
         if torch.distributed.is_initialized()
-        else torch.cuda.current_device()
+        else exec_device
     )
+    meta_initialization: bool = exec_device != init_device
 
     logger.debug(
-        f"[Rank {state.rank}] assigned to local device {device} and initialisation device set to {init_device}"
+        f"[Rank {state.rank}]: assigned local execution device {device}, initialisation device set to {init_device}; meta initialization set to {meta_initialization}"
     )
 
-    return torch.cuda.current_device(), init_device
+    return exec_device, init_device, meta_initialization
 
 
 def get_model_size(model: nn.Module) -> int:

@@ -127,14 +127,14 @@ def distributed_training(
             )
 
             if (
-                state.federated_mesh
+                state.federated_group
                 and step != 0
                 and federated_span != 0
                 and step % federated_span == 0
             ):
                 federated_averaging(model=model, state=state)
 
-        if state.federated_mesh:
+        if state.federated_group:
             federated_averaging(model=model, state=state)
         pbar.close()
 

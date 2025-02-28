@@ -9,25 +9,19 @@ import sys
 import time
 from logging import Logger, getLogger
 from parser import parser
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import torch
 import wandb
-from torch.distributed.fsdp import (
-    FullyShardedDataParallel,
-    MixedPrecision,
-    ShardingStrategy,
-)
+from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, default_data_collator
-from wandb.wandb_run import Run
 
 from datasets import Dataset, DatasetDict
 from xffl.custom import DATASETS, MODELS
-from xffl.learning import data, distributed, processing, utils
-from xffl.learning.distributed import DistributedState
+from xffl.learning import data, distributed, modelling, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -48,13 +42,13 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     setup_logging(log_level=args.loglevel)
 
     # Sets RNGs seeds and force PyTorch's deterinistic execution
-    generator: torch.Generator = None
-    if args.seed:
-        generator = utils.set_deterministic_execution(seed=args.seed)
+    generator: Optional[torch.Generator] = (
+        utils.set_deterministic_execution(seed=args.seed) if args.seed else None
+    )
 
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
-    state: DistributedState = distributed.setup_distributed_process_group(
+    state: distributed.DistributedState = distributed.setup_distributed_process_group(
         hsdp=args.hsdp, federated=args.federated_scaling
     )
     if state.rank == 0 and torch.distributed.is_initialized():
@@ -67,10 +61,10 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         utils.preload(files=[model_info.path])
 
     # Devices setup
-    current_device, init_device = utils.setup_devices(state=state)
+    current_device, init_device, meta_initialization = utils.setup_devices(state=state)
 
     # WandB setup
-    wandb_run: Run = wandb.init(  # Default entity
+    wandb_run: wandb.wandb_run.Run = wandb.init(  # Default entity
         project="xFFL",
         group=args.wandb_name,
         name=f"client_{state.rank}",
@@ -84,6 +78,12 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
     # The whole training is done in bfloat16
     default_precision: torch.dtype = torch.bfloat16
+    mixed_precision: MixedPrecision = MixedPrecision(
+        param_dtype=default_precision,
+        reduce_dtype=default_precision,
+        buffer_dtype=default_precision,
+        cast_forward_inputs=True,
+    )
 
     # LLM loading from saved model
     start_time = time.perf_counter()
@@ -108,35 +108,16 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         logger.debug(
             f"Training {args.model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
-        if state.device_mesh:
-            logger.debug(f"Activating HYBRID_SHARD strategy")
-        else:
-            logger.debug(f"Activating FULL_SHARD sharding strategy")
 
     # FSDP/HSDP setup
     start_time = time.perf_counter()
-    model: FullyShardedDataParallel = FullyShardedDataParallel(
+    model: FullyShardedDataParallel = modelling.create_fsdp_model(
         module=model,
-        sharding_strategy=(
-            ShardingStrategy.HYBRID_SHARD
-            if state.device_mesh
-            else ShardingStrategy.FULL_SHARD
-        ),
-        auto_wrap_policy=model_info.wrapping_policy,
-        device_id=current_device,
-        forward_prefetch=True,
-        limit_all_gathers=False,
-        mixed_precision=MixedPrecision(
-            param_dtype=default_precision,
-            reduce_dtype=default_precision,
-            buffer_dtype=default_precision,
-            cast_forward_inputs=True,
-        ),
-        sync_module_states=True,
-        param_init_fn=lambda module: module.to_empty(
-            device=current_device, recurse=False
-        ),
-        device_mesh=state.device_mesh,
+        state=state,
+        model_info=model_info,
+        current_device=current_device,
+        mixed_precision=mixed_precision,
+        meta_initialization=meta_initialization,
     )
 
     # Activation checkpointing

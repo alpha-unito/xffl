@@ -1,5 +1,6 @@
 """Common distributed PyTorch utilities"""
 
+import math
 import os
 import time
 from dataclasses import dataclass
@@ -7,9 +8,12 @@ from datetime import timedelta
 from logging import Logger, getLogger
 from typing import Literal, Optional, Tuple
 
+import torch
 import torch.distributed as dist
 from torch import cuda, nn
+from torch.distributed import ProcessGroup
 from torch.distributed.device_mesh import DeviceMesh, init_device_mesh
+from torch.distributed.fsdp import ShardingStrategy
 from torch.distributed.nn.functional import all_reduce
 
 logger: Logger = getLogger(__name__)
@@ -40,16 +44,28 @@ class DistributedState:
     replica_local_rank: Optional[int] = None
     """Local rank"""
     replica_local_size: Optional[int] = None
-    """Local group size"""
+    """Local replica size"""
     replica_rank: Optional[int] = None
-    """Group rank"""
+    """Replica rank"""
     replica_world_size: Optional[int] = None
+    """Replica world size"""
+
+    # FEDERATED GROUP
+    federated_local_rank: Optional[int] = None
+    """Local rank"""
+    federated_local_size: Optional[int] = None
+    """Local group size"""
+    federated_rank: Optional[int] = None
+    """Group rank"""
+    federated_world_size: Optional[int] = None
     """Group world size"""
 
     # MESH
-    device_mesh: Optional[DeviceMesh] = None
+    fsdp_mesh: Optional[DeviceMesh] = None
+    """FSDP device mesh"""
+    hsdp_mesh: Optional[DeviceMesh] = None
     """HSDP device mesh"""
-    federated_mesh: Optional[DeviceMesh] = None
+    federated_group: Optional[ProcessGroup] = None
     """Federated scaling device mesh"""
 
     # TECHNICAL
@@ -61,6 +77,24 @@ class DistributedState:
     """Rendez-vous port"""
     device: Optional[Literal["cpu", "gpu"]] = None
     """Chosen deployment device"""
+
+
+def get_appropriate_sharding_strategy(state: DistributedState) -> ShardingStrategy:
+    """Federated averaging of corresponding model's shards on different hosts
+
+    :param state: Instantiated distributed state
+    :type state: DistributedState
+    """
+    sharding_strategy: ShardingStrategy = (
+        ShardingStrategy.HYBRID_SHARD
+        if state.hsdp_mesh
+        else ShardingStrategy.FULL_SHARD
+    )
+    logger.debug(
+        f'[Rank {state.rank}]: Activating "{sharding_strategy}" sharding strategy'
+    )
+
+    return sharding_strategy
 
 
 def federated_averaging(model: nn.Module, state: DistributedState) -> None:
@@ -76,7 +110,7 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
         all_reduce(
             tensor=param,
             op=dist.ReduceOp.AVG,  # TODO: only on NCCL?
-            group=state.federated_mesh.get_group(),
+            group=state.federated_group,
         )
     logger.debug(f"Averaging time: {(time.perf_counter() - start_time):.2f} seconds")
 
@@ -122,8 +156,8 @@ def setup_distributed_process_group(
     master_addr: Optional[str] = None,
     master_port: Optional[int] = None,
     device: Optional[Literal["cpu", "gpu"]] = None,
-    hsdp: Optional[int] = 0,
-    federated: Optional[bool] = False,
+    hsdp: Optional[int] = None,
+    federated: Optional[int] = None,
 ) -> Tuple[int, int, int, Optional[DeviceMesh]]:
     """Setup PyTorch's distributed environment
 
@@ -166,6 +200,7 @@ def setup_distributed_process_group(
     # Distributed state global information
     state.rank = rank if rank else int(os.environ.get("RANK"))
     state.world_size = world_size if world_size else int(os.environ.get("WORLD_SIZE"))
+    logger.debug(f"[Rank {state.rank}]: Setting up distributed environment")
 
     # Distributed state technical information
     state.backend = backend
@@ -199,14 +234,16 @@ def setup_distributed_process_group(
     # Basic PyTorch distributed setup
     init_distributed_process_group(state=state)
 
-    # 2D device mesh creation for HSDP - Sharding intra-group, replicating inter-groups
     if hsdp:
         state.replica_local_size = hsdp
-        setup_hsdp_mesh(state=state)
 
-    # Federated Scaling process groups - Sharding intra-group, replicating inter-groups
-    if state.device_mesh and federated:
+    if federated:
+        # Federated Scaling process groups - Sharding intra-group, replicating inter-groups
+        state.federated_local_size = federated
         setup_federated_scaling_groups(state=state)
+    elif hsdp:
+        # 2D device mesh creation for HSDP - Sharding intra-group, replicating inter-groups
+        setup_hsdp_mesh(state=state)
 
     logger.debug(f"[Rank {state.rank}]: distributed setup: {state}")
 
@@ -238,22 +275,23 @@ def setup_hsdp_mesh(state: DistributedState) -> None:
     :param state: Instantiated distributed state
     :type state: DistributedState
     """
-    state.replica_world_size = state.world_size // state.replica_local_size
-    if (
-        state.replica_world_size > 0
-        and state.world_size % state.replica_local_size == 0
-    ):
-        state.device_mesh = init_device_mesh(
+    replica_world_size: int = state.world_size // state.replica_local_size
+
+    if replica_world_size > 1 and state.world_size % state.replica_local_size == 0:
+        state.hsdp_mesh = init_device_mesh(
             device_type=state.device,
-            mesh_shape=[state.replica_world_size, state.replica_local_size],
+            mesh_shape=[replica_world_size, state.replica_local_size],
             mesh_dim_names=["replica", "shard"],
         )
+
+        state.replica_world_size = replica_world_size
         state.replica_local_rank = state.rank % state.replica_local_size
         state.replica_rank = state.rank // state.replica_local_size
     else:
         logger.error(
-            f"Impossible setting up HSDP device mesh with replica over {state.replica_local_size} processes and {state.replica_world_size} replicas: world size is not divisible by replica local size into the requested replica number.\nFalling back to standard FSDP."
+            f"Impossible setting up HSDP device mesh with replica over {state.replica_local_size} processes and {state.replica_world_size} replicas: world size is not divisible by replica local size into multiple replica groups.\nFalling back to standard FSDP."
         )
+        state.replica_local_size = None
 
 
 def setup_federated_scaling_groups(state: DistributedState) -> None:
@@ -266,30 +304,113 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
     :param state: Instantiated distributed state
     :type state: DistributedState
     """
-    state.federated_mesh = state.device_mesh["replica"]
-    # logger.debug(f"Creating federated scaling process groups...")
-    # federated_groups: List[ProcessGroup] = []
-    # federated_groups_ranks: List[int] = []
-    # for group_rank in range(hsdp):
-    #    ranks: List[int] = [
-    #        group_rank + local_rank * hsdp for local_rank in range(world_size // hsdp)
-    #    ]
+    federated_world_size = state.world_size // state.federated_local_size
 
-    #    federated_groups_ranks.append(ranks)
+    if federated_world_size > 1 and state.world_size % state.federated_local_size == 0:
+        state.federated_world_size = federated_world_size
+        state.federated_local_rank = state.rank % state.federated_local_size
+        state.federated_rank = state.rank // state.federated_local_size
 
-    #    federated_groups.append(
-    #        dist.new_group(
-    #            ranks=ranks,
-    #            timeout=get_timeout(),
-    #            backend=backend,
-    #            pg_options=get_deafult_nccl_process_group_options(),
-    #            use_local_synchronization=False,
-    #            group_desc=f"Local ranks {group_rank}",
-    #        )
-    #    )
-    # logger.debug(f"Created federated scaling process groups: {federated_groups_ranks}")
+        if state.replica_local_size:
+            replica_world_size: int = (
+                state.federated_local_size // state.replica_local_size
+            )
 
-    # return federated_groups
+            if (
+                replica_world_size > 1
+                and state.federated_world_size % state.replica_local_size == 0
+            ):
+                state.replica_world_size = replica_world_size
+                state.replica_local_rank = state.rank % state.replica_local_size
+                state.replica_rank = (
+                    state.federated_local_rank // state.replica_local_size
+                )
+
+                mesh: torch.Tensor = create_device_mesh(
+                    (
+                        state.federated_world_size,
+                        state.replica_world_size,
+                        state.replica_local_size,
+                    )
+                )
+
+                state.hsdp_mesh = DeviceMesh(
+                    device_type=state.device,
+                    mesh=mesh[state.federated_rank],
+                    mesh_dim_names=["replica", "shard"],
+                    _init_backend=False,
+                )
+
+                state.federated_group = create_process_group(
+                    ranks=mesh[:, state.replica_rank, state.replica_local_rank],
+                    state=state,
+                    group_desc=f"Federated shard averaging group #{state.federated_rank}",
+                )
+            else:
+                mesh: torch.Tensor = create_device_mesh(
+                    (
+                        state.federated_world_size,
+                        state.world_size // state.federated_world_size,
+                    )
+                )
+
+                state.fsdp_mesh = DeviceMesh.from_group(
+                    device_type=state.device,
+                    group=create_process_group(
+                        ranks=mesh[state.federated_rank],
+                        state=state,
+                        group_desc=f"Federated sharding group #{state.federated_rank}",
+                    ),
+                    mesh_dim_names=["shard"],
+                )
+
+                state.federated_group = create_process_group(
+                    ranks=mesh[:, state.federated_local_rank],
+                    state=state,
+                    group_desc=f"Federated shard averaging group #{state.federated_rank}",
+                )
+    else:
+        logger.error(
+            f"Impossible setting up Federated Scaling device mesh with {state.federated_local_size} processes per federated group: world size is not divisible by federated local size into into multiple federated groups.\nFalling back to standard HSDP."
+        )
+        state.federated_local_size = None
+
+
+def create_process_group(
+    ranks: Tuple[int, ...], group_desc: Optional[str], state: DistributedState
+) -> ProcessGroup:
+    """Creates a new process group with the specified ranks
+
+    Only the interested rank can enter this method
+
+    :param ranks: Ranks making up the group
+    :type ranks: Tuple[int, ...]
+    :param group_desc: Description of the process group
+    :type group_desc: Optional[str]
+    :param state: Instantiated distributed state
+    :type state: DistributedState
+    :return: Process group handle
+    :rtype: ProcessGroup
+    """
+    return dist.new_group(
+        ranks=ranks,
+        timeout=get_timeout(),
+        backend=state.backend,
+        pg_options=get_deafult_nccl_process_group_options(),
+        use_local_synchronization=True,
+        group_desc=group_desc,
+    )
+
+
+def create_device_mesh(mesh_shape: Tuple[int, ...]) -> torch.Tensor:
+    """Creates a Tensor of distributed process ranks with the specified dimensions
+
+    :param mesh_shape: Dimensions of the mesh
+    :type mesh_shape: Tuple[int, ...]
+    :return: Tensor of ranks
+    :rtype: torch.Tensor
+    """
+    return torch.arange(math.prod(mesh_shape), dtype=torch.int).view(mesh_shape)
 
 
 def cleanup_distributed_process_group(state: DistributedState) -> None:
