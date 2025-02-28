@@ -34,20 +34,21 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
             "XFFL_WORLD_SIZE": "world_size",
             "XFFL_NUM_NODES": "num_nodes",
             "MASTER_ADDR": "masteraddr",
+            "XFFL_FACILITY": "facility",
+            #
             "VENV": "venv",
-            "XFFL_FACILITY": "facility"
         }
-    elif args.image:
+    elif args.image:  # TODO: tmpdir setting not working?
         logger.debug(f"Using container image: {args.venv}")
         env_mapping = {
-            "CODE_FOLDER": "workdir",
-            "MODEL_FOLDER": "model",
-            "DATASET_FOLDER": "dataset",
             "XFFL_WORLD_SIZE": "world_size",
             "XFFL_NUM_NODES": "num_nodes",
             "MASTER_ADDR": "masteraddr",
-            "IMAGE": "image",
-            "XFFL_FACILITY": "facility"
+            "XFFL_FACILITY": "facility",
+            #
+            "XFFL_IMAGE": "image",
+            "XFFL_MODEL_FOLDER": "model",
+            "XFFL_DATASET_FOLDER": "dataset",
         }
     else:
         raise ValueError("No execution environment specified [container/virtual env]")
@@ -55,6 +56,9 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     # Creating new environment variables based on the provided mapping
     env = setup_env(args=vars(args), mapping=env_mapping)
     env["XFFL_SIMULATION"] = "true"
+    if args.image:
+        env["XFFL_CODE_FOLDER"] = os.path.dirname(args.executable)
+        args.executable = os.path.basename(args.executable)
 
     # New environment created - debug logging
     logger.debug(f"New local simulation xFFL environment variables: {env}")

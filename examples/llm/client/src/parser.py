@@ -54,7 +54,7 @@ parser.add_argument(
     "--wandb-name",
     help="WandB group name",
     type=str,
-    default="LLaMA-3.1 8B",
+    default="LLM",
 )
 
 parser.add_argument(

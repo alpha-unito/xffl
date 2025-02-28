@@ -25,10 +25,10 @@ python3 -m venv xFFL
 source xFFL/bin/activate
 ```
 
-Install the requirements necessary to run the StreamFlow WMS:
+Install xFFL and its requirements:
 ```bash
 cd xffl/
-python3 -m pip install -r requirements.txt
+python3 -m pip install .
 ```
 
 ### Configuration creation

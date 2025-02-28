@@ -8,7 +8,7 @@ import argparse
 import logging
 import os
 
-from xffl.custom.types import PathLike
+from xffl.custom.types import FolderLike, PathLike
 
 # Base parser
 parser = argparse.ArgumentParser(
@@ -129,13 +129,13 @@ simulate_parser.add_argument(
     default=None,
 )
 
-simulate_parser.add_argument(
-    "-w",
-    "--workdir",
-    help="Working directory path",
-    type=PathLike,
-    default=os.getcwd(),
-)
+# simulate_parser.add_argument(
+#    "-w",
+#    "--workdir",
+#    help="Working directory path",
+#    type=PathLike,
+#    default=os.getcwd(),
+# )
 
 simulate_parser.add_argument(
     "-f",
@@ -177,6 +177,22 @@ simulate_parser.add_argument(
     help="List of available computing nodes",
     nargs="+",
     default=["localhost"],
+)
+
+simulate_parser.add_argument(
+    "-m",
+    "--model",
+    help="Path to the model's folder",
+    type=FolderLike,
+    default=None,
+)
+
+simulate_parser.add_argument(
+    "-d",
+    "--dataset",
+    help="Path to the dataset's folder",
+    type=FolderLike,
+    default=None,
 )
 
 simulate_parser.add_argument(
