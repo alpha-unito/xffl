@@ -1,5 +1,4 @@
-"""Initialisation utilities for PyTorch models
-"""
+"""Initialisation utilities for PyTorch models"""
 
 import argparse
 

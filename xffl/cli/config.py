@@ -155,6 +155,25 @@ def config(args: argparse.Namespace) -> None:
         "max_rounds": num_of_iterations,
     }
 
+    # Command line arguments extraction from user's parser arguments
+    logger.debug(
+        f"Dinamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
+    )
+    try:
+        executable_parser_module = import_from_path(
+            module_name=parser_name, file_path=parser_path
+        )
+        logger.info(
+            f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
+        )
+
+        arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
+            parser=executable_parser_module.parser, arguments=args.arguments
+        )
+    except Exception as e:
+        raise e
+    training_cwl.add_inputs(facility_name=None, extra_inputs=arg_to_bidding)
+
     insert = True
     while insert:
 
@@ -213,24 +232,6 @@ def config(args: argparse.Namespace) -> None:
             is_local_path=False,
         )
 
-        # Command line arguments extraction from user's parser arguments
-        logger.debug(
-            f"Dinamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
-        )
-        try:
-            executable_parser_module = import_from_path(
-                module_name=parser_name, file_path=parser_path
-            )
-            logger.info(
-                f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
-            )
-
-            arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-                parser=executable_parser_module.parser, arguments=args.arguments
-            )
-        except Exception as e:
-            raise e
-
         # Creating CWL configuration
         logger.debug(f"CWL configuration population...")
         main_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
@@ -246,7 +247,6 @@ def config(args: argparse.Namespace) -> None:
             }
             | arg_to_value,
         )
-        training_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_bidding)
 
         # Creating StreamFlow configuration
         logger.debug(f"StreamFlow configuration population...")

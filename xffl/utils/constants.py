@@ -1,5 +1,4 @@
-"""All the constants used in xFFL should be declared and sourced from here
-"""
+"""All the constants used in xFFL should be declared and sourced from here"""
 
 import os
 from typing import Final

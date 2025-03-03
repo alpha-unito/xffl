@@ -1,8 +1,8 @@
 
 format:
-	isort xffl/ examples/
-	black xffl/ examples/
+	isort examples/ tests/ xffl/
+	black examples/ tests/ xffl/
 
 format-check:
-	isort --check-only  xffl/ examples/
-	black --diff --check xffl/ examples/
+	isort --check-only  examples/ tests/ xffl/
+	black --diff --check examples/ tests/ xffl/

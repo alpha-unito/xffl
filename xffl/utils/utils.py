@@ -1,5 +1,4 @@
-"""Utility methods exploitable in many different situations
-"""
+"""Utility methods exploitable in many different situations"""
 
 import os
 from collections.abc import Callable
@@ -50,7 +49,7 @@ def resolve_path(path: str, is_local_path: bool = True) -> str:
     :rtype: str
     """
     return str(
-        Path(os.path.expanduser(os.path.expandvars(path))).absolute()
+        Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
         if is_local_path
         else PurePath(path)
     )
@@ -76,7 +75,6 @@ def check_input(
     :return: The value inserted from the user satisfying the condition
     :rtype: str
     """
-
     condition = False
     while not condition:
         value = input(text)

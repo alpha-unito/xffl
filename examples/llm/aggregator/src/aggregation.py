@@ -1,5 +1,4 @@
-"""Aggregation utilities
-"""
+"""Aggregation utilities"""
 
 import argparse
 

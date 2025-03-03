@@ -1,14 +1,14 @@
 ../../examples/llm/client/src/training.py
 ../../examples/llm/client/src/parser.py
 parser
-/mnt/data/llama/llama3.1-8b/
+workdir/llama3-1-8b/
 new-llama
-/mnt/data/tmp
+workdir/tmp
 2
 leonardo
 login.leonardo.cineca.it
 myusername
-/home/ubuntu/.ssh/ecdsa
+workdir/ecdsa
 ../../examples/llm/client/slurm_templates/leonardo.slurm
 /leonardo_scratch/fast/PROJECT/tmp/
 /leonardo_scratch/fast/PROJECT/client.sif
@@ -17,7 +17,7 @@ y
 lumi
 lumi.csc.fi
 myotherusername
-/home/ubuntu/.ssh/id_rsa
+workdir/id_rsa
 ../../examples/llm/client/slurm_templates/lumi.slurm
 /flash/PROJECT/tmp/
 /flash/PROJECT/client.sif

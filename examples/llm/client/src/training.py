@@ -1,6 +1,6 @@
 """LLM training example script
 
-Inspired from llama-recipes' finetuning.py script: 
+Inspired from llama-recipes' finetuning.py script:
 https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetuning.py
 """
 

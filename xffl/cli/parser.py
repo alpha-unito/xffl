@@ -101,6 +101,10 @@ run_parser.add_argument(
 )
 
 run_parser.add_argument(
+    "--validate", help="Validate StreamFlow documents", action="store_true"
+)
+
+run_parser.add_argument(
     "-args",
     "--arguments",
     help="Command line arguments to be passed to the executable",
