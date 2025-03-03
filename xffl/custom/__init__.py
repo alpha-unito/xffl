@@ -1,10 +1,10 @@
 """ List of already supported models and datasets"""
 
-from typing import Final, Callable, Mapping
+from typing import Callable, Final, Mapping
 
+from .datasets.clean_mc4_it import clean_mc4_it
 from .models.llama import llama
 from .models.mixtral import mixtral
-from .datasets.clean_mc4_it import clean_mc4_it
 
 MODELS: Final[Mapping[str, Callable]] = {
     "llama3.1-8b": llama,

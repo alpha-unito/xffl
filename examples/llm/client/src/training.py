@@ -14,6 +14,7 @@ from typing import Dict, Union
 import torch
 import torch._dynamo
 import wandb
+from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import (
     FullyShardedDataParallel,
     MixedPrecision,
@@ -25,7 +26,6 @@ from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, default_data_collator
 from wandb.wandb_run import Run
 
-from datasets import Dataset, DatasetDict
 from xffl.custom import DATASETS, MODELS
 from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging

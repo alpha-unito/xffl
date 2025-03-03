@@ -177,6 +177,7 @@ def config(args: argparse.Namespace) -> None:
             lambda ssh_key: os.path.exists(ssh_key),
             is_path=True,
         )
+        # TODO: add question to data mover if it is available on the facility
 
         # SLURM template path for the facility
         # TODO: list the needed pragmas
@@ -225,8 +226,7 @@ def config(args: argparse.Namespace) -> None:
             )
 
             arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-                parser=executable_parser_module.parser,
-                arguments=args.arguments,
+                parser=executable_parser_module.parser, arguments=args.arguments
             )
         except Exception as e:
             raise e
