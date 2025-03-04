@@ -50,7 +50,7 @@ class CustomFormatter(logging.Formatter):
         :param record: Logging record
         :type record: LogRecord
         :return: Formatted logging record
-        :rtype: LogRecord
+        :rtype: str
         """
 
         formatter = logging.Formatter(self.FORMATS.get(record.levelno))
