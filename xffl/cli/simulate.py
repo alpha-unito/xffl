@@ -93,7 +93,7 @@ def simulate(
     facilitator_script = get_facilitator_path()
 
     # Launch facilitator
-    logger.info(f"Running local simulation...")
+    logger.info("Running local simulation...")
     start_time = time.perf_counter()
     try:
         processes = []

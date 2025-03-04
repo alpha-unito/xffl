@@ -33,7 +33,7 @@ parser.add_argument(
     default=logging.INFO,
 )
 
-### Subparsers ###
+# Subparsers
 subparsers = parser.add_subparsers(dest="command", help="Available xFFL subcommands")
 
 # Subcommand: config

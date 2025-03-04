@@ -1,7 +1,5 @@
 import argparse
 
-import torch
-from torch import nn
 from tqdm import tqdm
 from transformers import LlamaForCausalLM
 

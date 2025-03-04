@@ -1,4 +1,7 @@
 
+flake8:
+	flake8 examples/ tests/ xffl
+
 format:
 	isort examples/ tests/ xffl/
 	black examples/ tests/ xffl/

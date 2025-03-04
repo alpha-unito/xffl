@@ -21,7 +21,7 @@ from torch.distributed.fsdp import (
     ShardingStrategy,
 )
 from torch.optim import AdamW, lr_scheduler
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, default_data_collator
 from wandb.wandb_run import Run
@@ -112,9 +112,9 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
             f"Training {args.model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
         if device_mesh:
-            logger.debug(f"Activating HYBRID_SHARD strategy")
+            logger.debug("Activating HYBRID_SHARD strategy")
         else:
-            logger.debug(f"Activating FULL_SHARD sharding strategy")
+            logger.debug("Activating FULL_SHARD sharding strategy")
 
     # FSDP/HSDP setup
     start_time = time.perf_counter()

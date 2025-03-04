@@ -55,7 +55,7 @@ def config(args: argparse.Namespace) -> None:
         raise e
 
     # Guided StreamFlow configuration
-    logger.debug(f"Creating the StreamFlow and CWL templates")
+    logger.debug("Creating the StreamFlow and CWL templates")
     facilities = set()
 
     aggregate_cwl = AggregateStep()
@@ -64,7 +64,7 @@ def config(args: argparse.Namespace) -> None:
     round_cwl = RoundWorkflow()
     streamflow_config = StreamFlowFile()
     training_cwl = TrainingStep()
-    logger.debug(f"StreamFlow and CWL templates created")
+    logger.debug("StreamFlow and CWL templates created")
 
     cwl_config.content |= {
         "script_aggregation": {
@@ -172,6 +172,8 @@ def config(args: argparse.Namespace) -> None:
         )
     except Exception as e:
         raise e
+
+    # Populate training step
     training_cwl.add_inputs(facility_name=None, extra_inputs=arg_to_bidding)
 
     insert = True
@@ -233,7 +235,7 @@ def config(args: argparse.Namespace) -> None:
         )
 
         # Creating CWL configuration
-        logger.debug(f"CWL configuration population...")
+        logger.debug("CWL configuration population...")
         main_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
         round_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
         cwl_config.add_inputs(
@@ -249,7 +251,7 @@ def config(args: argparse.Namespace) -> None:
         )
 
         # Creating StreamFlow configuration
-        logger.debug(f"StreamFlow configuration population...")
+        logger.debug("StreamFlow configuration population...")
         streamflow_config.add_deployment(
             facility_name=facility,
             address=address,
@@ -286,13 +288,13 @@ def config(args: argparse.Namespace) -> None:
     round_cwl.update_merge_step()
 
     # YAML exportation
-    ## StreamFlow file
+    # StreamFlow file
     with open(os.path.join(workdir, "streamflow.yml"), "w") as outfile:
         yaml.dump(
             streamflow_config.save(), outfile, default_flow_style=False, sort_keys=False
         )
 
-    ## CWL files
+    # CWL files
     os.makedirs(os.path.join(workdir, "cwl", "clt"))
     with open(os.path.join(workdir, "cwl", "main.cwl"), "w") as outfile:
         outfile.write("#!/usr/bin/env cwl-runner\n")
@@ -310,10 +312,10 @@ def config(args: argparse.Namespace) -> None:
         yaml.dump(
             training_cwl.save(), outfile, default_flow_style=False, sort_keys=False
         )
-    ## CWL config file
+    # CWL config file
     with open(os.path.join(workdir, "cwl", "config.yml"), "w") as outfile:
         yaml.dump(cwl_config.save(), outfile, default_flow_style=False, sort_keys=False)
-    ## Scripts
+    # Scripts
     shutil.copytree(
         os.path.join(DEFAULT_xFFL_DIR, "workflow", "scripts"),
         os.path.join(workdir, "cwl", "scripts"),
@@ -325,8 +327,7 @@ def config(args: argparse.Namespace) -> None:
         ),
         os.path.join(workdir, "cwl", "py_scripts"),
     )
-
-    return 0
+    return
 
 
 def main(args: argparse.Namespace) -> int:
