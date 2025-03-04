@@ -81,7 +81,7 @@ def save_FSDP_model(
                 )
 
         # This is HF specific (modelling_utils.py)
-        # Saves the model (torch.save) togheter with its configuration files
+        # Saves the model (torch.save) together with its configuration files
         # so that it can be reloaded with PreTrainedModel.from_pretrained
         model.save_pretrained(
             save_directory=save_path,

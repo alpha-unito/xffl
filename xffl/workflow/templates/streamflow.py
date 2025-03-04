@@ -73,7 +73,7 @@ class StreamFlowFile(YamlConfig):
         :type step_workdir: FolderLike
         :param slurm_template: Facility's SLURM file template
         :type slurm_template: FileLike
-        :raises ValueError: If the facilty is already present in the StreamFlow configuration
+        :raises ValueError: If the facility is already present in the StreamFlow configuration
         """
         if facility_name in self.deployments.keys():
             raise ValueError(
@@ -109,7 +109,7 @@ class StreamFlowFile(YamlConfig):
         :type facility_name: str
         :param mapping: Mapping between the StreamFlow binding names and their values
         :type mapping: MutableMapping[str, str]
-        :raises ValueError: If the facilty is already present in the StreamFlow configuration
+        :raises ValueError: If the facility is already present in the StreamFlow configuration
         """
         if facility_name in self.step_bindings.keys():
             raise ValueError(

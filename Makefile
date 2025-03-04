@@ -1,3 +1,8 @@
+codespell:
+	codespell -w $(shell git ls-files)
+
+codespell-check:
+	codespell $(shell git ls-files)
 
 flake8:
 	flake8 examples/ tests/ xffl

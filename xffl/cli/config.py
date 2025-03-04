@@ -92,7 +92,7 @@ def config(args: argparse.Namespace) -> None:
     )
     parser_name = check_input(
         "\nInput the arguments parser module name: ",
-        "The name can contain letters, numbers, dashs or underscores. Moreover, it can start only with a letter or number",
+        "The name can contain letters, numbers, dashes or underscores. Moreover, it can start only with a letter or number",
         lambda x: re.match("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
 
@@ -109,7 +109,7 @@ def config(args: argparse.Namespace) -> None:
     # New model name
     new_model_name = check_input(
         "\nName of the new model: ",
-        "The name can contain letters, numbers, dashs or underscores. Moreover, it can start only with a letter or number",
+        "The name can contain letters, numbers, dashes or underscores. Moreover, it can start only with a letter or number",
         lambda x: re.match("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
 
@@ -157,7 +157,7 @@ def config(args: argparse.Namespace) -> None:
 
     # Command line arguments extraction from user's parser arguments
     logger.debug(
-        f"Dinamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
+        f"Dynamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
     )
     try:
         executable_parser_module = import_from_path(

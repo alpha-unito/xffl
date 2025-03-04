@@ -15,7 +15,7 @@ def main(args: argparse.Namespace) -> None:  # TODO: allow more aggregation stra
     :param args: Command line arguments
     :type args: argparse.Namespace
     """
-    print("Starting aggreagation...")
+    print("Starting aggregation...")
     buffer_model = None
     state_dict_list = []
     for index, model_path in enumerate(args.model):

@@ -31,7 +31,7 @@ from xffl.learning import data, distributed, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
-"""Deafult xFFL logger"""
+"""Default xFFL logger"""
 
 
 def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:

@@ -40,7 +40,7 @@ def from_args_to_cwl(
     :type parser: argparse.ArgumentParser
     :param arguments: Command line arguments
     :type arguments: List[str]
-    :raises (argparse.ArgumentError, argparse.ArgumentTypeError): Argument parsering exceptions
+    :raises (argparse.ArgumentError, argparse.ArgumentTypeError): Argument parsing exceptions
     :return: Three dictionaries with the arguments name as keys and different values: CWL input bidding, CWL type, CWL value
     :rtype: Tuple[MutableMapping[str, Any], MutableMapping[str, str], MutableMapping[str, Any]]
     """
@@ -57,7 +57,7 @@ def from_args_to_cwl(
     # Itarate over the parser's declared arguments and compile the three dictionaries
     for action in parser._actions:
         if not isinstance(action, _HelpAction):
-            # Convert the action attributes into useful parameter informations
+            # Convert the action attributes into useful parameter information
             input = get_param_name(action.option_strings, parser.prefix_chars)
             cwl_type = CWL_TYPE_MAPPING[action.type]
             required = action.required
@@ -113,7 +113,7 @@ def from_args_to_cwl(
 
 
 def import_from_path(module_name: str, file_path: FileLike) -> types.ModuleType:
-    """Dinamically import a module from a file
+    """Dynamically import a module from a file
 
     :param module_name: Name of the module to be imported
     :type module_name: str

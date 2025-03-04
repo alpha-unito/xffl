@@ -22,13 +22,13 @@ def setup_distributed_process_group(
     """Setup PyTorch's distributed environment
 
     To be called AFTER the various processes have been created and by ALL processes
-    The distributed randevouz point is determinated by two environmental variable that should be set BEFORE calling this method (same values for all processes):
+    The distributed rendezvous point is determined by two environmental variables that should be set BEFORE calling this method (the same values for all processes):
     MASTER_ADD:  network address of the rendezvous
     MASTER_PORT: network port of the rendezvous
 
-    :param rank: Rank of tha calling process, otherwise obtained from the environment, defaults to None
+    :param rank: Rank of the calling process, otherwise obtained from the environment, defaults to None
     :type rank: Optional[int], optional
-    :param local_rank: Local rank of tha calling process, otherwise obtained from the environment, defaults to None
+    :param local_rank: Local rank of the calling process, otherwise obtained from the environment, defaults to None
     :type local_rank: Optional[int], optional
     :param world_size: Global world size, otherwise obtained from the environment, defaults to None
     :type world_size: Optional[int], optional

@@ -37,7 +37,7 @@ class CWLConfig(YamlConfig):
         """Adds the CWL inputs to the YAML content
 
         :param facility_name: Facility's name
-        :parm extra_inputs: Extra inputs
+        :param extra_inputs: Extra inputs
         :type facility_name: str
         :type extra_inputs: MutableMapping[str, Any]
         """

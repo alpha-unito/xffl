@@ -37,7 +37,7 @@ jobs:
           HASH="$(make checksum-config | tail -n 1)"
           echo "Project checksum is ${HASH}"
           test "${HASH}" == "${CHECKSUM}"
-      - name: "Validate project generation"
+      - name: "Validate project"
         run: |
           cd tests/cli
           make setup
@@ -64,4 +64,4 @@ jobs:
           python -m pip install -r requirements.txt
           python -m pip install -r lint-requirements.txt
       - name: "Run xFFL static analysis"
-        run: make format-check
+        run: make format-check codespell-check flake8

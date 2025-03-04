@@ -68,7 +68,7 @@ def check_input(
     :type text: str
     :param warning_msg: Error message in case the inserted value does not satisfies the control condition
     :type warning_msg: str
-    :param control: Control function to be cheked on the inserted value
+    :param control: Control function to be checked on the inserted value
     :type control: Callable
     :param is_path: Flag signaling if the expected input is a path, defaults to False
     :type is_path: bool, optional

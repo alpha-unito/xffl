@@ -49,7 +49,7 @@ def check_default_value(
 def check_cli_arguments(
     args: argparse.Namespace, parser: argparse.ArgumentParser
 ) -> SimpleNamespace:
-    """Checks which cli arguments have the default value and expands relative path into absolte ones
+    """Checks which cli arguments have the default value and expands relative path into absolute ones
 
     :param args: Command line arguments
     :type args: argparse.Namespace
@@ -79,7 +79,7 @@ def check_cli_arguments(
 
 
 def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
-    """Exapnds relative paths in absolute one when variable type is not available
+    """Expands relative paths in absolute one when variable type is not available
 
     :param args: List of command-line arguments
     :type args: List[str]
@@ -100,7 +100,7 @@ def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
 
 
 def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
-    """Creates a mapping between the CLI arguments and new enviromental variables
+    """Creates a mapping between the CLI arguments and new environmental variables
 
     :param args: CLI arguments
     :type args: Dict[str, Any]

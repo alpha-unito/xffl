@@ -83,7 +83,7 @@ run_parser.add_argument(
 run_parser.add_argument(
     "-p",
     "--project",
-    help="Name of the project/Python execultable file",
+    help="Name of the project/Python executable file",
     type=str,
     default="project",
 )
@@ -128,7 +128,7 @@ simulate_parser.add_argument(
 
 simulate_parser.add_argument(
     "executable",
-    help="Name of the Python execultable file",
+    help="Name of the Python executable file",
     type=PathLike,
     default=None,
 )

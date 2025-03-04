@@ -5,7 +5,7 @@ from transformers import LlamaForCausalLM
 
 
 def main(args):
-    print("Starting aggreagation...")
+    print("Starting aggregation...")
     buffer_model = None
     state_dict_list = []
     for index, model_path in enumerate(args.model):

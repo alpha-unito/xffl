@@ -31,7 +31,7 @@ def main(arguments: List[str]) -> int:
     # Logging facilities setup
     setup_logging()
 
-    # Check if there are arguments to be passed to the runned script
+    # Check if there are arguments to be passed to the runner script
     args_index = len(arguments)
     if "-args" in arguments:
         args_index = arguments.index("-args")
