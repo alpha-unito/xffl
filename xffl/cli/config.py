@@ -36,7 +36,7 @@ def config(args: argparse.Namespace) -> None:
 
     :param args: Command line arguments
     :type args: argparse.Namespace
-    :raises FileNotFoundError: If the command-line provided workdir does not exists
+    :raises FileNotFoundError: If the command-line provided workdir does not exist
     :raises FileExistsError: If the command-line provided project folder already exists
     """
 
@@ -51,11 +51,11 @@ def config(args: argparse.Namespace) -> None:
         workdir = check_and_create_workdir(
             workdir_path=args.workdir, project_name=args.project
         )
-    except (FileExistsError, FileNotFoundError) as e:
-        raise e
+    except (FileExistsError, FileNotFoundError) as err:
+        raise err
 
     # Guided StreamFlow configuration
-    logger.debug(f"Creating the StreamFlow and CWL templates")
+    logger.debug("Creating the StreamFlow and CWL templates")
     facilities = set()
 
     aggregate_cwl = AggregateStep()
@@ -64,7 +64,7 @@ def config(args: argparse.Namespace) -> None:
     round_cwl = RoundWorkflow()
     streamflow_config = StreamFlowFile()
     training_cwl = TrainingStep()
-    logger.debug(f"StreamFlow and CWL templates created")
+    logger.debug("StreamFlow and CWL templates created")
 
     cwl_config.content |= {
         "script_aggregation": {
@@ -92,7 +92,7 @@ def config(args: argparse.Namespace) -> None:
     )
     parser_name = check_input(
         "\nInput the arguments parser module name: ",
-        "The name can contain letters, numbers, dashs or underscores. Moreover, it can start only with a letter or number",
+        "The name can contain letters, numbers, dashes or underscores. Moreover, it can start only with a letter or number",
         lambda x: re.match("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
 
@@ -109,7 +109,7 @@ def config(args: argparse.Namespace) -> None:
     # New model name
     new_model_name = check_input(
         "\nName of the new model: ",
-        "The name can contain letters, numbers, dashs or underscores. Moreover, it can start only with a letter or number",
+        "The name can contain letters, numbers, dashes or underscores. Moreover, it can start only with a letter or number",
         lambda x: re.match("^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
 
@@ -155,6 +155,31 @@ def config(args: argparse.Namespace) -> None:
         "max_rounds": num_of_iterations,
     }
 
+    # Command line arguments extraction from user's parser arguments
+    logger.debug(
+        f"Dynamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
+    )
+    try:
+        executable_parser_module = import_from_path(
+            module_name=parser_name, file_path=parser_path
+        )
+        logger.info(
+            f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
+        )
+
+        arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
+            parser=executable_parser_module.parser, arguments=args.arguments
+        )
+    except (Exception, SystemExit) as err:
+        if isinstance(err, SystemExit):
+            logger.error(
+                "The script requires some parameters. Add them using the --arguments option"
+            )
+        raise err
+
+    # Populate training step
+    training_cwl.add_inputs(facility_name=None, extra_inputs=arg_to_bidding)
+
     insert = True
     while insert:
 
@@ -162,7 +187,7 @@ def config(args: argparse.Namespace) -> None:
         facility = check_input(
             "\nType facility's logic facility: ",
             "Facility facility {} already used.",
-            lambda facility: facility not in facilities,
+            lambda facility_: facility_ not in facilities,
         )
         facilities.add(facility)
 
@@ -174,20 +199,22 @@ def config(args: argparse.Namespace) -> None:
         ssh_key = check_input(
             f"Path to {facility}'s SSH key file: ",
             "{} does not exists.",
-            lambda ssh_key: os.path.exists(ssh_key),
+            lambda ssh_key_: os.path.exists(ssh_key_),
             is_path=True,
         )
         # TODO: add question to data mover if it is available on the facility
 
         # SLURM template path for the facility
         # TODO: list the needed pragmas
-        slurm_template = check_input(
-            "\nPath to {}'s SLURM template with the required directives: ".format(
-                facility
-            ),
-            "{} does not exists.",
-            lambda path: os.path.exists(path),
-            is_path=True,
+        slurm_template = resolve_path(
+            check_input(
+                "\nPath to {}'s SLURM template with the required directives: ".format(
+                    facility
+                ),
+                "{} does not exists.",
+                lambda path: os.path.exists(path),
+                is_path=True,
+            )
         )
 
         # Remote paths
@@ -213,26 +240,8 @@ def config(args: argparse.Namespace) -> None:
             is_local_path=False,
         )
 
-        # Command line arguments extraction from user's parser arguments
-        logger.debug(
-            f"Dinamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
-        )
-        try:
-            executable_parser_module = import_from_path(
-                module_name=parser_name, file_path=parser_path
-            )
-            logger.info(
-                f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
-            )
-
-            arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-                parser=executable_parser_module.parser, arguments=args.arguments
-            )
-        except Exception as e:
-            raise e
-
         # Creating CWL configuration
-        logger.debug(f"CWL configuration population...")
+        logger.debug("CWL configuration population...")
         main_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
         round_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
         cwl_config.add_inputs(
@@ -246,10 +255,9 @@ def config(args: argparse.Namespace) -> None:
             }
             | arg_to_value,
         )
-        training_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_bidding)
 
         # Creating StreamFlow configuration
-        logger.debug(f"StreamFlow configuration population...")
+        logger.debug("StreamFlow configuration population...")
         streamflow_config.add_deployment(
             facility_name=facility,
             address=address,
@@ -286,13 +294,13 @@ def config(args: argparse.Namespace) -> None:
     round_cwl.update_merge_step()
 
     # YAML exportation
-    ## StreamFlow file
+    # StreamFlow file
     with open(os.path.join(workdir, "streamflow.yml"), "w") as outfile:
         yaml.dump(
             streamflow_config.save(), outfile, default_flow_style=False, sort_keys=False
         )
 
-    ## CWL files
+    # CWL files
     os.makedirs(os.path.join(workdir, "cwl", "clt"))
     with open(os.path.join(workdir, "cwl", "main.cwl"), "w") as outfile:
         outfile.write("#!/usr/bin/env cwl-runner\n")
@@ -310,10 +318,10 @@ def config(args: argparse.Namespace) -> None:
         yaml.dump(
             training_cwl.save(), outfile, default_flow_style=False, sort_keys=False
         )
-    ## CWL config file
+    # CWL config file
     with open(os.path.join(workdir, "cwl", "config.yml"), "w") as outfile:
         yaml.dump(cwl_config.save(), outfile, default_flow_style=False, sort_keys=False)
-    ## Scripts
+    # Scripts
     shutil.copytree(
         os.path.join(DEFAULT_xFFL_DIR, "workflow", "scripts"),
         os.path.join(workdir, "cwl", "scripts"),
@@ -325,8 +333,6 @@ def config(args: argparse.Namespace) -> None:
         ),
         os.path.join(workdir, "cwl", "py_scripts"),
     )
-
-    return 0
 
 
 def main(args: argparse.Namespace) -> int:
@@ -343,9 +349,9 @@ def main(args: argparse.Namespace) -> int:
     )
     try:
         config(args=args)
-    except Exception as e:
-        logger.exception(e)
-        raise e
+    except Exception as err:
+        logger.exception(err)
+        raise err
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"

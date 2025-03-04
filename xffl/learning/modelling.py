@@ -32,6 +32,8 @@ def save_FSDP_model(
 
     :param model: FSDP-wrapped model to be saved
     :type model: FullyShardedDataParallel
+    :param optimizer: Model's optimizer
+    :type optimizer: Optimizer
     :param path: Path where to save the model
     :type path: PathLike
     :param name: Model's name
@@ -81,7 +83,7 @@ def save_FSDP_model(
                 )
 
         # This is HF specific (modelling_utils.py)
-        # Saves the model (torch.save) togheter with its configuration files
+        # Saves the model (torch.save) together with its configuration files
         # so that it can be reloaded with PreTrainedModel.from_pretrained
         model.save_pretrained(
             save_directory=save_path,

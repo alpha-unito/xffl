@@ -1,5 +1,4 @@
-"""All the constants used in xFFL should be declared and sourced from here
-"""
+"""All the constants used in xFFL should be declared and sourced from here"""
 
 import os
 from typing import Final
@@ -13,4 +12,4 @@ VERSION: Final[str] = "v0.1.0"
 
 # Paths #
 DEFAULT_xFFL_DIR: Final[PathLike] = os.path.dirname(os.path.abspath(xffl.__file__))
-"""FastFederatedLearning deault root directory"""
+"""FastFederatedLearning default root directory"""

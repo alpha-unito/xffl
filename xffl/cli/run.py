@@ -40,15 +40,15 @@ def main(args: argparse.Namespace) -> int:
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
     try:
         run(args)
-    except Exception as e:  # TODO check which exception SF raises
-        logger.exception(e)
+    except Exception as err:  # TODO check which exception SF raises
+        logger.exception(err)
         raise
     finally:
-        logger.info("\*** Cross-Facility Federated Learning (xFFL) - Project run ***")
+        logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
 
 
 if __name__ == "__main__":
-    from xffl.cli.parser import run_parser
+    from xffl.cli.parser import run_parser  # noqa: F811
 
     try:
         main(run_parser.parse_args())

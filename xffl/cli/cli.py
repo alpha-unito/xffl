@@ -1,7 +1,7 @@
 """Command line interface (CLI) for xFFL
 
 This is the main entrypoint of the xFFL CLI
-Here argument parsing takes place, anche the various xFFL subcommands are interpreted
+Here argument parsing takes place, also the various xFFL subcommands are interpreted
 """
 
 import sys
@@ -31,7 +31,7 @@ def main(arguments: List[str]) -> int:
     # Logging facilities setup
     setup_logging()
 
-    # Check if there are arguments to be passed to the runned script
+    # Check if there are arguments to be passed to the `executable` script
     args_index = len(arguments)
     if "-args" in arguments:
         args_index = arguments.index("-args")

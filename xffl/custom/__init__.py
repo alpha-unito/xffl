@@ -1,4 +1,4 @@
-""" List of already supported models and datasets"""
+"""List of already supported models and datasets"""
 
 from typing import Callable, Final, Mapping
 

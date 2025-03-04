@@ -33,7 +33,7 @@ parser.add_argument(
     default=logging.INFO,
 )
 
-### Subparsers ###
+# Subparsers
 subparsers = parser.add_subparsers(dest="command", help="Available xFFL subcommands")
 
 # Subcommand: config
@@ -83,7 +83,7 @@ run_parser.add_argument(
 run_parser.add_argument(
     "-p",
     "--project",
-    help="Name of the project/Python execultable file",
+    help="Name of the project/Python executable file",
     type=str,
     default="project",
 )
@@ -98,6 +98,10 @@ run_parser.add_argument(
 
 run_parser.add_argument(
     "--quiet", help="Only prints results, warnings and errors", action="store_true"
+)
+
+run_parser.add_argument(
+    "--validate", help="Validate StreamFlow documents", action="store_true"
 )
 
 run_parser.add_argument(
@@ -124,7 +128,7 @@ simulate_parser.add_argument(
 
 simulate_parser.add_argument(
     "executable",
-    help="Name of the Python execultable file",
+    help="Name of the Python executable file",
     type=PathLike,
     default=None,
 )

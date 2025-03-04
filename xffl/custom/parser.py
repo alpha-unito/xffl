@@ -18,7 +18,7 @@ class ArgumentParser(argparse.ArgumentParser):
         usage=None,
         description=None,
         epilog=None,
-        parents=[],
+        parents=None,
         formatter_class=argparse.HelpFormatter,
         prefix_chars="-",
         fromfile_prefix_chars=None,
@@ -38,6 +38,7 @@ class ArgumentParser(argparse.ArgumentParser):
             -w/--workspace        Path to the folder containing the necessary Python scripts to run the training
             -o/--output           Path to the model saving folder
         """
+        parents = parents or []
         super().__init__(
             prog,
             usage,

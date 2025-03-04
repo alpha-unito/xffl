@@ -76,7 +76,7 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
 
 def simulate(
     args: argparse.Namespace,
-) -> None:
+) -> int:
     # Check the CLI arguments
     args = check_cli_arguments(args=args, parser=simulate_parser)
     args.num_nodes = len(args.nodelist)
@@ -85,15 +85,15 @@ def simulate(
     # Environment creation
     try:
         env = setup_simulation_env(args=args)
-    except ValueError as e:
-        raise e
+    except ValueError as err:
+        raise err
     logger.debug(f"Updated xFFL environment: {env}")
 
     # Simulation command creation
     facilitator_script = get_facilitator_path()
 
     # Launch facilitator
-    logger.info(f"Running local simulation...")
+    logger.info("Running local simulation...")
     start_time = time.perf_counter()
     try:
         processes = []
@@ -130,8 +130,8 @@ def simulate(
         for process in processes:
             return_code += process.wait()
 
-    except (OSError, ValueError) as e:
-        logger.exception(e)
+    except (OSError, ValueError) as err:
+        logger.exception(err)
         return 1
     else:
         logger.info(
@@ -152,9 +152,9 @@ def main(args: argparse.Namespace) -> int:
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
     try:
         simulate(args=args)
-    except Exception as e:
-        logger.exception(e)
-        raise e
+    except Exception as err:
+        logger.exception(err)
+        raise err
     finally:
         logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
     return 0
