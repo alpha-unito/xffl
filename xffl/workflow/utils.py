@@ -50,8 +50,8 @@ def from_args_to_cwl(
     # Parse the command line arguments and convert the namespace to a dictionary
     try:
         namespace = vars(parser.parse_args(arguments))
-        print(namespace)
-    except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
+        logger.debug(f"Script namespace: {namespace}")
+    except (SystemExit, argparse.ArgumentError, argparse.ArgumentTypeError) as e:
         raise e
 
     # Itarate over the parser's declared arguments and compile the three dictionaries

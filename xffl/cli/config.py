@@ -170,7 +170,11 @@ def config(args: argparse.Namespace) -> None:
         arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
             parser=executable_parser_module.parser, arguments=args.arguments
         )
-    except Exception as e:
+    except (Exception, SystemExit) as e:
+        if isinstance(e, SystemExit):
+            logger.error(
+                "The script requires some parameters. Add them using the --arguments option"
+            )
         raise e
 
     # Populate training step
