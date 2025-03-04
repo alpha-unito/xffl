@@ -1,6 +1,7 @@
 accelerate>=0.26.0
 datasets
 PyYAML==6.0.2
+numpy
 streamflow==0.2.0.dev12
 torch>=2.2
 transformers

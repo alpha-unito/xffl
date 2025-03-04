@@ -21,6 +21,8 @@ def load_datasets_from_disk(
 
     :param splits: Dictionary of "split_name": path_to_the_dataset_split
     :type splits: Dict[str, PathLike]
+    :param base_path: Base path
+    :type base_path: PathLike, optional
     :return: Dictionary of "split_name": HuggingFace_dataset object
     :rtype: Dict[str, Union[Dataset, DatasetDict]]
     """

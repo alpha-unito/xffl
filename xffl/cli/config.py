@@ -36,7 +36,7 @@ def config(args: argparse.Namespace) -> None:
 
     :param args: Command line arguments
     :type args: argparse.Namespace
-    :raises FileNotFoundError: If the command-line provided workdir does not exists
+    :raises FileNotFoundError: If the command-line provided workdir does not exist
     :raises FileExistsError: If the command-line provided project folder already exists
     """
 
@@ -51,8 +51,8 @@ def config(args: argparse.Namespace) -> None:
         workdir = check_and_create_workdir(
             workdir_path=args.workdir, project_name=args.project
         )
-    except (FileExistsError, FileNotFoundError) as e:
-        raise e
+    except (FileExistsError, FileNotFoundError) as err:
+        raise err
 
     # Guided StreamFlow configuration
     logger.debug("Creating the StreamFlow and CWL templates")
@@ -170,12 +170,12 @@ def config(args: argparse.Namespace) -> None:
         arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
             parser=executable_parser_module.parser, arguments=args.arguments
         )
-    except (Exception, SystemExit) as e:
-        if isinstance(e, SystemExit):
+    except (Exception, SystemExit) as err:
+        if isinstance(err, SystemExit):
             logger.error(
                 "The script requires some parameters. Add them using the --arguments option"
             )
-        raise e
+        raise err
 
     # Populate training step
     training_cwl.add_inputs(facility_name=None, extra_inputs=arg_to_bidding)
@@ -187,7 +187,7 @@ def config(args: argparse.Namespace) -> None:
         facility = check_input(
             "\nType facility's logic facility: ",
             "Facility facility {} already used.",
-            lambda facility: facility not in facilities,
+            lambda facility_: facility_ not in facilities,
         )
         facilities.add(facility)
 
@@ -199,20 +199,22 @@ def config(args: argparse.Namespace) -> None:
         ssh_key = check_input(
             f"Path to {facility}'s SSH key file: ",
             "{} does not exists.",
-            lambda ssh_key: os.path.exists(ssh_key),
+            lambda ssh_key_: os.path.exists(ssh_key_),
             is_path=True,
         )
         # TODO: add question to data mover if it is available on the facility
 
         # SLURM template path for the facility
         # TODO: list the needed pragmas
-        slurm_template = check_input(
-            "\nPath to {}'s SLURM template with the required directives: ".format(
-                facility
-            ),
-            "{} does not exists.",
-            lambda path: os.path.exists(path),
-            is_path=True,
+        slurm_template = resolve_path(
+            check_input(
+                "\nPath to {}'s SLURM template with the required directives: ".format(
+                    facility
+                ),
+                "{} does not exists.",
+                lambda path: os.path.exists(path),
+                is_path=True,
+            )
         )
 
         # Remote paths
@@ -331,7 +333,6 @@ def config(args: argparse.Namespace) -> None:
         ),
         os.path.join(workdir, "cwl", "py_scripts"),
     )
-    return
 
 
 def main(args: argparse.Namespace) -> int:
@@ -348,9 +349,9 @@ def main(args: argparse.Namespace) -> int:
     )
     try:
         config(args=args)
-    except Exception as e:
-        logger.exception(e)
-        raise e
+    except Exception as err:
+        logger.exception(err)
+        raise err
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"

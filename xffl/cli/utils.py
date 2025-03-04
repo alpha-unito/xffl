@@ -39,10 +39,9 @@ def check_default_value(
     :param parser: Parser from which the argument originated
     :type parser: argparse.ArgumentParser
     """
-    deafult_value = parser.get_default(dest=argument_name)
-    if argument_value == deafult_value:
+    if argument_value == (default_value := parser.get_default(dest=argument_name)):
         logger.warning(
-            f'CLI argument "{argument_name}" has got default value "{deafult_value}"'
+            f'CLI argument "{argument_name}" has got default value "{default_value}"'
         )
 
 
@@ -65,7 +64,7 @@ def check_cli_arguments(
             namespace_input = (
                 get_param_name(action.option_strings, parser.prefix_chars)
                 if input in namespace
-                else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
+                else action.dest  # Arguments can be stored in a variable with a name different from their flag, namely dest
             )
             namespace[namespace_input] = (
                 os.path.abspath(namespace[namespace_input])
@@ -85,7 +84,7 @@ def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
     :type args: List[str]
     :param prefix: Prefix symbol preceding a flag, defaults to "-"
     :type prefix: str, optional
-    :raises FileExistsError: If the file path does not exists
+    :raises FileExistsError: If the file path does not exist
     :raises FileNotFoundError: If the file path is not found
     :return: List of command-line arguments with expanded paths
     :rtype: List[str]
@@ -106,8 +105,6 @@ def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
     :type args: Dict[str, Any]
     :param mapping: Mapping between environmental variables and CLI arguments names
     :type mapping: Dict[str, str]
-    :param parser: Parser from which the arguments originated
-    :type parser: ArgumentParser
     :return: New environment variables dictionary
     :rtype: Dict[str, str]
     """

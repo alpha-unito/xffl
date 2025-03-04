@@ -36,7 +36,7 @@ def fsdp_training(
     wandb_run: Optional[Run] = None,
     verbose: Optional[bool] = None,
 ) -> Dict[str, float]:
-    """Genreric training cycle for FSDP models
+    """Generic training cycle for FSDP models
 
     :param model: Model to train
     :type model: nn.Module
@@ -58,14 +58,10 @@ def fsdp_training(
     :type epochs: int, optional
     :param save_path: Path where to save the trained model, defaults to None
     :type save_path: Optional[PathLike], optional
-    :param model_name: Name to use for the saved trained model, defaults to None
-    :type model_name: Optional[str], optional
     :param lr_scheduler: Learning rate scheduler, defaults to None
     :type lr_scheduler: Optional[LRScheduler], optional
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
     :type wandb_run: Optional[wandb.Run], optional
-    :param precision: Precision to use for PyTorch's automatic mixed precision context manager, defaults to None
-    :type precision: Optional[torch.dtype], optional
     :param verbose: Enable verbose output, defaults to None
     :type verbose: Optional[bool], optional
     :return: Dictionary of metrics names and achieved values
@@ -206,7 +202,7 @@ def fsdp_evaluation(
     world_size: int,
     wandb_run: Optional[Run] = None,
 ) -> Tuple[float, float, List[float], List[float]]:
-    """Genreric evaluation cycle for FSDP models
+    """Generic evaluation cycle for FSDP models
 
     :param model: Model to evaluate
     :type model: nn.Module

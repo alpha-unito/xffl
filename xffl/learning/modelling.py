@@ -32,6 +32,8 @@ def save_FSDP_model(
 
     :param model: FSDP-wrapped model to be saved
     :type model: FullyShardedDataParallel
+    :param optimizer: Model's optimizer
+    :type optimizer: Optimizer
     :param path: Path where to save the model
     :type path: PathLike
     :param name: Model's name
