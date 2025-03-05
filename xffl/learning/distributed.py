@@ -66,7 +66,9 @@ class DistributedState:
     hsdp_mesh: Optional[DeviceMesh] = None
     """HSDP device mesh"""
     federated_group: Optional[ProcessGroup] = None
-    """Federated scaling device mesh"""
+    """Process group collecting ranks holding the same model's shard across federated groups"""
+    replica_group: Optional[ProcessGroup] = None
+    """Process group collecting ranks holding the same model's shard inside federated groups"""
 
     # TECHNICAL
     backend: Optional[Literal["nccl", "gloo", "mpi"]] = None
@@ -116,7 +118,7 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
 
 
 def get_timeout(seconds: Optional[int] = 60) -> timedelta:
-    """Maximum allowed timeout for distributed communnications
+    """Maximum allowed timeout for distributed communications
 
     :param seconds: Maximum allowed timeout in seconds, defaults to 60
     :type seconds: Optional[int], optional
@@ -126,12 +128,12 @@ def get_timeout(seconds: Optional[int] = 60) -> timedelta:
     return timedelta(seconds=seconds)
 
 
-def get_deafult_nccl_process_group_options(
+def get_default_nccl_process_group_options(
     is_high_priority_stream: Optional[bool] = True,
 ):
     """Default NCCL backend configuration for xFFL
 
-    :param is_high_priority_stream: Wether to pick up the highest priority CUDA stream, defaults to True
+    :param is_high_priority_stream: Whether to pick up the highest priority CUDA stream, defaults to True
     :type is_high_priority_stream: Optional[bool], optional
     :return: Configured options for the NCCL backend
     :rtype: ProcessGroupNCCL.Options
@@ -158,11 +160,11 @@ def setup_distributed_process_group(
     device: Optional[Literal["cpu", "gpu"]] = None,
     hsdp: Optional[int] = None,
     federated: Optional[int] = None,
-) -> Tuple[int, int, int, Optional[DeviceMesh]]:
+) -> DistributedState:
     """Setup PyTorch's distributed environment
 
     To be called AFTER the various processes have been created and by ALL processes
-    The distributed randevouz point is determinated by two environmental variable that should be set BEFORE calling this method (same values for all processes):
+    The distributed rendez-vous point determined by two environmental variable that should be set BEFORE calling this method (same values for all processes):
     MASTER_ADD:  network address of the rendezvous
     MASTER_PORT: network port of the rendezvous
 
@@ -188,12 +190,12 @@ def setup_distributed_process_group(
     :type device: Optional[Literal["cpu", "gpu"]], optional
     :param hsdp: Activate Hybrid Sharding Distributed Parallelism with specified replica group size, defaults to 0
     :type hsdp: Optional[int], optional
-    :param federated: Wether to activate Federated Scaling, defaults to False
+    :param federated: Whether to activate Federated Scaling, defaults to False
     :type federated: Optional[bool], optional
     :raises AttributeError: If backend is not in nccl, gloo, or mpi
     :raises ValueError: If no valid MASTER_ADDR and MASTER_PORT are set
-    :return: Rank and local rank of the calling process, global world size, HSDP device mesh, and federated scaling groups
-    :rtype: Tuple[int, int, int, Optional[DeviceMesh], Optional[List[ProcessGroup]]]
+    :return: Distributed state of the current training setup
+    :rtype: DistributedState
     """
     state: DistributedState = DistributedState()
 
@@ -261,7 +263,7 @@ def init_distributed_process_group(state: DistributedState) -> None:
         world_size=state.world_size,
         rank=state.rank,
         pg_options=(
-            get_deafult_nccl_process_group_options()
+            get_default_nccl_process_group_options()
             if state.backend == "nccl"
             else None
         ),
@@ -279,9 +281,9 @@ def setup_hsdp_mesh(state: DistributedState) -> None:
 
     if replica_world_size > 1 and state.world_size % state.replica_local_size == 0:
         state.hsdp_mesh = init_device_mesh(
-            device_type=state.device,
-            mesh_shape=[replica_world_size, state.replica_local_size],
-            mesh_dim_names=["replica", "shard"],
+            device_type=str(state.device),
+            mesh_shape=(replica_world_size, state.replica_local_size),
+            mesh_dim_names=("replica", "shard"),
         )
 
         state.replica_world_size = replica_world_size
@@ -335,7 +337,7 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
                 )
 
                 state.fsdp_mesh = DeviceMesh.from_group(
-                    device_type=state.device,
+                    device_type=str(state.device),
                     group=[
                         create_process_group(
                             ranks=mesh[state.federated_rank, state.replica_rank],
@@ -351,7 +353,7 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
                         ),
                     ],
                     mesh=mesh[state.federated_rank],
-                    mesh_dim_names=["replica", "shard"],
+                    mesh_dim_names=("replica", "shard"),
                 )
 
                 state.federated_group = create_process_group(
@@ -359,6 +361,13 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
                     state=state,
                     group_desc=f"Federated shard averaging group #{state.federated_rank}",
                 )
+
+                state.replica_group = create_process_group(
+                    ranks=mesh[state.federated_rank, :, state.replica_local_rank],
+                    state=state,
+                    group_desc=f"Federated replica averaging group #{state.federated_rank}",
+                )
+
             else:
                 mesh: torch.Tensor = create_device_mesh(
                     mesh_shape=(
@@ -368,13 +377,13 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
                 )
 
                 state.fsdp_mesh = DeviceMesh.from_group(
-                    device_type=state.device,
+                    device_type=str(state.device),
                     group=create_process_group(
                         ranks=mesh[state.federated_rank],
                         state=state,
                         group_desc=f"Federated sharding group #{state.federated_rank}",
                     ),
-                    mesh_dim_names=["shard"],
+                    mesh_dim_names=("shard",),
                 )
 
                 state.federated_group = create_process_group(
@@ -390,7 +399,7 @@ def setup_federated_scaling_groups(state: DistributedState) -> None:
 
 
 def create_process_group(
-    ranks: Tuple[int, ...], group_desc: Optional[str], state: DistributedState
+    ranks: Tuple[int, ...] | torch.Tensor, group_desc: Optional[str], state: DistributedState
 ) -> ProcessGroup:
     """Creates a new process group with the specified ranks
 
@@ -410,7 +419,7 @@ def create_process_group(
         ranks=ranks,
         timeout=get_timeout(),
         backend=state.backend,
-        pg_options=get_deafult_nccl_process_group_options(),
+        pg_options=get_default_nccl_process_group_options(),
         use_local_synchronization=True,
         group_desc=group_desc,
     )
