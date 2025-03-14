@@ -2,9 +2,10 @@
 
 import os
 from collections.abc import Callable
+from datetime import timedelta
 from logging import Logger, getLogger
 from pathlib import Path, PurePath
-from typing import List
+from typing import List, Optional
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -84,3 +85,33 @@ def check_input(
         if not (condition := control(value)):
             logger.warning(warning_msg.format(value))
     return value
+
+
+def get_timeout(seconds: Optional[int] = 60) -> timedelta:
+    """Maximum allowed timeout for distributed communications
+
+    :param seconds: Maximum allowed timeout in seconds, defaults to 60
+    :type seconds: Optional[int], optional
+    :return: Maximum allowed time delta
+    :rtype: timedelta
+    """
+    return timedelta(seconds=seconds)
+
+
+def get_default_nccl_process_group_options(
+    is_high_priority_stream: Optional[bool] = True,
+):
+    """Default NCCL backend configuration for xFFL
+
+    :param is_high_priority_stream: Whether to pick up the highest priority CUDA stream, defaults to True
+    :type is_high_priority_stream: Optional[bool], optional
+    :return: Configured options for the NCCL backend
+    :rtype: ProcessGroupNCCL.Options
+    """
+    from torch.distributed import ProcessGroupNCCL
+
+    options: ProcessGroupNCCL.Options = ProcessGroupNCCL.Options()
+    options.is_high_priority_stream = is_high_priority_stream
+    options._timeout = get_timeout()
+
+    return options

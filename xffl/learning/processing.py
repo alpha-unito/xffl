@@ -36,7 +36,7 @@ def distributed_training(
     wandb_run: Optional[Run] = None,
     verbose: Optional[bool] = None,
 ) -> Dict[str, float]:
-    """Genreric training cycle for FSDP models
+    """Generic training cycle for FSDP models
 
     :param model: Model to train
     :type model: nn.Module
@@ -127,24 +127,28 @@ def distributed_training(
             )
 
             if (
-                state.federated_group
+                state.is_federated_scaling_setup()
                 and step != 0
                 and federated_span != 0
                 and step % federated_span == 0
             ):
                 federated_averaging(model=model, state=state)
 
-        if state.federated_group:
+        if state.is_federated_scaling_setup():
             federated_averaging(model=model, state=state)
         pbar.close()
 
         epoch_end_time = time.perf_counter() - epoch_start_time
         epoch_times.append(epoch_end_time)
 
-        if torch.cuda.device_count():
-            dist.all_reduce(total_loss, op=dist.ReduceOp.SUM)
+        if torch.cuda.device_count():  # TODO: toch.dist?
+            dist.all_reduce(
+                total_loss, op=dist.ReduceOp.SUM
+            )  # TODO: solo sul gruppo federato?
 
-        train_epoch_loss = (total_loss / len(train_dataloader)) / state.world_size
+        train_epoch_loss = (
+            total_loss / len(train_dataloader)
+        ) / state.world_size  # TODO: Federated size
         train_perplexity = torch.exp(train_epoch_loss)
 
         train_prep.append(float(train_perplexity))

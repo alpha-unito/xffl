@@ -31,7 +31,7 @@ logger: Logger = getLogger(__name__)
 def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     """LLM pre-training script
 
-    This is not considered finetuning since no parameter reduction/quantization technique is applied
+    This is not considered fine-tuning since no parameter reduction/quantization technique is applied
 
     :param args: Command-line arguments
     :type args: argparse.Namespace
@@ -41,7 +41,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     # Set the requested logging level
     setup_logging(log_level=args.loglevel)
 
-    # Sets RNGs seeds and force PyTorch's deterinistic execution
+    # Sets RNGs seeds and force PyTorch's deterministic execution
     generator: Optional[torch.Generator] = (
         utils.set_deterministic_execution(seed=args.seed) if args.seed else None
     )

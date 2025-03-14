@@ -4,15 +4,15 @@ This script wraps StreamFlow with a simple Python CLI, offering a homogeneous in
 """
 
 import argparse
-import os
 import subprocess
 import sys
 import time
 from logging import Logger, getLogger
-from typing import Dict
+from typing import Dict, List
 
 from xffl.cli.parser import simulate_parser
 from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
+from xffl.utils.networking import get_cells_ids
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -72,7 +72,7 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
 
 def simulate(
     args: argparse.Namespace,
-) -> None:
+) -> int:
     # Check the CLI arguments
     args = check_cli_arguments(args=args, parser=simulate_parser)
     args.num_nodes = len(args.nodelist)
@@ -81,12 +81,15 @@ def simulate(
     # Environment creation
     try:
         env = setup_simulation_env(args=args)
-    except ValueError as e:
-        raise e
+    except ValueError as err:
+        raise err
     logger.debug(f"Updated xFFL environment: {env}")
 
     # Simulation command creation
     facilitator_script = get_facilitator_path()
+
+    # Nodes cell IDs calculation for the FederatedScaling feature
+    cells_id: List[int] = get_cells_ids(nodes=args.nodelist, cell_size=180)
 
     # Launch facilitator
     logger.info(f"Running local simulation...")
@@ -95,7 +98,7 @@ def simulate(
         processes = []
         return_code = 0
 
-        for index, node in enumerate(args.nodelist):
+        for index, (node, cell) in enumerate(zip(args.nodelist, cells_id)):
             command = (
                 [
                     "ssh",
@@ -104,6 +107,8 @@ def simulate(
                     '"',
                     env,
                     f"XFFL_NODEID={index}",
+                    f"XFFL_CELLID={cell}" if cell is not None else "",
+                    f"XFFL_CELL_WORLD_SIZE={len(cells_id)}" if cell is not None else "",
                     facilitator_script,
                     args.executable,
                 ]

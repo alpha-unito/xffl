@@ -6,7 +6,7 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 import numpy
 import torch
@@ -62,30 +62,41 @@ def set_nondeterministic_execution() -> None:
 
 def setup_devices(
     state: DistributedState,
-) -> Tuple[torch.DeviceObjType, torch.DeviceObjType]:
+) -> tuple[int, Literal["cpu", "cuda", "meta"] | int, bool]:
     """PyTorch device setup
 
-    Sets the GPU for the current process and empties its cache
-    Also, returns the best initialisation device to load large model distributely with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
-
-    :param state: Instantiated distributed state
-    :type state: DistributedState
-    :return: Two devices, one for computation and the other for model loading
-    :rtype: Tuple[torch.DeviceObjType, torch.DeviceObjType]
+        Sets the GPU for the current process and empties its cache
+        Also, returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
+    s
+        :param state: Instantiated distributed state
+        :type state: DistributedState
+        :return: Two devices, one for computation and the other for model initialisation, and if meta initialisation is enabled
+        :rtype: tuple[int, Literal["cpu", "cuda", "meta"] | int, bool]
     """
 
-    device: str = (
-        (state.group_local_rank if state.group_local_rank is not None else "cuda")
+    device: Literal["cpu", "cuda"] | int = (
+        (state.group_local_rank if state.is_group_setup() else "cuda")
         if torch.cuda.is_available()
         else "cpu"
     )
-
     torch.cuda.set_device(device)
     torch.cuda.empty_cache()
 
-    exec_device: torch.DeviceObjType = torch.cuda.current_device()
-    init_device: torch.DeviceObjType = (
-        torch.device("cpu" if state.replica_local_rank == 0 else "meta")
+    exec_device: int = torch.cuda.current_device()
+    init_device: Literal["cpu", "cuda", "meta"] | int = (
+        (
+            torch.device("cpu" if state.replica_local_rank == 0 else "meta")
+            if state.is_hsdp_setup()
+            else (
+                torch.device("cpu" if state.group_local_rank == 0 else "meta")
+                if state.federated_local_size > state.group_local_size
+                else (
+                    "cpu"
+                    if state.group_local_rank % state.federated_local_size == 0
+                    else "meta"
+                )
+            )  # TODO: Caricare il modello un rank per nodo è vantaggioso rispetto a un rank e basta?
+        )
         if torch.distributed.is_initialized()
         else exec_device
     )

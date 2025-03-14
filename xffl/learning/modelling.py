@@ -49,13 +49,14 @@ def create_fsdp_model(
     """
 
     device_mesh: Optional[bool] = None
-    if state.federated_group:
-        device_mesh = state.hsdp_mesh if state.hsdp_mesh else state.fsdp_mesh
-    else:
-        if state.hsdp_mesh:  # TODO: Add 2D FSDP-TP parallelism support
-            device_mesh = state.hsdp_mesh
+    if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
+        device_mesh = state.hsdp_mesh
+    elif state.is_fsdp_setup():
+        device_mesh = state.fsdp_mesh
 
-    logger.debug(f"[Rank {state.rank}]: is calling FSDP on device mesh {device_mesh}")
+    logger.debug(
+        f"[Rank {state.rank}]: is calling FSDP on device mesh {device_mesh} with meta initialization {meta_initialization}"
+    )
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=module,
         sharding_strategy=get_appropriate_sharding_strategy(state=state),
@@ -65,8 +66,8 @@ def create_fsdp_model(
         limit_all_gathers=False,
         mixed_precision=mixed_precision,
         sync_module_states=meta_initialization,
-        param_init_fn=lambda module: (
-            module.to_empty(device=current_device, recurse=False)
+        param_init_fn=lambda layer: (
+            layer.to_empty(device=current_device, recurse=False)
             if meta_initialization
             else None
         ),
