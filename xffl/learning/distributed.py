@@ -6,7 +6,7 @@ from logging import Logger, getLogger
 from typing import Literal, Optional, Tuple
 
 import torch.distributed as dist
-from torch import cuda, nn
+from torch import nn
 from torch.distributed.fsdp import ShardingStrategy
 
 from xffl.utils.distributed_state import DistributedState
@@ -77,8 +77,8 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
                 dist.broadcast(
                     tensor=param,
                     src=state.replica_local_rank
-                        + (state.replica_local_size * (state.replica_rank + 1))
-                        + (state.federated_local_size * state.federated_rank),
+                    + (state.replica_local_size * (state.replica_rank + 1))
+                    + (state.federated_local_size * state.federated_rank),
                     group=state.replica_group,
                 )
     logger.debug(f"Averaging time: {(time.perf_counter() - start_time):.2f} seconds")
@@ -91,11 +91,11 @@ def setup_distributed_process_group(
     group_local_size: Optional[int] = None,
     group_rank: Optional[int] = None,
     group_world_size: Optional[int] = None,
-    backend: Optional[Literal["nccl", "gloo", "mpi"]] = "nccl",
+    backend: Literal["nccl", "gloo", "mpi"] = "nccl",
     master_addr: Optional[str] = None,
     master_port: Optional[int] = None,
     federated_rank: Optional[int] = None,
-    device: Optional[Literal["cpu", "cuda"]] = None,
+    device: Literal["cpu", "cuda"] = "cuda",
     hsdp: Optional[int] = None,
     federated: Optional[int | Tuple[int]] = None,
 ) -> DistributedState:
@@ -148,7 +148,7 @@ def setup_distributed_process_group(
         master_port=(
             int(os.environ.get("MASTER_PORT")) if master_port is None else master_port
         ),
-        device=("cuda" if cuda.is_available() else "cpu") if device is None else device,
+        device=device,
     )
 
     # Distributed state global information

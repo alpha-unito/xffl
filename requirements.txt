@@ -4,5 +4,6 @@ PyYAML==6.0.2
 streamflow @ git+https://github.com/alpha-unito/streamflow@master
 torch>=2.2
 transformers
+tqdm
 wheel
 wandb
