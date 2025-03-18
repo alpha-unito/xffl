@@ -56,12 +56,11 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     env = setup_env(args=vars(args), mapping=env_mapping)
     env["XFFL_SIMULATION"] = "true"
 
-    # New environment created - debug logging
-    logger.debug(f"New local simulation xFFL environment variables: {env}")
+    if args.federated_scaling is not None:
+        env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = args.federated_scaling
 
-    # Returning the old environment updated
-    # xffl_env = os.environ.copy()
-    # xffl_env.update(env)
+    # New environment created - return it as a string
+    logger.debug(f"New local simulation xFFL environment variables: {env}")
 
     env_str = ""
     for key in env:
@@ -89,7 +88,15 @@ def simulate(
     facilitator_script = get_facilitator_path()
 
     # Nodes cell IDs calculation for the FederatedScaling feature
-    cells_id: List[int] = get_cells_ids(nodes=args.nodelist, cell_size=180)
+    federated_local_ranks: List[int] = (
+        get_cells_ids(nodes=args.nodelist, cell_size=180)
+        if args.federated_scaling is None
+        else [
+            federated_rank
+            for federated_rank, cell in enumerate(args.federated_scaling.split(","))
+            for _ in range(int(cell))
+        ]
+    )  # TODO: che succede quando un modello è splittato su più nodi e non tutti sono nella stessa isola?
 
     # Launch facilitator
     logger.info(f"Running local simulation...")
@@ -98,7 +105,7 @@ def simulate(
         processes = []
         return_code = 0
 
-        for index, (node, cell) in enumerate(zip(args.nodelist, cells_id)):
+        for index, (node, cell) in enumerate(zip(args.nodelist, federated_local_ranks)):
             command = (
                 [
                     "ssh",
@@ -107,8 +114,7 @@ def simulate(
                     '"',
                     env,
                     f"XFFL_NODEID={index}",
-                    f"XFFL_CELLID={cell}" if cell is not None else "",
-                    f"XFFL_CELL_WORLD_SIZE={len(cells_id)}" if cell is not None else "",
+                    f"XFFL_FEDERATED_RANK={cell}" if cell is not None else "",
                     facilitator_script,
                     args.executable,
                 ]

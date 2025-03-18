@@ -187,3 +187,11 @@ simulate_parser.add_argument(
     nargs="+",
     default=[],
 )
+
+simulate_parser.add_argument(
+    "-fs",
+    "--federated-scaling",
+    help="Enable Federated scaling with the specified federated group size",
+    type=str,
+    default=None,
+)

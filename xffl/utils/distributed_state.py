@@ -314,30 +314,32 @@ class DistributedState:
                         device_type=str(self.device),
                         group=[
                             self.create_process_group(
-                                ranks=mesh[
+                                ranks=tuple(mesh[
                                     self.federated_rank,
                                     :,
                                     self.replica_local_rank,
-                                ],
-                                group_desc=f"Federated replica group #{self.federated_rank}", # Share the same model's shard
+                                ].tolist()),
+                                group_desc=f"Federated replica group #{self.federated_rank}",  # Share the same model's shard
                             ),
                             self.create_process_group(
-                                ranks=mesh[self.federated_rank, self.replica_rank],
-                                group_desc=f"Federated sharding group #{self.federated_rank}", # Share all the model's shards
+                                ranks=tuple(mesh[self.federated_rank, self.replica_rank].tolist()),
+                                group_desc=f"Federated sharding group #{self.federated_rank}",  # Share all the model's shards
                             ),
                         ],
-                        mesh=mesh[self.federated_rank],
+                        mesh=tuple(mesh[self.federated_rank].tolist()),
                         mesh_dim_names=("replica", "shard"),
                     )
 
-                    self.replica_group = self.create_process_group(
-                        ranks=mesh[self.federated_rank, :, self.replica_local_rank],
-                        group_desc=f"Federated replica averaging group #{self.federated_rank}",
+                    # Group of processes sharing the same shard across the federated groups
+                    self.federated_group = self.create_process_group(
+                        ranks=tuple(mesh[:, self.replica_rank, self.replica_local_rank].tolist()),
+                        group_desc=f"Federated shard averaging group #{self.federated_rank}",
                     )
 
-                    self.federated_group = self.create_process_group(
-                        ranks=mesh[:, self.replica_rank, self.replica_local_rank],
-                        group_desc=f"Federated shard averaging group #{self.federated_rank}",
+                    # Group of processes sharing the same shard inside the federated group
+                    self.replica_group = self.create_process_group(
+                        ranks=tuple(mesh[self.federated_rank, :, self.replica_local_rank].tolist()),
+                        group_desc=f"Federated replica averaging group #{self.federated_rank}",
                     )
                 else:  # FSDP federation
                     mesh: torch.Tensor = create_device_mesh(
@@ -350,14 +352,15 @@ class DistributedState:
                     self.fsdp_mesh = DeviceMesh.from_group(
                         device_type=str(self.device),
                         group=self.create_process_group(
-                            ranks=mesh[self.federated_rank],
+                            ranks=tuple(mesh[self.federated_rank].tolist()),
                             group_desc=f"Federated sharding group #{self.federated_rank}",
                         ),
                         mesh_dim_names=("shard",),
                     )
 
+                    # Group of processes sharing the same shard across the federated groups
                     self.federated_group = self.create_process_group(
-                        ranks=mesh[:, self.federated_local_rank],
+                        ranks=tuple(mesh[:, self.federated_local_rank].tolist()),
                         group_desc=f"Federated shard averaging group #{self.federated_rank}",
                     )
         else:
@@ -368,7 +371,7 @@ class DistributedState:
     def set_asymmetric_federated_scaling(
         self,
         federated_local_rank: int,
-        federated_local_size: Tuple[int],  # TODO: this should match replica world size
+        federated_local_size: Tuple[int],
         federated_rank: int,
         federated_world_size: int,
     ) -> None:
@@ -408,7 +411,7 @@ class DistributedState:
                 if self.is_hsdp_setup():
                     if not all(
                         [
-                            federated_local_size % self.replica_local_size != 0
+                            federated_local_size % self.replica_local_size == 0
                             for federated_local_size in self.federated_local_size
                         ]
                     ):
@@ -428,18 +431,22 @@ class DistributedState:
                         self.unset_federated_scaling()
                     else:  # Federated local world size update
                         replica_world_size: List[int] = []
-                        replica_rank: int = 0
                         for rank in range(self.federated_world_size):
                             replica_world_size.append(
                                 self.federated_local_size[rank]
                                 // self.replica_local_size
                             )
-                            if self.replica_rank < sum(replica_world_size):
-                                self.replica_rank = (
-                                    self.replica_rank - sum(replica_world_size)
-                                ) % replica_world_size[-1]
+                            if (
+                                sum(replica_world_size[:-1])
+                                <= self.replica_rank
+                                < sum(replica_world_size)
+                            ):
+                                self.replica_rank = self.replica_rank - sum(
+                                    replica_world_size[:-1]
+                                )
                         self.replica_world_size = tuple(replica_world_size)
 
+                logger.warning(self)
                 # HSDP asymmetric federation
                 if self.is_federated_scaling_setup():
                     mesh: List[torch.Tensor] = []
@@ -449,39 +456,42 @@ class DistributedState:
                             create_device_mesh(
                                 mesh_shape=(
                                     self.replica_world_size[rank],
-                                    self.federated_local_size[rank],
+                                    self.replica_local_size,
                                 )
                             )
                             + offset
                         )
                         offset += self.federated_local_size[rank]
 
+                    logger.warning(mesh[self.federated_rank])
+
                     self.hsdp_mesh = DeviceMesh.from_group(
                         device_type=str(self.device),
                         group=[
                             self.create_process_group(
-                                ranks=mesh[self.federated_rank][self.replica_rank],
-                                group_desc=f"Federated sharding group #{self.federated_rank}",
-                            ),
-                            self.create_process_group(
-                                ranks=mesh[self.federated_rank][
+                                ranks=tuple(mesh[self.federated_rank][
                                     :,
                                     self.replica_local_rank,
-                                ],
-                                group_desc=f"Federated replica group #{self.federated_rank}",
+                                ].tolist()),
+                                group_desc=f"Federated replica group #{self.federated_rank}",  # Share the same model's shard
+                            ),
+                            self.create_process_group(
+                                ranks=tuple(mesh[self.federated_rank][self.replica_rank].tolist()),
+                                group_desc=f"Federated sharding group #{self.federated_rank}",  # Share all the model's shards
                             ),
                         ],
-                        mesh=mesh[self.federated_rank],
+                        mesh=tuple(mesh[self.federated_rank].tolist()),
                         mesh_dim_names=("replica", "shard"),
                     )
 
+                    # Group of processes sharing the same shard across the federated groups
                     self.federated_group = self.create_process_group(
                         ranks=tuple(
                             [
                                 int(
                                     federated_mesh[
                                         self.replica_rank, self.replica_local_rank
-                                    ].item()
+                                    ].item()  # TODO: stavo facendo un if
                                 )
                                 for federated_mesh in mesh
                             ]
@@ -489,8 +499,9 @@ class DistributedState:
                         group_desc=f"Federated shard averaging group #{self.federated_rank}",
                     )
 
+                    # Group of processes sharing the same shard inside the federated group
                     self.replica_group = self.create_process_group(
-                        ranks=mesh[self.federated_rank][:, self.replica_local_rank],
+                        ranks=tuple(mesh[self.federated_rank][:, self.replica_local_rank].tolist()),
                         group_desc=f"Federated replica averaging group #{self.federated_rank}",
                     )
         else:

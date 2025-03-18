@@ -132,10 +132,12 @@ def distributed_training(
                 and federated_span != 0
                 and step % federated_span == 0
             ):
-                federated_averaging(model=model, state=state)
+                with torch.no_grad():
+                    federated_averaging(model=model, state=state)
 
         if state.is_federated_scaling_setup():
-            federated_averaging(model=model, state=state)
+            with torch.no_grad():
+                federated_averaging(model=model, state=state)
         pbar.close()
 
         epoch_end_time = time.perf_counter() - epoch_start_time

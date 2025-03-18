@@ -8,7 +8,6 @@ from typing import Literal, Optional, Tuple
 import torch.distributed as dist
 from torch import cuda, nn
 from torch.distributed.fsdp import ShardingStrategy
-from torch.distributed.nn.functional import all_reduce
 
 from xffl.utils.distributed_state import DistributedState
 from xffl.utils.utils import get_default_nccl_process_group_options, get_timeout
@@ -44,12 +43,44 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
     :type state: DistributedState
     """
     start_time = time.perf_counter()
+    communicating_processes: int = (
+        (state.replica_local_size // state.replica_world_size)
+        if state.replica_world_size <= state.replica_local_size
+        else 1
+    )
+
     for param in model.parameters():  # TODO: raggruppare parametri?
-        all_reduce(
-            tensor=param,
-            op=dist.ReduceOp.AVG,  # TODO: only on NCCL?
-            group=state.federated_group,
-        )
+        if (
+            communicating_processes * state.replica_rank
+            <= state.replica_local_rank
+            < communicating_processes * (state.replica_rank + 1)
+        ):
+            dist.all_reduce(
+                tensor=param,
+                op=dist.ReduceOp.AVG,  # TODO: only on NCCL?
+                group=state.federated_group,
+            )
+            dist.broadcast(
+                tensor=param,
+                src=state.rank,
+                group=state.replica_group,
+            )
+        else:
+            if state.replica_local_rank < communicating_processes * state.replica_rank:
+                dist.broadcast(
+                    tensor=param,
+                    src=state.replica_local_rank
+                    + (state.federated_local_size * state.federated_rank),
+                    group=state.replica_group,
+                )
+            else:
+                dist.broadcast(
+                    tensor=param,
+                    src=state.replica_local_rank
+                        + (state.replica_local_size * (state.replica_rank + 1))
+                        + (state.federated_local_size * state.federated_rank),
+                    group=state.replica_group,
+                )
     logger.debug(f"Averaging time: {(time.perf_counter() - start_time):.2f} seconds")
 
 
@@ -163,8 +194,11 @@ def setup_distributed_process_group(
         )
 
     # Check if asymmetric Federated Scaling is required #
-    if federated is None and "FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
-        federated = os.environ.get("FEDERATED_LOCAL_WORLD_SIZE")
+    if federated is None and "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
+        federated = tuple(
+            int(item) * state.group_local_size
+            for item in os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE").split(",")
+        )
 
     if federated is not None:
         symmetric_federated_scaling: bool = isinstance(federated, int)
@@ -184,8 +218,8 @@ def setup_distributed_process_group(
                 federated_world_size=state.world_size // federated,
             )
         elif asymmetric_federated_scaling:  # Asymmetric federation
-            if federated_rank is None and "FEDERATED_RANK" in os.environ:
-                federated_rank = int(os.environ.get("FEDERATED_RANK"))
+            if federated_rank is None and "XFFL_FEDERATED_RANK" in os.environ:
+                federated_rank = int(os.environ.get("XFFL_FEDERATED_RANK"))
             state.set_asymmetric_federated_scaling(
                 federated_local_rank=state.rank % federated[federated_rank],
                 federated_local_size=federated,
@@ -194,7 +228,6 @@ def setup_distributed_process_group(
             )
     else:  # Setting non-federated techniques
         if hsdp is not None:
-            # TODO: optimize this, create esh/groups only if necessary
             state.set_hsdp_mesh()
         else:
             state.set_fsdp_mesh()
