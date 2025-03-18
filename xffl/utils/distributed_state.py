@@ -509,9 +509,10 @@ class DistributedState:
                                 int(
                                     federated_mesh[
                                         self.replica_rank, self.replica_local_rank
-                                    ].item()  # TODO: stavo facendo un if
+                                    ]
                                 )
                                 for federated_mesh in mesh
+                                if self.replica_rank < len(federated_mesh)
                             ]
                         ),
                         group_desc=f"Federated shard averaging group #{self.federated_rank}",

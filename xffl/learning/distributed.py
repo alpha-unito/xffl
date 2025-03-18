@@ -43,9 +43,14 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
     :type state: DistributedState
     """
     start_time = time.perf_counter()
+    replica_world_size: int = (
+        min(state.replica_world_size)
+        if not isinstance(state.replica_world_size, int)
+        else state.replica_world_size
+    )
     communicating_processes: int = (
-        (state.replica_local_size // state.replica_world_size)
-        if state.replica_world_size <= state.replica_local_size
+        (state.replica_local_size // replica_world_size)
+        if replica_world_size <= state.replica_local_size
         else 1
     )
 
@@ -66,11 +71,16 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
                 group=state.replica_group,
             )
         else:
+            federated_local_size: int = (
+                state.federated_local_size[state.federated_rank]
+                if not isinstance(state.federated_local_size, int)
+                else state.federated_local_size
+            )
             if state.replica_local_rank < communicating_processes * state.replica_rank:
                 dist.broadcast(
                     tensor=param,
                     src=state.replica_local_rank
-                    + (state.federated_local_size * state.federated_rank),
+                    + (federated_local_size * state.federated_rank),
                     group=state.replica_group,
                 )
             else:
@@ -78,7 +88,7 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
                     tensor=param,
                     src=state.replica_local_rank
                     + (state.replica_local_size * (state.replica_rank + 1))
-                    + (state.federated_local_size * state.federated_rank),
+                    + (federated_local_size * state.federated_rank),
                     group=state.replica_group,
                 )
     logger.debug(f"Averaging time: {(time.perf_counter() - start_time):.2f} seconds")
