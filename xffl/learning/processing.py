@@ -14,7 +14,11 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.learning.distributed import DistributedState, federated_averaging
+from xffl.learning.distributed import (
+    DistributedState,
+    async_federated_averaging,
+    sync_federated_averaging,
+)
 from xffl.learning.modelling import save_FSDP_model
 
 logger: Logger = getLogger(__name__)
@@ -133,11 +137,11 @@ def distributed_training(
                 and step % federated_span == 0
             ):
                 with torch.no_grad():
-                    federated_averaging(model=model, state=state)
+                    sync_federated_averaging(model=model, state=state)
 
         if state.is_federated_scaling_setup():
             with torch.no_grad():
-                federated_averaging(model=model, state=state)
+                sync_federated_averaging(model=model, state=state)
         pbar.close()
 
         epoch_end_time = time.perf_counter() - epoch_start_time

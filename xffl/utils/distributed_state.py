@@ -458,7 +458,6 @@ class DistributedState:
                                 )
                         self.replica_world_size = tuple(replica_world_size)
 
-                logger.warning(self)
                 # HSDP asymmetric federation
                 if self.is_federated_scaling_setup():
                     mesh: List[torch.Tensor] = []
@@ -474,8 +473,6 @@ class DistributedState:
                             + offset
                         )
                         offset += self.federated_local_size[rank]
-
-                    logger.warning(mesh[self.federated_rank])
 
                     self.hsdp_mesh = DeviceMesh.from_group(
                         device_type=str(self.device),

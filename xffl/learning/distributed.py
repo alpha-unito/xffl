@@ -3,7 +3,7 @@
 import os
 import time
 from logging import Logger, getLogger
-from typing import Literal, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 import torch.distributed as dist
 from torch import nn
@@ -34,7 +34,7 @@ def get_appropriate_sharding_strategy(state: DistributedState) -> ShardingStrate
     return sharding_strategy
 
 
-def federated_averaging(model: nn.Module, state: DistributedState) -> None:
+def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
     """Federated averaging of corresponding model's shards on different hosts
 
     :param model: PyTorch model
@@ -54,7 +54,7 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
         else 1
     )
 
-    for param in model.parameters():  # TODO: raggruppare parametri?
+    for param in model.parameters():
         if (
             communicating_processes * state.replica_rank
             <= state.replica_local_rank
@@ -62,7 +62,7 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
         ):
             dist.all_reduce(
                 tensor=param,
-                op=dist.ReduceOp.AVG,  # TODO: only on NCCL?
+                op=dist.ReduceOp.AVG,
                 group=state.federated_group,
             )
             dist.broadcast(
@@ -91,7 +91,99 @@ def federated_averaging(model: nn.Module, state: DistributedState) -> None:
                     + (federated_local_size * state.federated_rank),
                     group=state.replica_group,
                 )
-    logger.debug(f"Averaging time: {(time.perf_counter() - start_time):.2f} seconds")
+    logger.debug(
+        f"[RANK {state.rank}]: Synchronous averaging time: {(time.perf_counter() - start_time):.2f} seconds"
+    )
+
+
+def async_federated_averaging(model: nn.Module, state: DistributedState) -> None:
+    """Federated averaging of corresponding model's shards on different hosts
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: Partially instantiated distributed state (rank, world_size, backend)
+    :type state: DistributedState
+    """
+    replica_world_size: int = (
+        min(state.replica_world_size)
+        if not isinstance(state.replica_world_size, int)
+        else state.replica_world_size
+    )
+    communicating_processes: int = (
+        (state.replica_local_size // replica_world_size)
+        if replica_world_size <= state.replica_local_size
+        else 1
+    )
+
+    # pre_values = []
+    # post_values = []
+    # differences = []
+
+    # for p in model.parameters():
+    #    if p.requires_grad:  # only change learnable parameters
+    #        with torch.no_grad():
+    #            p.fill_(state.federated_rank)
+
+    # for param in model.parameters():
+    #    pre_values.append(param.clone().detach().cpu())
+
+    start_time = time.perf_counter()
+    broadcast_handles: List[dist.Work] = []
+    for parameters in model.parameters():
+        if (
+            communicating_processes * state.replica_rank
+            <= state.replica_local_rank
+            < communicating_processes * (state.replica_rank + 1)
+        ):
+            dist.all_reduce(
+                tensor=parameters,
+                op=dist.ReduceOp.AVG,
+                group=state.federated_group,
+            )
+            broadcast_handles.append(
+                dist.broadcast(
+                    tensor=parameters,
+                    src=state.rank,
+                    group=state.replica_group,
+                    async_op=True,
+                )
+            )
+        else:
+            federated_local_size: int = (
+                state.federated_local_size[state.federated_rank]
+                if not isinstance(state.federated_local_size, int)
+                else state.federated_local_size
+            )
+            if state.replica_local_rank < communicating_processes * state.replica_rank:
+                dist.broadcast(
+                    tensor=parameters,
+                    src=state.replica_local_rank
+                    + (federated_local_size * state.federated_rank),
+                    group=state.replica_group,
+                )
+            else:
+                dist.broadcast(
+                    tensor=parameters,
+                    src=state.replica_local_rank
+                    + (state.replica_local_size * (state.replica_rank + 1))
+                    + (federated_local_size * state.federated_rank),
+                    group=state.replica_group,
+                )
+    for handle in broadcast_handles:
+        handle.wait(timeout=get_timeout(seconds=60))
+    logger.debug(
+        f"[RANK {state.rank}]: Asynchronous averaging {(time.perf_counter() - start_time):.2f} seconds"
+    )
+    # for param in model.parameters():
+    #    post_values.append(param.clone().detach().cpu())
+
+    # for layer, _ in enumerate(model.parameters()):
+    #    differences.append(pre_values[layer] - post_values[layer])
+
+    # logger.warning(f"[RANK {state.rank}]:\n"
+    #               f"pre-values: {pre_values}\n"
+    #               f"post-values: {post_values}\n"
+    #               f"differences: {differences}\n")
 
 
 def setup_distributed_process_group(
