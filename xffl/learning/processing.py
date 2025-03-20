@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 import torch
 import torch.distributed as dist
 from torch import nn
+from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
@@ -20,25 +21,26 @@ from xffl.learning.distributed import (
     sync_federated_averaging,
 )
 from xffl.learning.modelling import save_FSDP_model
+from xffl.utils.utils import get_timeout
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def distributed_training(
-    model: nn.Module,
+    model: nn.Module | FullyShardedDataParallel,
     optimizer: Optimizer,
     train_dataloader: DataLoader,
     eval_dataloader: DataLoader,
     state: DistributedState,
-    federated_span: Optional[int] = 0,
+    federated_span: Optional[int] = None,
     validate: bool = True,
     epochs: int = 1,
     save_path: Optional[PathLike] = None,
     output_model_name: Optional[str] = None,
     lr_scheduler: Optional[LRScheduler] = None,
     wandb_run: Optional[Run] = None,
-    verbose: Optional[bool] = None,
+    async_fs: Optional[bool] = None,
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
 
@@ -66,98 +68,133 @@ def distributed_training(
     :type lr_scheduler: Optional[LRScheduler], optional
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
     :type wandb_run: Optional[wandb.Run], optional
-    :param verbose: Enable verbose output, defaults to None
-    :type verbose: Optional[bool], optional
+    :param async_fs: Use asynchronous federated averaging, defaults to None
+    :type async_fs: bool, optional
     :return: Dictionary of metrics names and achieved values
     :rtype: Dict[str, float]
     """
 
     # TODO: if fp16 the gradients should be rescaled
-    train_prep = []
-    train_loss = []
-    val_prep = []
-    val_loss = []
+    train_perp: List[float] = []
+    train_loss: List[float] = []
+    val_perp: List[float] = []
+    val_loss: List[float] = []
 
-    train_step_perplexity = []
-    train_step_loss = []
-    val_step_loss = []
-    val_step_perplexity = []
+    train_step_perplexity: List[float] = []
+    train_step_loss: List[float] = []
+    val_step_loss: List[float] = []
+    val_step_perplexity: List[float] = []
 
-    epoch_times = []
-    checkpoint_times = []
-    results = {}
-    best_val_loss = float("inf")
+    epoch_times: List[float] = []
+    checkpoint_times: List[float] = []
+    results: Dict[str, float] = {}
+    best_val_loss: float = float("inf")
 
     for epoch in range(epochs):
+        epoch_start_time: float = time.perf_counter()
         logger.info(f"Starting epoch {epoch}/{epochs}")
-        epoch_start_time = time.perf_counter()
 
         model.train()
-        total_loss = 0.0
-        total_length = len(train_dataloader)
-        pbar = tqdm(
+
+        handles: List[dist.Work] = []
+        total_loss: float = 0.0
+        total_length: int = len(train_dataloader)
+        pbar: tqdm = tqdm(
             colour="blue",
             desc=f"Training Epoch: {epoch+1}",
             total=total_length,
             dynamic_ncols=True,
         )
+
         for step, batch in enumerate(train_dataloader):
+            if state.rank == 0:
+                start_time = time.perf_counter()
             for key in batch.keys():
                 batch[key] = batch[key].to(
                     device=torch.cuda.current_device(), non_blocking=True
                 )
-            loss = model(**batch).loss
 
-            total_loss += loss.detach().float()
-            train_step_loss.append(loss.detach().float().item())
-            train_step_perplexity.append(float(torch.exp(loss.detach().float())))
+            if handles is not None:
+                for handle in handles:
+                    handle.wait(timeout=get_timeout(seconds=60))
+                handles = []
+
+            loss: torch.Tensor = model(**batch).loss
+            loss_value: float = (
+                loss.detach().float().clone().to("cpu", non_blocking=True)
+            )
+
+            if state.rank == 0:
+                batch_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
 
             loss.backward()
             optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
-            pbar.update(1)
 
-            if wandb_run and state.rank == 0:
-                wandb_run.log(
-                    {
-                        "train/epoch": epoch + 1,
-                        "train/step": epoch * len(train_dataloader) + step,
-                        "train/loss": loss.detach().float(),
-                    }
+            if state.rank == 0:
+                optimizer_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
+
+            with torch.no_grad():
+                if (
+                    state.is_federated_scaling_setup()
+                    and federated_span is not None
+                    and step != 0
+                    and (step % federated_span == 0 or step + 1 == total_length)
+                ):
+                    if async_fs:
+                        handles = async_federated_averaging(model=model, state=state)
+                    else:
+                        sync_federated_averaging(model=model, state=state)
+
+                if state.rank == 0:
+                    comm_time = time.perf_counter() - start_time
+                    start_time = time.perf_counter()
+
+                total_loss += loss.detach().float()
+                train_step_perplexity.append(float(torch.exp(loss.detach().float())))
+                train_step_loss.append(loss_value)
+
+                pbar.update(1)
+                pbar.set_description(
+                    f"Training Epoch: {epoch + 1}/{epochs}, step {step}/{total_length} completed (loss: {train_step_loss[-1]:.4f})"
                 )
 
-            pbar.set_description(
-                f"Training Epoch: {epoch+1}/{epochs}, step {step}/{len(train_dataloader)} completed (loss: {loss.detach().float():.4f})"
-            )
+                if wandb_run:
+                    wandb_run.log(
+                        {
+                            "train/epoch": epoch + 1,
+                            "train/step": epoch * total_length + step,
+                            "train/loss": train_step_loss[-1],
+                            "train/perplexity": train_step_perplexity[-1],
+                        }
+                    )
 
-            if (
-                state.is_federated_scaling_setup()
-                and step != 0
-                and federated_span != 0
-                and step % federated_span == 0
-            ):
-                with torch.no_grad():
-                    sync_federated_averaging(model=model, state=state)
+            if state.rank == 0:
+                logger.debug(
+                    f"[RANK {state.rank}]: batch: {batch_time:.2f}, optimizer: {optimizer_time:.2f}, communication: {comm_time:.2f}, update: {(time.perf_counter() - start_time):.2f}"
+                )
 
-        if state.is_federated_scaling_setup():
-            with torch.no_grad():
-                sync_federated_averaging(model=model, state=state)
         pbar.close()
+        epoch_times.append(time.perf_counter() - epoch_start_time)
 
-        epoch_end_time = time.perf_counter() - epoch_start_time
-        epoch_times.append(epoch_end_time)
+        if dist.is_initialized():
+            dist.all_reduce(total_loss, op=dist.ReduceOp.SUM, group=state.federation)
 
-        if torch.cuda.device_count():  # TODO: toch.dist?
-            dist.all_reduce(
-                total_loss, op=dist.ReduceOp.SUM
-            )  # TODO: solo sul gruppo federato?
+        train_epoch_loss: torch.Tensor = (
+            (
+                (total_loss / total_length) / state.federated_local_size
+                if isinstance(state.federated_local_size, int)
+                else (total_loss / total_length)
+                / state.federated_local_size[state.federated_rank]
+            )
+            if state.is_federated_scaling_setup()
+            else (total_loss / total_length) / state.world_size
+        )
+        train_perplexity: torch.Tensor = torch.exp(train_epoch_loss)
 
-        train_epoch_loss = (
-            total_loss / len(train_dataloader)
-        ) / state.world_size  # TODO: Federated size
-        train_perplexity = torch.exp(train_epoch_loss)
-
-        train_prep.append(float(train_perplexity))
+        train_perp.append(float(train_perplexity))
         train_loss.append(float(train_epoch_loss))
 
         if lr_scheduler:
@@ -186,36 +223,26 @@ def distributed_training(
                     rank=state.rank,
                     epoch=epoch,
                 )
-                # TODO: possible barrier?
-                checkpoint_end_time = time.perf_counter() - checkpoint_start_time
-                checkpoint_times.append(checkpoint_end_time)
+                checkpoint_times.append(time.perf_counter() - checkpoint_start_time)
 
             if eval_epoch_loss < best_val_loss:
-                best_val_loss = eval_epoch_loss
-                if verbose and state.rank == 0:
-                    logger.info(f"best eval loss on epoch {epoch+1} is {best_val_loss}")
+                best_val_loss: torch.Tensor = eval_epoch_loss
+                if state.rank == 0:
+                    logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(best_val_loss))
-            val_prep.append(float(eval_ppl))
+            val_perp.append(float(eval_ppl))
 
         if state.rank == 0:
             logger.info(
-                f"Epoch {epoch+1}: train_perplexity={train_perplexity:.4f}, train_epoch_loss={train_epoch_loss:.4f}, epoch time {epoch_end_time}s"
+                f"Epoch {epoch+1}: train_perplexity={train_perplexity:.4f}, train_epoch_loss={train_epoch_loss:.4f}, epoch time {epoch_times[-1]}s"
             )
 
-    avg_epoch_time = sum(epoch_times) / len(epoch_times)
-
-    avg_train_prep = sum(train_prep) / len(train_prep)
-    avg_train_loss = sum(train_loss) / len(train_loss)
+    results["avg_epoch_time"] = sum(epoch_times) / len(epoch_times)
+    results["avg_train_perp"] = sum(train_perp) / len(train_perp)
+    results["avg_train_loss"] = sum(train_loss) / len(train_loss)
     if validate:
-        avg_eval_prep = sum(val_prep) / len(val_prep)
-        avg_eval_loss = sum(val_loss) / len(val_loss)
-
-    results["avg_train_prep"] = avg_train_prep
-    results["avg_train_loss"] = avg_train_loss
-    if validate:
-        results["avg_eval_prep"] = avg_eval_prep
-        results["avg_eval_loss"] = avg_eval_loss
-    results["avg_epoch_time"] = avg_epoch_time
+        results["avg_eval_perp"] = sum(val_perp) / len(val_perp)
+        results["avg_eval_loss"] = sum(val_loss) / len(val_loss)
 
     return results
 
@@ -225,8 +252,8 @@ def fsdp_evaluation(
     eval_dataloader: DataLoader,
     state: DistributedState,
     wandb_run: Optional[Run] = None,
-) -> Tuple[float, float, List[float], List[float]]:
-    """Genreric evaluation cycle for FSDP models
+) -> Tuple[float, torch.Tensor, List[float], List[float]]:
+    """Generic evaluation cycle for FSDP models
 
     :param model: Model to evaluate
     :type model: nn.Module

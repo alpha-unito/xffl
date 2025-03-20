@@ -36,7 +36,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     :param args: Command-line arguments
     :type args: argparse.Namespace
     """
-    setup_time = time.perf_counter()
+    setup_time: float = time.perf_counter()
 
     # Set the requested logging level
     setup_logging(log_level=args.loglevel)
@@ -70,9 +70,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         name=f"client_{state.rank}",
         notes=f"{args.model_name} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
         tags=["xFFL", f"{args.model_name}", "clean_mc4_it"],
-        mode=(
-            args.wandb_mode if args.wandb else "disabled"
-        ),  # Set to "disable" to execute without wandb
+        mode=args.wandb_mode,  # Set to "disable" to execute without wandb
         config=args,
     )
 
@@ -190,7 +188,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         weight_decay=args.weight_decay,
         # No optimisation
         # foreach=True,  # Optimizes performances but uses more memory
-        # fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
+        fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
     scheduler: lr_scheduler.StepLR = lr_scheduler.StepLR(
         optimizer=optimizer, step_size=args.step_size, gamma=args.gamma
@@ -203,12 +201,12 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
     # Main training function
     logger.debug(f"[Rank {state.rank}]: --- STARTING TRAINING ---")
-
     results = processing.distributed_training(
         model=model,
         state=state,
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
+        validate=False,
         eval_dataloader=dataloaders["val"],
         lr_scheduler=scheduler,
         wandb_run=wandb_run,
@@ -216,6 +214,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         output_model_name=args.output_model,
         epochs=args.epochs,
         federated_span=args.federated_span,
+        async_fs=args.asynchronous_federated_scaling,
     )
 
     if state.rank == 0:

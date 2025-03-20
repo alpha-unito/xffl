@@ -70,6 +70,8 @@ class DistributedState:
     """Process group collecting ranks holding the same model's shard across federated groups"""
     replica_group: Optional[ProcessGroup] = None
     """Process group collecting ranks holding the same model's shard inside federated groups"""
+    federation: Optional[ProcessGroup] = None
+    """Process group collecting all ranks participating in the same federated group"""
 
     # TECHNICAL
     backend: Optional[Literal["nccl", "gloo", "mpi"]] = None
@@ -375,6 +377,19 @@ class DistributedState:
                         ranks=tuple(mesh[:, self.federated_local_rank].tolist()),
                         group_desc=f"Federated shard averaging group #{self.federated_rank}",
                     )
+
+            self.federation = self.create_process_group(
+                ranks=tuple(
+                    [
+                        rank
+                        for rank in range(
+                            self.federated_local_size * self.federated_rank,
+                            self.federated_local_size * (self.federated_rank + 1),
+                        )
+                    ]
+                ),
+                group_desc=f"Federated group #{self.federated_rank}",
+            )
         else:
             logger.error(
                 f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
@@ -524,6 +539,20 @@ class DistributedState:
                         ),
                         group_desc=f"Federated replica averaging group #{self.federated_rank}",
                     )
+                self.federation = self.create_process_group(
+                    ranks=tuple(
+                        [
+                            rank
+                            for rank in range(
+                                sum(self.federated_local_size[: self.federated_rank]),
+                                sum(
+                                    self.federated_local_size[: self.federated_rank + 1]
+                                ),
+                            )
+                        ]
+                    ),
+                    group_desc=f"Federated group #{self.federated_rank}",
+                )
         else:
             logger.error(
                 f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"

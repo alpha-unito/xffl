@@ -62,7 +62,7 @@ parser.add_argument(
     "--wandb-mode",
     help="WandB mode",
     type=str,
-    default="online",
+    default="disabled",
     choices=["online", "offline", "disabled"],
 )
 
@@ -160,4 +160,11 @@ parser.add_argument(
     help="Number of training batched to process between two federated averaging",
     type=int,
     default=0,
+)
+
+parser.add_argument(
+    "-async-fs",
+    "--asynchronous-federated-scaling",
+    help="Use asynchronous weights averaging",
+    action="store_true",
 )

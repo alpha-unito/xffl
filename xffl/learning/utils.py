@@ -6,7 +6,7 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List, Literal, Optional, Tuple
+from typing import List, Literal, Optional
 
 import numpy
 import torch
