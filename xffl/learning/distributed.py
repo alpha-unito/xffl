@@ -53,18 +53,23 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
         else 1
     )
 
+    param_list = list(model.parameters())
+    buffer = [
+        param_list[0], # Tensor 0 has different dimensions
+        torch.stack(param_list[1:]),
+    ]
+
     if (
         communicating_processes * state.replica_rank
         <= state.replica_local_rank
         < communicating_processes * (state.replica_rank + 1)
     ):
-        for param in model.parameters():
+        for param in buffer:
             dist.all_reduce(
                 tensor=param.contiguous(),
                 op=dist.ReduceOp.AVG,
                 group=state.federated_group,
             )
-            # for param in model.parameters():
             dist.broadcast(
                 tensor=param.contiguous(),
                 src=state.rank,
@@ -84,17 +89,20 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
             + (federated_local_size * state.federated_rank)
         )
 
-        for param in model.parameters():
+        for param in buffer:
             dist.broadcast(
                 tensor=param.contiguous(),
                 src=src,
                 group=state.replica_group,
             )
 
+    for param, updated_param in zip(param_list[1:], buffer[1]):
+        param.copy_(updated_param, non_blocking=True)
+
 
 def async_federated_averaging(
     model: nn.Module, state: DistributedState
-) -> List[dist.Work]:
+) -> Tuple[List[dist.Work], List[torch.Tensor]]:
     """Federated averaging of corresponding model's shards on different hosts
 
     :param model: PyTorch model
@@ -112,6 +120,12 @@ def async_federated_averaging(
         if replica_world_size <= state.replica_local_size
         else 1
     )
+
+    param_list = list(model.parameters())
+    buffer = [
+        param_list[0],  # Tensor 0 has different dimensions
+        torch.stack(param_list[1:]),
+    ]
 
     # pre_values = []
     # post_values = []
@@ -132,7 +146,7 @@ def async_federated_averaging(
         <= state.replica_local_rank
         < communicating_processes * (state.replica_rank + 1)
     ):
-        for param in model.parameters():
+        for param in buffer:
             all_reduce_handles.append(
                 dist.all_reduce(
                     tensor=param.contiguous(),
@@ -142,7 +156,7 @@ def async_federated_averaging(
                 )
             )
         for all_reduce_handle, param in zip(
-            all_reduce_handles, model.parameters()
+            all_reduce_handles, buffer
         ):
             all_reduce_handle.wait(timeout=get_timeout(seconds=60))
             broadcast_handles.append(
@@ -167,7 +181,7 @@ def async_federated_averaging(
                  + (federated_local_size * state.federated_rank)
         )
 
-        for param in model.parameters():
+        for param in buffer:
             broadcast_handles.append(
                 dist.broadcast(
                     tensor=param.contiguous(),
@@ -177,7 +191,8 @@ def async_federated_averaging(
                 )
             )
 
-    return broadcast_handles
+    return broadcast_handles, buffer
+
     # for param in model.parameters():
     #    post_values.append(param.clone().detach().cpu())
 
