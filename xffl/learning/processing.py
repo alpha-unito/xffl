@@ -96,7 +96,7 @@ def distributed_training(
 
         model.train()
 
-        handles: List[dist.Work]|None = None
+        handles: List[dist.Work] | None = None
         total_loss: float = 0.0
         total_length: int = len(train_dataloader)
         pbar: tqdm = tqdm(
@@ -107,7 +107,7 @@ def distributed_training(
         )
 
         for step, batch in enumerate(train_dataloader):
-            #if state.rank == 0:
+            # if state.rank == 0:
             #    start_time = time.perf_counter()
             for key in batch.keys():
                 batch[key] = batch[key].to(
@@ -117,8 +117,10 @@ def distributed_training(
             if handles is not None:
                 for handle in handles:
                     handle.wait(timeout=get_timeout(seconds=60))
-                with torch. no_grad():
-                    for param, updated_param in zip(list(model.parameters())[1:], buffer[1]):
+                with torch.no_grad():
+                    for param, updated_param in zip(
+                        list(model.parameters())[1:], buffer[1]
+                    ):
                         param.copy_(updated_param, non_blocking=True)
                 handles = None
 
@@ -127,7 +129,7 @@ def distributed_training(
             train_step_perplexity.append(float(torch.exp(loss.detach().float())))
             train_step_loss.append(loss.detach().float().item())
 
-            #if state.rank == 0:
+            # if state.rank == 0:
             #    batch_time = time.perf_counter() - start_time
             #    start_time = time.perf_counter()
 
@@ -135,7 +137,7 @@ def distributed_training(
             optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
 
-            #if state.rank == 0:
+            # if state.rank == 0:
             #    optimizer_time = time.perf_counter() - start_time
             #    start_time = time.perf_counter()
 
@@ -147,11 +149,13 @@ def distributed_training(
                     and (step % federated_span == 0 or step + 1 == total_length)
                 ):
                     if async_fs:
-                        handles, buffer = async_federated_averaging(model=model, state=state)
+                        handles, buffer = async_federated_averaging(
+                            model=model, state=state
+                        )
                     else:
                         sync_federated_averaging(model=model, state=state)
 
-                #if state.rank == 0:
+                # if state.rank == 0:
                 #    comm_time = time.perf_counter() - start_time
                 #    start_time = time.perf_counter()
 
@@ -170,7 +174,7 @@ def distributed_training(
                         }
                     )
 
-            #if state.rank == 0:
+            # if state.rank == 0:
             #    logger.debug(
             #        f"[RANK {state.rank}]: batch: {batch_time:.2f}, optimizer: {optimizer_time:.2f}, communication: {comm_time:.2f}, update: {(time.perf_counter() - start_time):.2f}"
             #    )

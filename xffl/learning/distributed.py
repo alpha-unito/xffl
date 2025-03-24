@@ -55,7 +55,7 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
 
     param_list = list(model.parameters())
     buffer = [
-        param_list[0], # Tensor 0 has different dimensions
+        param_list[0],  # Tensor 0 has different dimensions
         torch.stack(param_list[1:]),
     ]
 
@@ -155,9 +155,7 @@ def async_federated_averaging(
                     async_op=True,
                 )
             )
-        for all_reduce_handle, param in zip(
-            all_reduce_handles, buffer
-        ):
+        for all_reduce_handle, param in zip(all_reduce_handles, buffer):
             all_reduce_handle.wait(timeout=get_timeout(seconds=60))
             broadcast_handles.append(
                 dist.broadcast(
@@ -177,8 +175,8 @@ def async_federated_averaging(
             state.replica_local_rank + (federated_local_size * state.federated_rank)
             if state.replica_local_rank < communicating_processes * state.replica_rank
             else state.replica_local_rank
-                 + (state.replica_local_size * (state.replica_rank + 1))
-                 + (federated_local_size * state.federated_rank)
+            + (state.replica_local_size * (state.replica_rank + 1))
+            + (federated_local_size * state.federated_rank)
         )
 
         for param in buffer:

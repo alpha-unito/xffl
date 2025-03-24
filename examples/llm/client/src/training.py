@@ -5,6 +5,7 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 """
 
 import argparse
+import math
 import sys
 import time
 from logging import Logger, getLogger
@@ -143,7 +144,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     dataloaders: Dict[str, DataLoader] = {}
     for split in dataset_info.splits:
 
-        if args.subsampling:
+        if split == "train" and args.subsampling:
             datasets[split] = datasets[split].select(list(range(0, args.subsampling)))
 
         if state.rank == 0:
@@ -180,6 +181,22 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         logger.debug(
             f"Dataloaders creation time: {(time.perf_counter() - start_time):.2f} seconds"
         )
+
+    if state.is_federated_scaling_setup():
+        args.learning_rate = (
+            (
+                state.federated_local_size[state.federated_rank]
+                if isinstance(state.federated_local_size, tuple)
+                else state.federated_local_size
+            )
+            * args.learning_rate
+            / 4
+        )
+    else:
+        args.learning_rate = state.world_size * args.learning_rate / 4
+
+    if state.rank == 0:
+        logger.debug(f"Learning rate adjusted to: {args.learning_rate}")
 
     # Optimizer and lr scheduler creation
     optimizer: AdamW = AdamW(
