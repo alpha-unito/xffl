@@ -56,17 +56,10 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     env = setup_env(args=vars(args), mapping=env_mapping)
     env["XFFL_SIMULATION"] = "true"
 
-    if args.federated_scaling is not None:
-        env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = args.federated_scaling
-
     # New environment created - return it as a string
     logger.debug(f"New local simulation xFFL environment variables: {env}")
 
-    env_str = ""
-    for key in env:
-        env_str += f"{key}={env[key]} "
-
-    return env_str
+    return env
 
 
 def simulate(
@@ -88,15 +81,22 @@ def simulate(
     facilitator_script = get_facilitator_path()
 
     # Nodes cell IDs calculation for the FederatedScaling feature
-    federated_local_ranks: List[int] = (
-        get_cells_ids(nodes=args.nodelist, cell_size=180)
-        if args.federated_scaling is None
-        else [
-            federated_rank
-            for federated_rank, cell in enumerate(args.federated_scaling.split(","))
-            for _ in range(int(cell))
-        ]
-    )  # TODO: che succede quando un modello è splittato su più nodi e non tutti sono nella stessa isola?
+    federated_local_ranks = [None for _ in args.nodelist]
+    if args.federated_scaling is not None:
+        if args.federated_scaling=="auto":
+            federated_local_ranks, federated_local_size = get_cells_ids(nodes=args.nodelist, cell_size=180)
+            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = str(federated_local_size).replace("]","").replace("[","").replace(" ", "")
+        else:
+            federated_local_ranks: List[int] = [
+                federated_rank
+                for federated_rank, cell in enumerate(args.federated_scaling.split(","))
+                for _ in range(int(cell))
+            ]  # TODO: che succede quando un modello è splittato su più nodi e non tutti sono nella stessa isola?
+            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = args.federated_scaling
+
+    env_str = ""
+    for key in env:
+        env_str += f"{key}={env[key]} "
 
     # Launch facilitator
     logger.info(f"Running local simulation...")
@@ -112,7 +112,7 @@ def simulate(
                     "-oStrictHostKeyChecking=no",
                     node,
                     '"',
-                    env,
+                    env_str,
                     f"XFFL_NODEID={index}",
                     f"XFFL_FEDERATED_RANK={cell}" if cell is not None else "",
                     facilitator_script,

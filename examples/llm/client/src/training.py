@@ -5,7 +5,6 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 """
 
 import argparse
-import math
 import sys
 import time
 from logging import Logger, getLogger
