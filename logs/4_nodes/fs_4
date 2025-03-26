@@ -1,0 +1,369 @@
+xffl -dbg simulate ./examples/llm/client/src/training.py -fs auto -f leonardo -ws 16 --venv .venv/bin/activate -n lrdn0001 lrdn0010 lrdn0185 lrdn0191  -args -mn llama3.1-8b -mp models/llama3.1-8b/ -dn clean_mc4_it -dp datasets/clean_mc4_it/ --seed 42 -fspan 4 -hsdp 4 --subsampling 4096 -dbg -t 8 -wb -name llama3.1-4_nodes-HSDP_4-FS4 -mode offline
+2, 1, 2
+2025-03-25 23:22:51,702 | xffl.cli.simulate |     INFO | *** Cross-Facility Federated Learning (xFFL) - Simulation ***
+2025-03-25 23:22:51,702 |   xffl.cli.utils |  WARNING | CLI argument "help" has got default value "False"
+2025-03-25 23:22:51,702 |   xffl.cli.utils |  WARNING | CLI argument "workdir" has got default value "/leonardo_scratch/fast/uToID_bench/xffl"
+2025-03-25 23:22:51,702 |   xffl.cli.utils |  WARNING | CLI argument "image" has got default value "None"
+2025-03-25 23:22:51,705 | xffl.cli.simulate |    DEBUG | Using virtual environment: /leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate
+2025-03-25 23:22:51,705 | xffl.cli.simulate |    DEBUG | New local simulation xFFL environment variables: {'XFFL_WORLD_SIZE': '16', 'XFFL_NUM_NODES': '4', 'MASTER_ADDR': 'lrdn0001', 'VENV': '/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate', 'XFFL_FACILITY': 'leonardo', 'XFFL_SIMULATION': 'true'}
+2025-03-25 23:22:51,705 | xffl.cli.simulate |    DEBUG | Updated xFFL environment: {'XFFL_WORLD_SIZE': '16', 'XFFL_NUM_NODES': '4', 'MASTER_ADDR': 'lrdn0001', 'VENV': '/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate', 'XFFL_FACILITY': 'leonardo', 'XFFL_SIMULATION': 'true'}
+2025-03-25 23:22:51,705 | xffl.cli.simulate |     INFO | Running local simulation...
+2025-03-25 23:22:51,705 | xffl.cli.simulate |    DEBUG | Simulation command on lrdn0001: ssh -oStrictHostKeyChecking=no lrdn0001 " XFFL_WORLD_SIZE=16 XFFL_NUM_NODES=4 MASTER_ADDR=lrdn0001 VENV=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate XFFL_FACILITY=leonardo XFFL_SIMULATION=true XFFL_FEDERATED_LOCAL_WORLD_SIZE=2,2  XFFL_NODEID=0 XFFL_FEDERATED_RANK=0 /leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/xffl/workflow/scripts/facilitator.sh /leonardo_scratch/fast/uToID_bench/xffl/examples/llm/client/src/training.py -mn llama3.1-8b -mp /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b -dn clean_mc4_it -dp /leonardo_scratch/fast/uToID_bench/xffl/datasets/clean_mc4_it --seed 42 -fspan 4 -hsdp 4 --subsampling 4096 -dbg -t 8 -wb -name llama3.1-4_nodes-HSDP_4-FS4 -mode offline "
+2025-03-25 23:22:51,706 | xffl.cli.simulate |    DEBUG | Simulation command on lrdn0010: ssh -oStrictHostKeyChecking=no lrdn0010 " XFFL_WORLD_SIZE=16 XFFL_NUM_NODES=4 MASTER_ADDR=lrdn0001 VENV=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate XFFL_FACILITY=leonardo XFFL_SIMULATION=true XFFL_FEDERATED_LOCAL_WORLD_SIZE=2,2  XFFL_NODEID=1 XFFL_FEDERATED_RANK=0 /leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/xffl/workflow/scripts/facilitator.sh /leonardo_scratch/fast/uToID_bench/xffl/examples/llm/client/src/training.py -mn llama3.1-8b -mp /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b -dn clean_mc4_it -dp /leonardo_scratch/fast/uToID_bench/xffl/datasets/clean_mc4_it --seed 42 -fspan 4 -hsdp 4 --subsampling 4096 -dbg -t 8 -wb -name llama3.1-4_nodes-HSDP_4-FS4 -mode offline "
+2025-03-25 23:22:51,706 | xffl.cli.simulate |    DEBUG | Simulation command on lrdn0185: ssh -oStrictHostKeyChecking=no lrdn0185 " XFFL_WORLD_SIZE=16 XFFL_NUM_NODES=4 MASTER_ADDR=lrdn0001 VENV=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate XFFL_FACILITY=leonardo XFFL_SIMULATION=true XFFL_FEDERATED_LOCAL_WORLD_SIZE=2,2  XFFL_NODEID=2 XFFL_FEDERATED_RANK=1 /leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/xffl/workflow/scripts/facilitator.sh /leonardo_scratch/fast/uToID_bench/xffl/examples/llm/client/src/training.py -mn llama3.1-8b -mp /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b -dn clean_mc4_it -dp /leonardo_scratch/fast/uToID_bench/xffl/datasets/clean_mc4_it --seed 42 -fspan 4 -hsdp 4 --subsampling 4096 -dbg -t 8 -wb -name llama3.1-4_nodes-HSDP_4-FS4 -mode offline "
+2025-03-25 23:22:51,706 | xffl.cli.simulate |    DEBUG | Simulation command on lrdn0191: ssh -oStrictHostKeyChecking=no lrdn0191 " XFFL_WORLD_SIZE=16 XFFL_NUM_NODES=4 MASTER_ADDR=lrdn0001 VENV=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate XFFL_FACILITY=leonardo XFFL_SIMULATION=true XFFL_FEDERATED_LOCAL_WORLD_SIZE=2,2  XFFL_NODEID=3 XFFL_FEDERATED_RANK=1 /leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/xffl/workflow/scripts/facilitator.sh /leonardo_scratch/fast/uToID_bench/xffl/examples/llm/client/src/training.py -mn llama3.1-8b -mp /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b -dn clean_mc4_it -dp /leonardo_scratch/fast/uToID_bench/xffl/datasets/clean_mc4_it --seed 42 -fspan 4 -hsdp 4 --subsampling 4096 -dbg -t 8 -wb -name llama3.1-4_nodes-HSDP_4-FS4 -mode offline "
+2025-03-25 23:23:00,712 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,712 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,712 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,712 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,759 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,759 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,759 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,759 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,760 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,760 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,760 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,760 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,791 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,791 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,791 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,791 | xffl.learning.utils |    DEBUG | Setting RNGs seed to 42
+2025-03-25 23:23:00,845 | xffl.learning.distributed |    DEBUG | [Rank 0]: distributed setup: DistributedState(rank=0, world_size=16, group_local_rank=0, group_local_size=4, group_rank=0, group_world_size=4, replica_local_rank=0, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=0, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fde5cc7f1b0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fde5cc7f330>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fde5cc7f0f0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 |         __main__ |    DEBUG | Randez-vous time: 0.13 seconds
+2025-03-25 23:23:00,846 | xffl.learning.utils |    DEBUG | Preloading: /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 1]: distributed setup: DistributedState(rank=1, world_size=16, group_local_rank=1, group_local_size=4, group_rank=0, group_world_size=4, replica_local_rank=1, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=1, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fe12754ed70>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fe12754ee70>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fe12754eef0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 2]: distributed setup: DistributedState(rank=2, world_size=16, group_local_rank=2, group_local_size=4, group_rank=0, group_world_size=4, replica_local_rank=2, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=2, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f6fcb19ecb0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f6fcb19edb0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f6fcb19ef30>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 3]: distributed setup: DistributedState(rank=3, world_size=16, group_local_rank=3, group_local_size=4, group_rank=0, group_world_size=4, replica_local_rank=3, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=3, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fc6f7eceab0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fc6f7ecebb0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fc6f7ecec30>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 4]: distributed setup: DistributedState(rank=4, world_size=16, group_local_rank=0, group_local_size=4, group_rank=1, group_world_size=4, replica_local_rank=0, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=4, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fae0c52f9b0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fae0c52fab0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fae0c52fb30>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 5]: distributed setup: DistributedState(rank=5, world_size=16, group_local_rank=1, group_local_size=4, group_rank=1, group_world_size=4, replica_local_rank=1, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=5, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7feb00472c70>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7feb00472d70>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7feb00472df0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.utils |    DEBUG | Preloading: /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 7]: distributed setup: DistributedState(rank=7, world_size=16, group_local_rank=3, group_local_size=4, group_rank=1, group_world_size=4, replica_local_rank=3, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=7, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fae7dfc6e70>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fae7dfc6ff0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fae7dfc6db0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,847 | xffl.learning.distributed |    DEBUG | [Rank 6]: distributed setup: DistributedState(rank=6, world_size=16, group_local_rank=2, group_local_size=4, group_rank=1, group_world_size=4, replica_local_rank=2, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=6, federated_local_size=(8, 8), federated_rank=0, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f1e48ca2c30>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f1e48ca2d30>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f1e48ca2db0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 8]: distributed setup: DistributedState(rank=8, world_size=16, group_local_rank=0, group_local_size=4, group_rank=2, group_world_size=4, replica_local_rank=0, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=0, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f34e126e8b0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f34e126e9b0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f34e126ebf0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.distributed |    DEBUG | [Rank 9]: distributed setup: DistributedState(rank=9, world_size=16, group_local_rank=1, group_local_size=4, group_rank=2, group_world_size=4, replica_local_rank=1, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=1, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fba836a3170>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fba836a3270>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7fba836a34b0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,846 | xffl.learning.utils |    DEBUG | Preloading: /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b
+2025-03-25 23:23:00,847 | xffl.learning.distributed |    DEBUG | [Rank 12]: distributed setup: DistributedState(rank=12, world_size=16, group_local_rank=0, group_local_size=4, group_rank=3, group_world_size=4, replica_local_rank=0, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=4, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f5990a470b0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f5990a47230>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f5990a47470>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,847 | xffl.learning.distributed |    DEBUG | [Rank 13]: distributed setup: DistributedState(rank=13, world_size=16, group_local_rank=1, group_local_size=4, group_rank=3, group_world_size=4, replica_local_rank=1, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=5, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f5f6e0771b0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f5f6e0772b0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f5f6e0774f0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,847 | xffl.learning.utils |    DEBUG | Preloading: /leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b
+2025-03-25 23:23:00,847 | xffl.learning.distributed |    DEBUG | [Rank 10]: distributed setup: DistributedState(rank=10, world_size=16, group_local_rank=2, group_local_size=4, group_rank=2, group_world_size=4, replica_local_rank=2, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=2, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f85699975b0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f85699976b0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f85699978f0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,847 | xffl.learning.distributed |    DEBUG | [Rank 15]: distributed setup: DistributedState(rank=15, world_size=16, group_local_rank=3, group_local_size=4, group_rank=3, group_world_size=4, replica_local_rank=3, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=7, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7ff535153bf0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7ff535153cb0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7ff535153ef0>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,847 | xffl.learning.distributed |    DEBUG | [Rank 14]: distributed setup: DistributedState(rank=14, world_size=16, group_local_rank=2, group_local_size=4, group_rank=3, group_world_size=4, replica_local_rank=2, replica_local_size=4, replica_rank=1, replica_world_size=(2, 2), federated_local_rank=6, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f9295b6ecf0>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f9295b6edf0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7f9295b6f030>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,847 | xffl.learning.distributed |    DEBUG | [Rank 11]: distributed setup: DistributedState(rank=11, world_size=16, group_local_rank=3, group_local_size=4, group_rank=2, group_world_size=4, replica_local_rank=3, replica_local_size=4, replica_rank=0, replica_world_size=(2, 2), federated_local_rank=3, federated_local_size=(8, 8), federated_rank=1, federated_world_size=2, fsdp_mesh=None, hsdp_mesh=DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')), federated_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7faa0b06b670>, replica_group=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7faa0b06b6f0>, federation=<torch.distributed.distributed_c10d.ProcessGroup object at 0x7faa0b06b970>, backend='nccl', master_addr='lrdn0001', master_port=29500, device='cuda')
+2025-03-25 23:23:00,949 | xffl.learning.utils |    DEBUG | [Rank 0]: assigned local execution device 0, initialisation device set to cpu; meta initialization set to True
+2025-03-25 23:23:00,952 | xffl.learning.utils |    DEBUG | [Rank 12]: assigned local execution device 0, initialisation device set to cpu; meta initialization set to True
+2025-03-25 23:23:00,954 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:00,957 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+2025-03-25 23:23:00,978 | xffl.learning.utils |    DEBUG | [Rank 8]: assigned local execution device 0, initialisation device set to cpu; meta initialization set to True
+2025-03-25 23:23:00,982 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+2025-03-25 23:23:01,007 | xffl.learning.utils |    DEBUG | [Rank 4]: assigned local execution device 0, initialisation device set to cpu; meta initialization set to True
+2025-03-25 23:23:01,011 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+2025-03-25 23:23:02,574 | xffl.learning.utils |    DEBUG | [Rank 3]: assigned local execution device 3, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,578 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,589 | xffl.learning.utils |    DEBUG | [Rank 2]: assigned local execution device 2, initialisation device set to meta; meta initialization set to True
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+2025-03-25 23:23:02,593 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,594 | xffl.learning.utils |    DEBUG | [Rank 14]: assigned local execution device 2, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,597 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,601 | xffl.learning.utils |    DEBUG | [Rank 15]: assigned local execution device 3, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,604 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,605 | xffl.learning.utils |    DEBUG | [Rank 11]: assigned local execution device 3, initialisation device set to meta; meta initialization set to True
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+2025-03-25 23:23:02,609 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,610 | xffl.learning.utils |    DEBUG | [Rank 7]: assigned local execution device 3, initialisation device set to meta; meta initialization set to True
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+2025-03-25 23:23:02,611 | xffl.learning.utils |    DEBUG | [Rank 10]: assigned local execution device 2, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,612 | xffl.learning.utils |    DEBUG | [Rank 6]: assigned local execution device 2, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,614 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,615 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,616 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+2025-03-25 23:23:02,631 | xffl.learning.utils |    DEBUG | [Rank 1]: assigned local execution device 1, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,635 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,640 | xffl.learning.utils |    DEBUG | [Rank 5]: assigned local execution device 1, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,641 | xffl.learning.utils |    DEBUG | [Rank 13]: assigned local execution device 1, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,644 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+2025-03-25 23:23:02,645 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+2025-03-25 23:23:02,676 | xffl.learning.utils |    DEBUG | [Rank 9]: assigned local execution device 1, initialisation device set to meta; meta initialization set to True
+2025-03-25 23:23:02,679 | wandb.sdk.lib.gitlib |    DEBUG | git repository is invalid
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+wandb: Tracking run with wandb version 0.19.6
+wandb: W&B syncing is set to `offline` in this directory.
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.63it/s]
+2025-03-25 23:23:06,720 | xffl.learning.modelling |    DEBUG | [Rank 12]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:06,721 | xffl.learning.distributed |    DEBUG | [Rank 12]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.61it/s]
+2025-03-25 23:23:06,750 |         __main__ |    DEBUG | Model loading time: 4.97 seconds
+2025-03-25 23:23:06,751 |         __main__ |    DEBUG | Training llama3.1-8b: 8030.26 million trainable parameters
+2025-03-25 23:23:06,751 | xffl.learning.modelling |    DEBUG | [Rank 0]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:06,751 | xffl.learning.distributed |    DEBUG | [Rank 0]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.62it/s]
+2025-03-25 23:23:06,769 | xffl.learning.modelling |    DEBUG | [Rank 4]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:06,770 | xffl.learning.distributed |    DEBUG | [Rank 4]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.62it/s]
+2025-03-25 23:23:06,785 | xffl.learning.modelling |    DEBUG | [Rank 8]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:06,786 | xffl.learning.distributed |    DEBUG | [Rank 8]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.79it/s]
+2025-03-25 23:23:07,316 | xffl.learning.modelling |    DEBUG | [Rank 13]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  2.03it/s]2025-03-25 23:23:07,316 | xffl.learning.distributed |    DEBUG | [Rank 13]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.77it/s]
+2025-03-25 23:23:07,324 | xffl.learning.modelling |    DEBUG | [Rank 1]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,325 | xffl.learning.distributed |    DEBUG | [Rank 1]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.78it/s]
+2025-03-25 23:23:07,332 | xffl.learning.modelling |    DEBUG | [Rank 5]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,332 | xffl.learning.distributed |    DEBUG | [Rank 5]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.71it/s]
+2025-03-25 23:23:07,352 | xffl.learning.modelling |    DEBUG | [Rank 7]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,352 | xffl.learning.distributed |    DEBUG | [Rank 7]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.70it/s]
+2025-03-25 23:23:07,363 | xffl.learning.modelling |    DEBUG | [Rank 6]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,363 | xffl.learning.distributed |    DEBUG | [Rank 6]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.68it/s]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.71it/s]
+2025-03-25 23:23:07,394 | xffl.learning.modelling |    DEBUG | [Rank 3]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,394 | xffl.learning.distributed |    DEBUG | [Rank 3]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+2025-03-25 23:23:07,396 | xffl.learning.modelling |    DEBUG | [Rank 15]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,397 | xffl.learning.distributed |    DEBUG | [Rank 15]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.77it/s]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.68it/s]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.70it/s]
+2025-03-25 23:23:07,406 | xffl.learning.modelling |    DEBUG | [Rank 9]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,407 | xffl.learning.distributed |    DEBUG | [Rank 9]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+2025-03-25 23:23:07,408 | xffl.learning.modelling |    DEBUG | [Rank 2]: is calling FSDP on device mesh DeviceMesh('cuda', [[0, 1, 2, 3], [4, 5, 6, 7]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,408 | xffl.learning.distributed |    DEBUG | [Rank 2]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.72it/s]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.72it/s]
+2025-03-25 23:23:07,411 | xffl.learning.modelling |    DEBUG | [Rank 14]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,411 | xffl.learning.distributed |    DEBUG | [Rank 14]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+2025-03-25 23:23:07,415 | xffl.learning.modelling |    DEBUG | [Rank 10]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,416 | xffl.learning.distributed |    DEBUG | [Rank 10]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+2025-03-25 23:23:07,416 | xffl.learning.modelling |    DEBUG | [Rank 11]: is calling FSDP on device mesh DeviceMesh('cuda', [[8, 9, 10, 11], [12, 13, 14, 15]], mesh_dim_names=('replica', 'shard')) with meta initialization True
+2025-03-25 23:23:07,416 | xffl.learning.distributed |    DEBUG | [Rank 11]: Activating "ShardingStrategy.HYBRID_SHARD" sharding strategy
+2025-03-25 23:23:15,448 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,448 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,448 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,448 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,448 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,449 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,449 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,449 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,449 |         __main__ |    DEBUG | FSDP wrapping setup time: 8.70 seconds
+2025-03-25 23:23:15,576 |         __main__ |    DEBUG | Dataset loading time: 0.13 seconds
+2025-03-25 23:23:15,590 |         __main__ |    DEBUG | [Rank 7]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,590 |         __main__ |    DEBUG | [Rank 5]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,591 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,591 |         __main__ |    DEBUG | [Rank 6]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,591 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,591 | xffl.learning.processing |     INFO | Starting epoch 0/1
+Training Epoch: 1:   0%|          | 0/32 [00:00<?, ?it/s]2025-03-25 23:23:15,594 |         __main__ |    DEBUG | [Rank 1]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,594 |         __main__ |    DEBUG | [Rank 3]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,594 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,594 |         __main__ |    DEBUG | [Rank 2]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,594 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,594 | xffl.learning.processing |     INFO | Starting epoch 0/1
+Training Epoch: 1:   0%|          | 0/32 [00:00<?, ?it/s]2025-03-25 23:23:15,609 |         __main__ |    DEBUG | [Rank 4]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,609 | xffl.learning.processing |     INFO | Starting epoch 0/1
+Training Epoch: 1:   0%|          | 0/32 [00:00<?, ?it/s]2025-03-25 23:23:15,612 |         __main__ |    DEBUG | train set size: 4096 samples
+2025-03-25 23:23:15,612 |         __main__ |    DEBUG | train dataloader size: 32 minibatches
+2025-03-25 23:23:15,612 |         __main__ |    DEBUG | val set size: 5311 samples
+2025-03-25 23:23:15,612 |         __main__ |    DEBUG | val dataloader size: 331 minibatches
+2025-03-25 23:23:15,613 |         __main__ |    DEBUG | Dataloaders creation time: 0.04 seconds
+2025-03-25 23:23:15,613 |         __main__ |    DEBUG | Learning rate adjusted to: 0.0002
+2025-03-25 23:23:15,614 |         __main__ |    DEBUG | Total setup time: 14.90 seconds
+2025-03-25 23:23:15,614 |         __main__ |    DEBUG | [Rank 0]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,614 | xffl.learning.processing |     INFO | Starting epoch 0/1
+Training Epoch: 1:   0%|          | 0/32 [00:00<?, ?it/s]2025-03-25 23:23:15,701 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,702 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,702 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,702 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,702 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,702 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,704 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,704 | xffl.learning.utils |    DEBUG | Activated non-reentrant model (gradient) checkpointing
+2025-03-25 23:23:15,842 |         __main__ |    DEBUG | [Rank 10]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,842 |         __main__ |    DEBUG | [Rank 9]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,842 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,842 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,842 |         __main__ |    DEBUG | [Rank 8]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,843 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,844 |         __main__ |    DEBUG | [Rank 14]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,844 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,844 |         __main__ |    DEBUG | [Rank 13]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,844 |         __main__ |    DEBUG | [Rank 12]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,844 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,844 | xffl.learning.processing |     INFO | Starting epoch 0/1
+Training Epoch: 1:   0%|          | 0/32 [00:00<?, ?it/s]2025-03-25 23:23:15,861 |         __main__ |    DEBUG | [Rank 15]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,861 | xffl.learning.processing |     INFO | Starting epoch 0/1
+2025-03-25 23:23:15,861 |         __main__ |    DEBUG | [Rank 11]: --- STARTING TRAINING ---
+2025-03-25 23:23:15,861 | xffl.learning.processing |     INFO | Starting epoch 0/1
+Training Epoch: 1/1, step 31/32 completed (loss: 8.2864): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.1994): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.4432): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.2530): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.2020): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.1075): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.3030): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.3728): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.2549): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.1706): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.3017): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.3076): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.3817): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.2188): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.3678): 100%|██████████| 32/32 [02:41<00:00,  5.05s/it]
+Training Epoch: 1/1, step 31/32 completed (loss: 8.2959): 100%|██████████| 32/32 [02:41<00:00,  5.04s/it]
+2025-03-25 23:25:58,053 | xffl.learning.processing |     INFO | Epoch 1: train_perplexity=38647.8438, train_epoch_loss=10.5622, epoch time 161.6241776261013s
+2025-03-25 23:25:58,055 | xffl.learning.distributed |    DEBUG | [Rank 1]: calling destroy_process_group
+2025-03-25 23:25:58,053 | xffl.learning.distributed |    DEBUG | [Rank 5]: calling destroy_process_group
+2025-03-25 23:25:58,053 | xffl.learning.distributed |    DEBUG | [Rank 6]: calling destroy_process_group
+2025-03-25 23:25:58,053 | xffl.learning.distributed |    DEBUG | [Rank 7]: calling destroy_process_group
+2025-03-25 23:25:58,053 | xffl.learning.distributed |    DEBUG | [Rank 4]: calling destroy_process_group
+2025-03-25 23:25:58,054 | xffl.learning.distributed |    DEBUG | [Rank 8]: calling destroy_process_group
+2025-03-25 23:25:58,054 | xffl.learning.distributed |    DEBUG | [Rank 9]: calling destroy_process_group
+2025-03-25 23:25:58,053 | xffl.learning.distributed |    DEBUG | [Rank 13]: calling destroy_process_group
+2025-03-25 23:25:58,054 | xffl.learning.distributed |    DEBUG | [Rank 14]: calling destroy_process_group
+2025-03-25 23:25:58,054 | xffl.learning.distributed |    DEBUG | [Rank 12]: calling destroy_process_group
+2025-03-25 23:25:58,054 | xffl.learning.distributed |    DEBUG | [Rank 15]: calling destroy_process_group
+2025-03-25 23:25:58,055 | xffl.learning.distributed |    DEBUG | [Rank 3]: calling destroy_process_group
+2025-03-25 23:25:58,055 |         __main__ |    DEBUG | Key: avg_epoch_time, Value: 161.6241776261013
+2025-03-25 23:25:58,055 | xffl.learning.distributed |    DEBUG | [Rank 2]: calling destroy_process_group
+2025-03-25 23:25:58,055 |         __main__ |    DEBUG | Key: avg_train_perp, Value: 38647.84375
+2025-03-25 23:25:58,055 |         __main__ |    DEBUG | Key: avg_train_loss, Value: 10.562246322631836
+2025-03-25 23:25:58,054 | xffl.learning.distributed |    DEBUG | [Rank 10]: calling destroy_process_group
+2025-03-25 23:25:58,054 | xffl.learning.distributed |    DEBUG | [Rank 11]: calling destroy_process_group
+2025-03-25 23:25:58,056 | xffl.learning.distributed |    DEBUG | [Rank 0]: calling destroy_process_group
+[W325 23:25:58.410758651 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.434991551 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.511284889 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.454084815 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.458774965 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.507874460 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.543937127 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.556188680 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.556568225 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.586317866 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.574210184 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.593201563 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W325 23:25:58.056052501 ProcessGroupNCCL.cpp:1496] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232300-1tpd60a1
+wandb: Find logs at: wandb/offline-run-20250325_232300-1tpd60a1/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-6wpk1utm
+wandb: Find logs at: wandb/offline-run-20250325_232302-6wpk1utm/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-k91rrhdy
+wandb: Find logs at: wandb/offline-run-20250325_232302-k91rrhdy/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-zyt6php6
+wandb: Find logs at: wandb/offline-run-20250325_232302-zyt6php6/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232301-4mfkmpx4
+wandb: Find logs at: wandb/offline-run-20250325_232301-4mfkmpx4/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-yjwoz8e8
+wandb: Find logs at: wandb/offline-run-20250325_232302-yjwoz8e8/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-fw6u79jr
+wandb: Find logs at: wandb/offline-run-20250325_232302-fw6u79jr/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-1j1z6b16
+wandb: Find logs at: wandb/offline-run-20250325_232302-1j1z6b16/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232300-f0q4lqam
+wandb: Find logs at: wandb/offline-run-20250325_232300-f0q4lqam/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232300-3adbc43l
+wandb: Find logs at: wandb/offline-run-20250325_232300-3adbc43l/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-8eyqzwto
+wandb: Find logs at: wandb/offline-run-20250325_232302-8eyqzwto/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-01974mtr
+wandb: Find logs at: wandb/offline-run-20250325_232302-01974mtr/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-kqr30ww5
+wandb: Find logs at: wandb/offline-run-20250325_232302-kqr30ww5/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-yk5are5h
+wandb: Find logs at: wandb/offline-run-20250325_232302-yk5are5h/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-yovmawea
+wandb: Find logs at: wandb/offline-run-20250325_232302-yovmawea/logs
+wandb:
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /leonardo/home/userexternal/gmittone/wandb/offline-run-20250325_232302-djs0zvlc
+wandb: Find logs at: wandb/offline-run-20250325_232302-djs0zvlc/logs
+2025-03-25 23:26:02,337 | xffl.cli.simulate |     INFO | Total simulation execution time: 190.63 seconds
+2025-03-25 23:26:02,338 | xffl.cli.simulate |     INFO | *** Cross-Facility Federated Learning (xFFL) - Simulation ***
