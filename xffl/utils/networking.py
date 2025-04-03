@@ -35,10 +35,19 @@ def get_cells_ids(
                 current_cell_id = node
                 world_size = 1
             else:
-                world_size+=1
+                world_size += 1
             cells_ids.append(cell_id)
         local_world_sizes.append(world_size)
 
     return cells_ids, local_world_sizes
 
-print(str(get_cells_ids(["lrdn0001", "lrdn001", "lrdn0585", "lrdn0939", "lrdn0946"], cell_size=180)[1]).replace("]","").replace("[",""))
+
+print(
+    str(
+        get_cells_ids(
+            ["lrdn0001", "lrdn001", "lrdn0585", "lrdn0939", "lrdn0946"], cell_size=180
+        )[1]
+    )
+    .replace("]", "")
+    .replace("[", "")
+)

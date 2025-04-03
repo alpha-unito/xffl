@@ -100,6 +100,295 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
         param.copy_(updated_param, non_blocking=True)
 
 
+def sync_federated_averaging_v1(model: nn.Module, state: DistributedState) -> None:
+    """Federated averaging of corresponding model's shards on different hosts
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: Partially instantiated distributed state (rank, world_size, backend)
+    :type state: DistributedState
+    """
+    replica_world_size: int = (
+        min(state.replica_world_size)
+        if not isinstance(state.replica_world_size, int)
+        else state.replica_world_size
+    )
+    communicating_processes: int = (
+        (state.replica_local_size // replica_world_size)
+        if replica_world_size <= state.replica_local_size
+        else 1
+    )
+
+    bucket = 16
+
+    all_reduce_stream = torch.cuda.default_stream()
+    broadcast_stream = torch.cuda.Stream()
+
+    param_list = list(model.parameters())
+    buffer = [param_list[0]] + [
+        torch.stack(param_list[i : i + bucket])
+        for i in range(1, len(param_list), bucket)
+    ]
+
+    if (
+        communicating_processes * state.replica_rank
+        <= state.replica_local_rank
+        < communicating_processes * (state.replica_rank + 1)
+    ):
+        for param in buffer:
+            with torch.cuda.StreamContext(all_reduce_stream):
+                dist.all_reduce(
+                    tensor=param,
+                    op=dist.ReduceOp.AVG,
+                    group=state.federated_group,
+                )
+            with torch.cuda.StreamContext(broadcast_stream):
+                broadcast_stream.wait_stream(all_reduce_stream)
+                dist.broadcast(
+                    tensor=param,
+                    src=state.rank,
+                    group=state.replica_group,
+                )
+    else:
+        federated_local_size: int = (
+            state.federated_local_size[state.federated_rank]
+            if not isinstance(state.federated_local_size, int)
+            else state.federated_local_size
+        )
+        src: int = (
+            state.replica_local_rank + (federated_local_size * state.federated_rank)
+            if state.replica_local_rank < communicating_processes * state.replica_rank
+            else state.replica_local_rank
+            + (state.replica_local_size * (state.replica_rank + 1))
+            + (federated_local_size * state.federated_rank)
+        )
+
+        for param in buffer:
+            dist.broadcast(
+                tensor=param,
+                src=src,
+                group=state.replica_group,
+            )
+
+    for index, param in enumerate(param_list[1:], start=0):
+        param.copy_(buffer[(index // bucket) + 1][index % bucket])
+
+
+def sync_federated_averaging_v2(model: nn.Module, state: DistributedState) -> None:
+    """Federated averaging of corresponding model's shards on different hosts
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: Partially instantiated distributed state (rank, world_size, backend)
+    :type state: DistributedState
+    """
+    replica_world_size: int = (
+        min(state.replica_world_size)
+        if not isinstance(state.replica_world_size, int)
+        else state.replica_world_size
+    )
+    communicating_processes: int = (
+        (state.replica_local_size // replica_world_size)
+        if replica_world_size <= state.replica_local_size
+        else 1
+    )
+
+    # param_list = list(model.parameters())
+    # buffer = [layer.contiguous() for layer in param_list]
+    all_reduce_stream = torch.cuda.default_stream()
+    broadcast_stream = torch.cuda.Stream()
+
+    if (
+        communicating_processes * state.replica_rank
+        <= state.replica_local_rank
+        < communicating_processes * (state.replica_rank + 1)
+    ):
+        for param in model.parameters():
+            with torch.cuda.StreamContext(all_reduce_stream):
+                dist.all_reduce(
+                    tensor=param,
+                    op=dist.ReduceOp.AVG,
+                    group=state.federated_group,
+                )
+            with torch.cuda.StreamContext(broadcast_stream):
+                broadcast_stream.wait_stream(all_reduce_stream)
+                dist.broadcast(
+                    tensor=param,
+                    src=state.rank,
+                    group=state.replica_group,
+                )
+    else:
+        federated_local_size: int = (
+            state.federated_local_size[state.federated_rank]
+            if not isinstance(state.federated_local_size, int)
+            else state.federated_local_size
+        )
+        src: int = (
+            state.replica_local_rank + (federated_local_size * state.federated_rank)
+            if state.replica_local_rank < communicating_processes * state.replica_rank
+            else state.replica_local_rank
+            + (state.replica_local_size * (state.replica_rank + 1))
+            + (federated_local_size * state.federated_rank)
+        )
+
+        for param in model.parameters():
+            dist.broadcast(
+                tensor=param,
+                src=src,
+                group=state.replica_group,
+            )
+
+
+def sync_federated_averaging_v3(model: nn.Module, state: DistributedState) -> None:
+    """Federated averaging of corresponding model's shards on different hosts
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: Partially instantiated distributed state (rank, world_size, backend)
+    :type state: DistributedState
+    """
+    replica_world_size: int = (
+        min(state.replica_world_size)
+        if not isinstance(state.replica_world_size, int)
+        else state.replica_world_size
+    )
+    communicating_processes: int = (
+        (state.replica_local_size // replica_world_size)
+        if replica_world_size <= state.replica_local_size
+        else 1
+    )
+
+    if (
+        communicating_processes * state.replica_rank
+        <= state.replica_local_rank
+        < communicating_processes * (state.replica_rank + 1)
+    ):
+        for index, param in enumerate(model.parameters()):
+            stream_index = index % len(state.streams)
+            with torch.cuda.StreamContext(state.streams[stream_index]):
+                dist.all_reduce(
+                    tensor=param,
+                    op=dist.ReduceOp.AVG,
+                    group=state.federated_group[stream_index],
+                )
+                dist.broadcast(
+                    tensor=param,
+                    src=state.rank,
+                    group=state.replica_group[stream_index],
+                )
+    else:
+        federated_local_size: int = (
+            state.federated_local_size[state.federated_rank]
+            if not isinstance(state.federated_local_size, int)
+            else state.federated_local_size
+        )
+        src: int = (
+            state.replica_local_rank + (federated_local_size * state.federated_rank)
+            if state.replica_local_rank < communicating_processes * state.replica_rank
+            else state.replica_local_rank
+            + (state.replica_local_size * (state.replica_rank + 1))
+            + (federated_local_size * state.federated_rank)
+        )
+
+        for index, param in enumerate(model.parameters()):
+            stream_index = index % len(state.streams)
+            with torch.cuda.StreamContext(state.streams[stream_index]):
+                dist.broadcast(
+                    tensor=param,
+                    src=src,
+                    group=state.replica_group[stream_index],
+                )
+
+
+def sync_federated_averaging_v4(model: nn.Module, state: DistributedState) -> None:
+    """Federated averaging of corresponding model's shards on different hosts
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: Partially instantiated distributed state (rank, world_size, backend)
+    :type state: DistributedState
+    """
+    replica_world_size: int = (
+        min(state.replica_world_size)
+        if not isinstance(state.replica_world_size, int)
+        else state.replica_world_size
+    )
+    communicating_processes: int = (
+        (state.replica_local_size // replica_world_size)
+        if replica_world_size <= state.replica_local_size
+        else 1
+    )
+
+    bucket = 16
+
+    param_list = list(model.parameters())
+    bucket_len = (len(param_list) - 1) // bucket
+
+    if (
+        communicating_processes * state.replica_rank
+        <= state.replica_local_rank
+        < communicating_processes * (state.replica_rank + 1)
+    ):
+        for index in range(bucket + 1):
+            with torch.cuda.StreamContext(state.streams[index % len(state.streams)]):
+                if index == 0:
+                    param = param_list[0]
+                else:
+                    begin = ((index - 1) * bucket_len) + 1
+                    end = (index * bucket_len) + 1
+                    param = torch.stack(param_list[begin:end])
+
+                dist.all_reduce(
+                    tensor=param,
+                    op=dist.ReduceOp.AVG,
+                    group=state.federated_group[index % len(state.federated_group)],
+                )
+                dist.broadcast(
+                    tensor=param,
+                    src=state.rank,
+                    group=state.replica_group[index % len(state.replica_group)],
+                )
+                if index > 0:
+                    begin = ((index - 1) * bucket_len) + 1
+                    end = (index * bucket_len) + 1
+                    for i, layer in enumerate(param_list[begin:end], start=0):
+                        layer.copy_(param[i])
+
+    else:
+        federated_local_size: int = (
+            state.federated_local_size[state.federated_rank]
+            if not isinstance(state.federated_local_size, int)
+            else state.federated_local_size
+        )
+        src: int = (
+            state.replica_local_rank + (federated_local_size * state.federated_rank)
+            if state.replica_local_rank < communicating_processes * state.replica_rank
+            else state.replica_local_rank
+            + (state.replica_local_size * (state.replica_rank + 1))
+            + (federated_local_size * state.federated_rank)
+        )
+
+        for index in range(bucket + 1):
+            with torch.cuda.StreamContext(state.streams[index % len(state.streams)]):
+                if index == 0:
+                    param = param_list[0]
+                else:
+                    begin = ((index - 1) * bucket_len) + 1
+                    end = (index * bucket_len) + 1
+                    param = torch.stack(param_list[begin:end])
+
+                dist.broadcast(
+                    tensor=param,
+                    src=src,
+                    group=state.replica_group[index % len(state.replica_group)],
+                )
+                if index > 0:
+                    begin = ((index - 1) * bucket_len) + 1
+                    end = (index * bucket_len) + 1
+                    for i, layer in enumerate(param_list[begin:end], start=0):
+                        layer.copy_(param[i])
+
+
 def async_federated_averaging(
     model: nn.Module, state: DistributedState
 ) -> Tuple[List[dist.Work], List[torch.Tensor]]:

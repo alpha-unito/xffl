@@ -7,6 +7,7 @@ import torch
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from torch.distributed.device_mesh import DeviceMesh, init_device_mesh
+import torch.cuda as cuda
 
 from xffl.utils.utils import get_default_nccl_process_group_options, get_timeout
 
@@ -47,14 +48,14 @@ class DistributedState:
     """Group size of a replica sharding group"""
     replica_rank: Optional[int] = None
     """Rank of the replica group with respect to all the other ones (eventually, inside the federated group)"""
-    replica_world_size: Optional[int | Tuple[int, ...]] = None
+    replica_world_size: Optional[Tuple[int, ...]] = None
     """Global number of replica sharding groups involved in the training process (eventually, inside the federated groups)"""
 
     # FEDERATED GROUP
     # These are local information about the distributed processes part of the same federated group (if FederatedScaling is active)
     federated_local_rank: Optional[int] = None
     """Rank of the process inside the local federated group"""
-    federated_local_size: Optional[int | Tuple[int, ...]] = None
+    federated_local_size: Optional[Tuple[int, ...]] = None
     """Group size of a federated group (eventually, list of group sizes if the federation is asymmetric)"""
     federated_rank: Optional[int] = None
     """Federated group rank with respect to all the other ones"""
@@ -66,9 +67,9 @@ class DistributedState:
     """FSDP device mesh"""
     hsdp_mesh: Optional[DeviceMesh] = None
     """HSDP device mesh"""
-    federated_group: Optional[ProcessGroup] = None
+    federated_group: Optional[List[ProcessGroup]] = None
     """Process group collecting ranks holding the same model's shard across federated groups"""
-    replica_group: Optional[ProcessGroup] = None
+    replica_group: Optional[List[ProcessGroup]] = None
     """Process group collecting ranks holding the same model's shard inside federated groups"""
     federation: Optional[ProcessGroup] = None
     """Process group collecting all ranks participating in the same federated group"""
@@ -82,6 +83,10 @@ class DistributedState:
     """Rendez-vous port"""
     device: Optional[Literal["cpu", "cuda"]] = None
     """Chosen deployment device"""
+    streams: Optional[List[cuda.Stream]] = None
+    """Pool of available CUDA streams"""
+
+    ### Methods ###
 
     def set_global(self, rank: int, world_size: int) -> None:
         if 0 <= rank < world_size and world_size > 0:
@@ -338,23 +343,34 @@ class DistributedState:
                         mesh_dim_names=("replica", "shard"),
                     )
 
+                    streams = 4
+                    self.streams = [torch.cuda.Stream() for _ in range(streams)]
+
                     # Group of processes sharing the same shard across the federated groups
-                    self.federated_group = self.create_process_group(
-                        ranks=tuple(
-                            mesh[:, self.replica_rank, self.replica_local_rank].tolist()
-                        ),
-                        group_desc=f"Federated shard averaging group #{self.federated_rank}",
-                    )
+                    self.federated_group = [
+                        self.create_process_group(
+                            ranks=tuple(
+                                mesh[
+                                    :, self.replica_rank, self.replica_local_rank
+                                ].tolist()
+                            ),
+                            group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
+                        )
+                        for i in range(streams)
+                    ]
 
                     # Group of processes sharing the same shard inside the federated group
-                    self.replica_group = self.create_process_group(
-                        ranks=tuple(
-                            mesh[
-                                self.federated_rank, :, self.replica_local_rank
-                            ].tolist()
-                        ),
-                        group_desc=f"Federated replica averaging group #{self.federated_rank}",
-                    )
+                    self.replica_group = [
+                        self.create_process_group(
+                            ranks=tuple(
+                                mesh[
+                                    self.federated_rank, :, self.replica_local_rank
+                                ].tolist()
+                            ),
+                            group_desc=f"Federated replica averaging group #{self.federated_rank} instance #{i}",
+                        )
+                        for i in range(streams)
+                    ]
                 else:  # FSDP federation
                     mesh: torch.Tensor = create_device_mesh(
                         mesh_shape=(
@@ -514,31 +530,41 @@ class DistributedState:
                         mesh_dim_names=("replica", "shard"),
                     )
 
+                    streams = 8
+                    self.streams = [torch.cuda.Stream() for _ in range(streams)]
+
                     # Group of processes sharing the same shard across the federated groups
-                    self.federated_group = self.create_process_group(
-                        ranks=tuple(
-                            [
-                                int(
-                                    federated_mesh[
-                                        self.replica_rank, self.replica_local_rank
-                                    ]
-                                )
-                                for federated_mesh in mesh
-                                if self.replica_rank < len(federated_mesh)
-                            ]
-                        ),
-                        group_desc=f"Federated shard averaging group #{self.federated_rank}",
-                    )
+                    self.federated_group = [
+                        self.create_process_group(
+                            ranks=tuple(
+                                [
+                                    int(
+                                        federated_mesh[
+                                            self.replica_rank, self.replica_local_rank
+                                        ]
+                                    )
+                                    for federated_mesh in mesh
+                                    if self.replica_rank < len(federated_mesh)
+                                ]
+                            ),
+                            group_desc=f"Federated shard averaging group #{self.federated_rank}",
+                        )
+                        for i in range(streams)
+                    ]
 
                     # Group of processes sharing the same shard inside the federated group
-                    self.replica_group = self.create_process_group(
-                        ranks=tuple(
-                            mesh[self.federated_rank][
-                                :, self.replica_local_rank
-                            ].tolist()
-                        ),
-                        group_desc=f"Federated replica averaging group #{self.federated_rank}",
-                    )
+                    self.replica_group = [
+                        self.create_process_group(
+                            ranks=tuple(
+                                mesh[self.federated_rank][
+                                    :, self.replica_local_rank
+                                ].tolist()
+                            ),
+                            group_desc=f"Federated replica averaging group #{self.federated_rank}",
+                        )
+                        for i in range(streams)
+                    ]
+
                 self.federation = self.create_process_group(
                     ranks=tuple(
                         [

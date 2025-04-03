@@ -83,9 +83,16 @@ def simulate(
     # Nodes cell IDs calculation for the FederatedScaling feature
     federated_local_ranks = [None for _ in args.nodelist]
     if args.federated_scaling is not None:
-        if args.federated_scaling=="auto":
-            federated_local_ranks, federated_local_size = get_cells_ids(nodes=args.nodelist, cell_size=180)
-            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = str(federated_local_size).replace("]","").replace("[","").replace(" ", "")
+        if args.federated_scaling == "auto":
+            federated_local_ranks, federated_local_size = get_cells_ids(
+                nodes=args.nodelist, cell_size=180
+            )
+            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = (
+                str(federated_local_size)
+                .replace("]", "")
+                .replace("[", "")
+                .replace(" ", "")
+            )
         else:
             federated_local_ranks: List[int] = [
                 federated_rank

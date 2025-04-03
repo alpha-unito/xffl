@@ -25,7 +25,9 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def set_deterministic_execution(seed: int) -> torch.Generator:
+def set_deterministic_execution(
+    seed: int,
+) -> torch.Generator:  # TODO: Flash_attention is stochastic
     """Set all the necessary RNGs to obtain reproducible executions
 
     This method sets random, numpy, torch and CUDA RNGs with the same seed.

@@ -19,6 +19,10 @@ from xffl.learning.distributed import (
     DistributedState,
     async_federated_averaging,
     sync_federated_averaging,
+    sync_federated_averaging_v1,
+    sync_federated_averaging_v2,
+    sync_federated_averaging_v3,
+    sync_federated_averaging_v4,
 )
 from xffl.learning.modelling import save_FSDP_model
 from xffl.utils.utils import get_timeout
@@ -107,8 +111,9 @@ def distributed_training(
         )
 
         for step, batch in enumerate(train_dataloader):
-            # if state.rank == 0:
-            #    start_time = time.perf_counter()
+            if state.rank == 0:
+                torch.cuda.synchronize()
+                start_time = time.perf_counter()
             for key in batch.keys():
                 batch[key] = batch[key].to(
                     device=torch.cuda.current_device(), non_blocking=True
@@ -125,39 +130,46 @@ def distributed_training(
                 handles = None
 
             loss: torch.Tensor = model(**batch).loss
-            total_loss += loss.detach().float()
-            train_step_perplexity.append(float(torch.exp(loss.detach().float())))
-            train_step_loss.append(loss.detach().float().item())
 
-            # if state.rank == 0:
-            #    batch_time = time.perf_counter() - start_time
-            #    start_time = time.perf_counter()
+            if state.rank == 0:
+                torch.cuda.synchronize()
+                batch_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
 
             loss.backward()
+
+            if state.rank == 0:
+                torch.cuda.synchronize()
+                back_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
+
             optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
 
-            # if state.rank == 0:
-            #    optimizer_time = time.perf_counter() - start_time
-            #    start_time = time.perf_counter()
+            if state.rank == 0:
+                torch.cuda.synchronize()
+                optimizer_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
 
             with torch.no_grad():
-                if (
-                    state.is_federated_scaling_setup()
-                    and federated_span is not None
-                    and step != 0
-                    and (step % federated_span == 0 or step + 1 == total_length)
+                if state.is_federated_scaling_setup() and (
+                    (step + 1) % federated_span == 0 or step + 1 == total_length
                 ):
                     if async_fs:
                         handles, buffer = async_federated_averaging(
                             model=model, state=state
                         )
                     else:
-                        sync_federated_averaging(model=model, state=state)
+                        sync_federated_averaging_v3(model=model, state=state)
 
-                # if state.rank == 0:
-                #    comm_time = time.perf_counter() - start_time
-                #    start_time = time.perf_counter()
+                if state.rank == 0:
+                    torch.cuda.synchronize()
+                    comm_time = time.perf_counter() - start_time
+                    start_time = time.perf_counter()
+
+                total_loss += loss.detach().float()
+                train_step_perplexity.append(float(torch.exp(loss.detach().float())))
+                train_step_loss.append(loss.detach().float().item())
 
                 pbar.update(1)
                 pbar.set_description(
@@ -174,10 +186,11 @@ def distributed_training(
                         }
                     )
 
-            # if state.rank == 0:
-            #    logger.debug(
-            #        f"[RANK {state.rank}]: batch: {batch_time:.2f}, optimizer: {optimizer_time:.2f}, communication: {comm_time:.2f}, update: {(time.perf_counter() - start_time):.2f}"
-            #    )
+            if state.rank == 0:
+                torch.cuda.synchronize()
+                logger.debug(
+                    f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
+                )
 
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)

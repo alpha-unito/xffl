@@ -159,7 +159,7 @@ parser.add_argument(
     "--federated-span",
     help="Number of training batched to process between two federated averaging",
     type=int,
-    default=0,
+    default=4,
 )
 
 parser.add_argument(
