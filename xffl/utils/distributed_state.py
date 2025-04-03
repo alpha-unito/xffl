@@ -429,8 +429,7 @@ class DistributedState:
                         )
                         self.unset_hsdp()
                     elif (
-                        self.replica_world_size[self.federated_rank]
-                        % self.federated_world_size
+                        self.replica_world_size[0] % self.federated_world_size # The replica_world_size is still not divided among the federated groups
                     ):
                         logger.error(
                             f"Impossible setting up distributed symmetric HSDP Federated Scaling environment with replica world size {self.replica_world_size} and federated world size {self.federated_world_size} - falling back to FSDP"
@@ -770,9 +769,6 @@ class DistributedState:
             and self.federated_local_size is not None
             and self.federated_rank is not None
             and self.federated_world_size is not None
-            and self.federated_group is not None
-            and self.replica_group is not None
-            and self.federation is not None
         )
 
     def create_process_group(

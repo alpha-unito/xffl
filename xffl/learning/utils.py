@@ -77,7 +77,7 @@ def setup_devices(
     """
 
     device: Literal["cpu", "cuda"] | int = (
-        (state.group_local_rank if state.is_group_setup() else "cuda")
+        (state.node_local_rank if state.is_node_setup() else "cuda")
         if torch.cuda.is_available()
         else "cpu"
     )
@@ -90,11 +90,11 @@ def setup_devices(
             torch.device("cpu" if state.replica_local_rank == 0 else "meta")
             if state.is_hsdp_setup()
             else (
-                torch.device("cpu" if state.group_local_rank == 0 else "meta")
-                if state.federated_local_size > state.group_local_size
+                torch.device("cpu" if state.node_local_rank == 0 else "meta")
+                if state.federated_local_size[state.federated_rank] > state.node_local_size
                 else (
                     "cpu"
-                    if state.group_local_rank % state.federated_local_size == 0
+                    if state.node_local_rank % state.federated_local_size[state.federated_rank] == 0
                     else "meta"
                 )
             )  # TODO: Caricare il modello un rank per nodo è vantaggioso rispetto a un rank e basta?

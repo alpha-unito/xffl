@@ -19,12 +19,9 @@ from xffl.learning.distributed import (
     DistributedState,
     async_federated_averaging,
     sync_federated_averaging,
-    sync_federated_averaging_v1,
-    sync_federated_averaging_v2,
     sync_federated_averaging_v3,
-    sync_federated_averaging_v4,
 )
-from xffl.learning.modelling import save_FSDP_model
+from xffl.learning.modelling import save_fsdp_model
 from xffl.utils.utils import get_timeout
 
 logger: Logger = getLogger(__name__)
@@ -160,7 +157,7 @@ def distributed_training(
                             model=model, state=state
                         )
                     else:
-                        sync_federated_averaging_v3(model=model, state=state)
+                        sync_federated_averaging(model=model, state=state)
 
                 if state.rank == 0:
                     torch.cuda.synchronize()
@@ -231,7 +228,7 @@ def distributed_training(
 
             if output_model_name:
                 checkpoint_start_time = time.perf_counter()
-                save_FSDP_model(
+                save_fsdp_model(
                     model=model,
                     optimizer=optimizer,
                     path=save_path,

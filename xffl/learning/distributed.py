@@ -42,11 +42,7 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
     :param state: Partially instantiated distributed state (rank, world_size, backend)
     :type state: DistributedState
     """
-    replica_world_size: int = (
-        min(state.replica_world_size)
-        if not isinstance(state.replica_world_size, int)
-        else state.replica_world_size
-    )
+    replica_world_size: int = min(state.replica_world_size)
     communicating_processes: int = (
         (state.replica_local_size // replica_world_size)
         if replica_world_size <= state.replica_local_size
@@ -68,19 +64,15 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
             dist.all_reduce(
                 tensor=param.contiguous(),
                 op=dist.ReduceOp.AVG,
-                group=state.federated_group,
+                group=state.federated_group[0],
             )
             dist.broadcast(
                 tensor=param.contiguous(),
                 src=state.rank,
-                group=state.replica_group,
+                group=state.replica_group[0],
             )
     else:
-        federated_local_size: int = (
-            state.federated_local_size[state.federated_rank]
-            if not isinstance(state.federated_local_size, int)
-            else state.federated_local_size
-        )
+        federated_local_size: int = state.federated_local_size[state.federated_rank]
         src: int = (
             state.replica_local_rank + (federated_local_size * state.federated_rank)
             if state.replica_local_rank < communicating_processes * state.replica_rank
@@ -93,7 +85,7 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
             dist.broadcast(
                 tensor=param.contiguous(),
                 src=src,
-                group=state.replica_group,
+                group=state.replica_group[0],
             )
 
     for param, updated_param in zip(param_list[1:], buffer[1]):

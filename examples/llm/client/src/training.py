@@ -57,7 +57,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         )
 
     # Large data preloading in background
-    if state.group_local_rank == 0:
+    if state.node_local_rank == 0:
         utils.preload(files=[model_info.path])
 
     # Devices setup
