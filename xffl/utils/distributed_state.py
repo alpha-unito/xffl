@@ -88,12 +88,36 @@ class DistributedState:
 
     def __str__(self):
         return f"""\n
-                GLOBAL:\tRank={self.rank},\tWorld size={self.world_size}\n
-                NODE:\tNode local rank={self.node_local_rank},\tNode local size={self.node_local_size},\tNode rank={self.node_rank},\tNode world size={self.node_world_size}\n
-                REPLICA:\tReplica local rank={self.replica_local_rank},\tReplica local size={self.replica_local_size},\tReplica rank={self.replica_rank},\tReplica world size={self.replica_world_size}\n
-                FEDERATION:\tFederated local rank={self.replica_local_rank},\tFederated local size={self.replica_local_size},\tFederated rank={self.replica_rank},\tFederated world size={self.replica_world_size}\n
-                MESHES:\tFSDP={self.fsdp_mesh},\tHSDP={self.hsdp_mesh},\tFederated group={self.federated_group}\t, Replica group={self.replica_group},\t Federation={self.federation}\n
-                TECHNICAL:\tBackend={self.backend}\t,Master address={self.master_addr},\tMaster port={self.master_port},\tDevice={self.device},\tStreams={self.streams}\n
+                GLOBAL:
+                    Rank={self.rank}
+                    World size={self.world_size}
+                NODE:
+                    Node local rank={self.node_local_rank}
+                    Node local size={self.node_local_size}
+                    Node rank={self.node_rank}
+                    Node world size={self.node_world_size}
+                REPLICA:
+                    Replica local rank={self.replica_local_rank}
+                    Replica local size={self.replica_local_size}
+                    Replica rank={self.replica_rank}
+                    Replica world size={self.replica_world_size}
+                FEDERATION:
+                    Federated local rank={self.replica_local_rank}
+                    Federated local size={self.replica_local_size}
+                    Federated rank={self.replica_rank}
+                    Federated world size={self.replica_world_size}
+                MESHES:
+                    SDP={self.fsdp_mesh}
+                    HSDP={self.hsdp_mesh}
+                    Federated group={dist.get_process_group_ranks(self.federated_group[0])}
+                    Replica group={dist.get_process_group_ranks(self.replica_group[0])}
+                    Federation={dist.get_process_group_ranks(self.federation)}
+                TECHNICAL:
+                    Backend={self.backend}
+                    Master address={self.master_addr}
+                    Master port={self.master_port}
+                    Device={self.device}
+                    Streams={self.streams}
                 """
 
     ### Methods ###
