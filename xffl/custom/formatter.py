@@ -44,7 +44,7 @@ class CustomFormatter(logging.Formatter):
             logging.CRITICAL: self.bold_red + self.fmt + self.reset,
         }
 
-    def format(self, record: LogRecord) -> LogRecord:
+    def format(self, record: LogRecord) -> str:
         """Format the provided record
 
         :param record: Logging record

@@ -268,7 +268,7 @@ def fsdp_evaluation(
     eval_dataloader: DataLoader,
     state: DistributedState,
     wandb_run: Optional[Run] = None,
-) -> Tuple[float, torch.Tensor, List[float], List[float]]:
+) -> Tuple[torch.Tensor, torch.Tensor, List[float], List[float]]:
     """Generic evaluation cycle for FSDP models
 
     :param model: Model to evaluate
@@ -279,13 +279,15 @@ def fsdp_evaluation(
     :type state: DistributedState
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
     :type wandb_run: Optional[wandb.Run], optional
-    :return: perplexity, epoch loss, step loff, step perplexity
+    :return: perplexity, epoch loss, step loss, step perplexity
     :rtype: Tuple[float, float, float, float]
     """
     model.eval()
-    val_step_loss = []
-    val_step_perplexity = []
-    eval_loss = 0.0
+
+    val_step_loss: List[float] = []
+    val_step_perplexity: List[float] = []
+    eval_loss: float = 0.0
+
     for _, batch in enumerate(
         tqdm(
             eval_dataloader,
@@ -301,7 +303,7 @@ def fsdp_evaluation(
 
         with torch.no_grad():
             outputs = model(**batch)
-            loss = outputs.loss
+            loss: torch.Tensor = outputs.loss
 
             eval_loss += loss.detach().float()
             val_step_loss.append(loss.detach().float().item())
@@ -310,11 +312,10 @@ def fsdp_evaluation(
     if torch.cuda.device_count() > 1:
         dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
 
-    eval_epoch_loss = eval_loss / len(eval_dataloader)
-    eval_epoch_loss = eval_epoch_loss / state.world_size
-    eval_ppl = torch.exp(eval_epoch_loss)
+    eval_epoch_loss: torch.Tensor = (eval_loss / len(eval_dataloader)) / state.world_size
+    eval_ppl: torch.Tensor = torch.exp(eval_epoch_loss)
 
-    if state.group_local_rank == 0:
+    if state.node_local_rank == 0:
         logger.info(f" {eval_ppl=} {eval_epoch_loss=}")
 
     if wandb_run:

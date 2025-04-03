@@ -11,31 +11,31 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def get_param_flag(list: List[str]) -> str:
+def get_param_flag(flag_list: List[str]) -> str:
     """Gets the full command line parameter flag
 
-    :param list: List of the parameter's flags
-    :type list: List[str]
+    :param flag_list: List of the parameter's flags
+    :type flag_list: List[str]
     :return: The full parameter flag
     :rtype: str
     """
-    return max(list, key=len)
+    return max(flag_list, key=len)
 
 
-def get_param_name(list: List[str], prefix: str = "-") -> str:
-    """Returns a the command line parameter full name given its flag list
+def get_param_name(flag_list: List[str], prefix: str = "-") -> str:
+    """Returns the command line parameter full name given its flag list
 
      This method also replaces scores with underscores
 
-    :param list: List of the parameter's flags
-    :type list: List[str]
+    :param flag_list: List of the parameter's flags
+    :type flag_list: List[str]
     :param prefix: Prefix symbol preceding a flag, defaults to "-"
     :type prefix: str
     :return: Full parameter name
     :rtype: str
     """
 
-    return get_param_flag(list=list).lstrip(prefix).replace(prefix, "_")
+    return get_param_flag(flag_list=flag_list).lstrip(prefix).replace(prefix, "_")
 
 
 def resolve_path(path: str, is_local_path: bool = True) -> str:
@@ -69,10 +69,12 @@ def check_input(
     :type text: str
     :param warning_msg: Error message in case the inserted value does not satisfies the control condition
     :type warning_msg: str
-    :param control: Control function to be cheked on the inserted value
+    :param control: Control function to be checked on the inserted value
     :type control: Callable
     :param is_path: Flag signaling if the expected input is a path, defaults to False
     :type is_path: bool, optional
+    :param is_local_path: If the provided path is a local path, defaults to True
+    :type is_local_path: bool
     :return: The value inserted from the user satisfying the condition
     :rtype: str
     """

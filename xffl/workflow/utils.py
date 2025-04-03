@@ -54,7 +54,7 @@ def from_args_to_cwl(
     except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
         raise e
 
-    # Itarate over the parser's declared arguments and compile the three dictionaries
+    # Iterate over the parser's declared arguments and compile the three dictionaries
     for action in parser._actions:
         if not isinstance(action, _HelpAction):
             # Convert the action attributes into useful parameter informations

@@ -571,40 +571,31 @@ def setup_distributed_process_group(
     init_distributed_process_group(state=state)
 
     # Distributed state local information
-    state.set_group(
-        group_local_rank=(
+    state.set_node(
+        node_local_rank=(
             int(os.environ.get("LOCAL_RANK"))
             if group_local_rank is None
             else group_local_rank
         ),
-        group_local_size=(
+        node_local_size=(
             int(os.environ.get("LOCAL_WORLD_SIZE"))
             if group_local_size is None
             else group_local_size
         ),
-        group_rank=(
+        node_rank=(
             int(os.environ.get("GROUP_RANK")) if group_rank is None else group_rank
         ),
-        group_world_size=(
+        node_world_size=(
             int(os.environ.get("GROUP_WORLD_SIZE"))
             if group_world_size is None
             else group_world_size
         ),
     )
 
-    # Setting HSDP if needed
-    if hsdp is not None:
-        state.set_hsdp(
-            replica_local_rank=state.rank % hsdp,
-            replica_local_size=hsdp,
-            replica_rank=state.rank // hsdp,
-            replica_world_size=state.world_size // hsdp,
-        )
-
     # Check if asymmetric Federated Scaling is required #
     if federated is None and "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
         federated = tuple(
-            int(item) * state.group_local_size
+            int(item) * state.node_local_size
             for item in os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE").split(",")
         )
 
@@ -618,13 +609,13 @@ def setup_distributed_process_group(
             )
             asymmetric_federated_scaling = False
 
+        # Setting HSDP if needed
+        if hsdp is not None:
+            state.partial_hsdp_setup(hsdp)
+
         if symmetric_federated_scaling:  # Symmetric federation
-            state.set_symmetric_federated_scaling(
-                federated_local_rank=state.rank % federated,
-                federated_local_size=federated,
-                federated_rank=state.rank // federated,
-                federated_world_size=state.world_size // federated,
-            )
+            state.set_symmetric_federated_scaling(federated_group_size=federated)
+
         elif asymmetric_federated_scaling:  # Asymmetric federation
             if federated_rank is None and "XFFL_FEDERATED_RANK" in os.environ:
                 federated_rank = int(os.environ.get("XFFL_FEDERATED_RANK"))
@@ -636,9 +627,9 @@ def setup_distributed_process_group(
             )
     else:  # Setting non-federated techniques
         if hsdp is not None:
-            state.set_hsdp_mesh()
+            state.set_hsdp(hsdp=hsdp)
         else:
-            state.set_fsdp_mesh()
+            state.set_fsdp()
 
     logger.debug(f"[Rank {state.rank}]: distributed setup: {state}")
     return state
@@ -660,16 +651,6 @@ def init_distributed_process_group(state: DistributedState) -> None:
             else None
         ),
         timeout=get_timeout(),
-    )
-
-
-def setup_hsdp_mesh(state: DistributedState, hsdp: int) -> None:
-
-    state.set_hsdp(
-        replica_local_rank=state.rank % hsdp,
-        replica_local_size=hsdp,
-        replica_rank=state.rank // hsdp,
-        replica_world_size=state.world_size // hsdp,
     )
 
 

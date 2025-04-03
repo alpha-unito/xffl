@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 from logging import Logger, getLogger
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from xffl.cli.parser import simulate_parser
 from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
@@ -81,7 +81,7 @@ def simulate(
     facilitator_script = get_facilitator_path()
 
     # Nodes cell IDs calculation for the FederatedScaling feature
-    federated_local_ranks = [None for _ in args.nodelist]
+    federated_local_ranks: List[Optional[int]] = [None for _ in args.nodelist]
     if args.federated_scaling is not None:
         if args.federated_scaling == "auto":
             federated_local_ranks, federated_local_size = get_cells_ids(
@@ -171,7 +171,7 @@ def main(args: argparse.Namespace) -> int:
         raise e
     finally:
         logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
-    return 0
+        return 0
 
 
 if __name__ == "__main__":

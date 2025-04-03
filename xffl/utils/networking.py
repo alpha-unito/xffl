@@ -1,11 +1,11 @@
 """Utilities for the Federated Scaling feature"""
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 def get_cells_ids(
     nodes: List[str], cell_size: int
-) -> List[int]:  # TODO: this method suppose sorted node list
+) -> Tuple[List[int], List[int]]:  # TODO: this method suppose sorted node list
     """Calculates an incremental cell ID for each node participating in the training
 
     :param nodes: List of nodes assigned to the training

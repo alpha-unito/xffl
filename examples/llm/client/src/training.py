@@ -13,13 +13,13 @@ from typing import Dict, Optional, Union
 
 import torch
 import wandb
+from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, default_data_collator
 
-from datasets import Dataset, DatasetDict
 from xffl.custom import DATASETS, MODELS
 from xffl.learning import data, distributed, modelling, processing, utils
 from xffl.utils.logging import setup_logging
@@ -71,7 +71,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         notes=f"{args.model_name} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
         tags=["xFFL", f"{args.model_name}", "clean_mc4_it"],
         mode=args.wandb_mode,  # Set to "disable" to execute without wandb
-        config=args,
+        config=vars(args),
     )
 
     # The whole training is done in bfloat16

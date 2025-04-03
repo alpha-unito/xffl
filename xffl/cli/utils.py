@@ -106,8 +106,6 @@ def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
     :type args: Dict[str, Any]
     :param mapping: Mapping between environmental variables and CLI arguments names
     :type mapping: Dict[str, str]
-    :param parser: Parser from which the arguments originated
-    :type parser: ArgumentParser
     :return: New environment variables dictionary
     :rtype: Dict[str, str]
     """

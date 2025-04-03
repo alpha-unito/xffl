@@ -26,7 +26,7 @@ def create_fsdp_model(
     module: nn.Module | AutoModelForCausalLM,
     state: DistributedState,
     model_info,
-    current_device: Optional[torch.DeviceObjType] = None,
+    current_device: Optional[torch.DeviceObjType|int] = None,
     mixed_precision: Optional[MixedPrecision] = None,
     meta_initialization: Optional[bool] = False,
 ) -> FullyShardedDataParallel:
@@ -77,7 +77,7 @@ def create_fsdp_model(
     return model
 
 
-def save_FSDP_model(
+def save_fsdp_model(
     model: FullyShardedDataParallel,  # To be generalized (as for now just HF)
     optimizer: Optimizer,
     path: PathLike,
@@ -93,6 +93,8 @@ def save_FSDP_model(
 
     :param model: FSDP-wrapped model to be saved
     :type model: FullyShardedDataParallel
+    :param optimizer: Model optimizer
+    :type optimizer: Optimizer
     :param path: Path where to save the model
     :type path: PathLike
     :param name: Model's name
