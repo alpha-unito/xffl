@@ -91,10 +91,13 @@ def setup_devices(
             if state.is_hsdp_setup()
             else (
                 torch.device("cpu" if state.node_local_rank == 0 else "meta")
-                if state.federated_local_size[state.federated_rank] > state.node_local_size
+                if state.federated_local_size[state.federated_rank]
+                > state.node_local_size
                 else (
                     "cpu"
-                    if state.node_local_rank % state.federated_local_size[state.federated_rank] == 0
+                    if state.node_local_rank
+                    % state.federated_local_size[state.federated_rank]
+                    == 0
                     else "meta"
                 )
             )  # TODO: Caricare il modello un rank per nodo è vantaggioso rispetto a un rank e basta?

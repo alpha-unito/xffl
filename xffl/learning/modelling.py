@@ -26,7 +26,7 @@ def create_fsdp_model(
     module: nn.Module | AutoModelForCausalLM,
     state: DistributedState,
     model_info,
-    current_device: Optional[torch.DeviceObjType|int] = None,
+    current_device: Optional[torch.DeviceObjType | int] = None,
     mixed_precision: Optional[MixedPrecision] = None,
     meta_initialization: Optional[bool] = False,
 ) -> FullyShardedDataParallel:

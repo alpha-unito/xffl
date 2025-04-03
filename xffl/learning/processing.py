@@ -309,7 +309,9 @@ def fsdp_evaluation(
     if torch.cuda.device_count() > 1:
         dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
 
-    eval_epoch_loss: torch.Tensor = (eval_loss / len(eval_dataloader)) / state.world_size
+    eval_epoch_loss: torch.Tensor = (
+        eval_loss / len(eval_dataloader)
+    ) / state.world_size
     eval_ppl: torch.Tensor = torch.exp(eval_epoch_loss)
 
     if state.node_local_rank == 0:

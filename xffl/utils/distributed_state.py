@@ -86,6 +86,16 @@ class DistributedState:
     streams: Optional[Tuple[cuda.Stream, ...]] = None
     """Pool of available CUDA streams"""
 
+    def __str__(self):
+        return f"""\n
+                GLOBAL:\tRank={self.rank},\tWorld size={self.world_size}\n
+                NODE:\tNode local rank={self.node_local_rank},\tNode local size={self.node_local_size},\tNode rank={self.node_rank},\tNode world size={self.node_world_size}\n
+                REPLICA:\tReplica local rank={self.replica_local_rank},\tReplica local size={self.replica_local_size},\tReplica rank={self.replica_rank},\tReplica world size={self.replica_world_size}\n
+                FEDERATION:\tFederated local rank={self.replica_local_rank},\tFederated local size={self.replica_local_size},\tFederated rank={self.replica_rank},\tFederated world size={self.replica_world_size}\n
+                MESHES:\tFSDP={self.fsdp_mesh},\tHSDP={self.hsdp_mesh},\tFederated group={self.federated_group}\t, Replica group={self.replica_group},\t Federation={self.federation}\n
+                TECHNICAL:\tBackend={self.backend}\t,Master address={self.master_addr},\tMaster port={self.master_port},\tDevice={self.device},\tStreams={self.streams}\n
+                """
+
     ### Methods ###
 
     def set_global(self, rank: int, world_size: int) -> None:
@@ -429,7 +439,8 @@ class DistributedState:
                         )
                         self.unset_hsdp()
                     elif (
-                        self.replica_world_size[0] % self.federated_world_size # The replica_world_size is still not divided among the federated groups
+                        self.replica_world_size[0]
+                        % self.federated_world_size  # The replica_world_size is still not divided among the federated groups
                     ):
                         logger.error(
                             f"Impossible setting up distributed symmetric HSDP Federated Scaling environment with replica world size {self.replica_world_size} and federated world size {self.federated_world_size} - falling back to FSDP"
@@ -806,3 +817,8 @@ def create_device_mesh(mesh_shape: Tuple[int, ...]) -> torch.Tensor:
     :rtype: torch.Tensor
     """
     return torch.arange(math.prod(mesh_shape), dtype=torch.int).view(mesh_shape)
+
+
+### TESTING ###
+
+processes: int = 8
