@@ -155,16 +155,9 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-fspan",
-    "--federated-span",
-    help="Number of training batched to process between two federated averaging",
+    "-fb",
+    "--federated-batches",
+    help="Number of training batches to process between two federated averaging",
     type=int,
-    default=4,
-)
-
-parser.add_argument(
-    "-async-fs",
-    "--asynchronous-federated-scaling",
-    help="Use asynchronous weights averaging",
-    action="store_true",
+    default=1,
 )

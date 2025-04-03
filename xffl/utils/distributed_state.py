@@ -87,6 +87,21 @@ class DistributedState:
     """Pool of available CUDA streams"""
 
     def __str__(self):
+        federated_group: Optional[List[int]] = (
+            dist.get_process_group_ranks(self.federated_group[0])
+            if self.federated_group is not None
+            else None
+        )
+        replica_group: Optional[List[int]] = (
+            dist.get_process_group_ranks(self.replica_group[0])
+            if self.replica_group is not None
+            else None
+        )
+        federation: Optional[List[int]] = (
+            dist.get_process_group_ranks(self.federation)
+            if self.federation is not None
+            else None
+        )
         return f"""\n
                 GLOBAL:
                     Rank={self.rank}
@@ -102,16 +117,16 @@ class DistributedState:
                     Replica rank={self.replica_rank}
                     Replica world size={self.replica_world_size}
                 FEDERATION:
-                    Federated local rank={self.replica_local_rank}
-                    Federated local size={self.replica_local_size}
-                    Federated rank={self.replica_rank}
-                    Federated world size={self.replica_world_size}
+                    Federated local rank={self.federated_local_rank}
+                    Federated local size={self.federated_local_size}
+                    Federated rank={self.federated_rank}
+                    Federated world size={self.federated_world_size}
                 MESHES:
                     SDP={self.fsdp_mesh}
                     HSDP={self.hsdp_mesh}
-                    Federated group={dist.get_process_group_ranks(self.federated_group[0])}
-                    Replica group={dist.get_process_group_ranks(self.replica_group[0])}
-                    Federation={dist.get_process_group_ranks(self.federation)}
+                    Federated group={federated_group}
+                    Replica group={replica_group}
+                    Federation={federation}
                 TECHNICAL:
                     Backend={self.backend}
                     Master address={self.master_addr}
@@ -661,14 +676,14 @@ class DistributedState:
                             f"Impossible setting up distributed asymmetric HSDP Federated Scaling environment with federated local sizes {self.federated_local_size} and replica local size {self.replica_local_size} - falling back to HSDP"
                         )
                         self.unset_federated_scaling()
-                    elif self.replica_world_size != sum(
+                    elif sum(self.replica_world_size) != sum(
                         [
                             federated_local_size // self.replica_local_size
                             for federated_local_size in self.federated_local_size
                         ]
                     ):
                         logger.error(
-                            f"Impossible setting up distributed asymmetric HSDP Federated Scaling environment with replica world size {self.replica_world_size} and federated local world sizes {self.federated_local_size} - falling back to HSDP"
+                            f"Impossible setting up distributed asymmetric HSDP Federated Scaling environment with replica local size {self.replica_local_size} and federated local world sizes {self.federated_local_size} - falling back to HSDP"
                         )
                         self.unset_federated_scaling()
                     else:  # Federated local world size update
@@ -761,20 +776,24 @@ class DistributedState:
                         for i in range(len(self.streams))
                     )
 
-                self.federation = self.create_process_group(
-                    ranks=tuple(
-                        [
-                            rank
-                            for rank in range(
-                                sum(self.federated_local_size[: self.federated_rank]),
-                                sum(
-                                    self.federated_local_size[: self.federated_rank + 1]
-                                ),
-                            )
-                        ]
-                    ),
-                    group_desc=f"Federated group #{self.federated_rank}",
-                )
+                    self.federation = self.create_process_group(
+                        ranks=tuple(
+                            [
+                                rank
+                                for rank in range(
+                                    sum(
+                                        self.federated_local_size[: self.federated_rank]
+                                    ),
+                                    sum(
+                                        self.federated_local_size[
+                                            : self.federated_rank + 1
+                                        ]
+                                    ),
+                                )
+                            ]
+                        ),
+                        group_desc=f"Federated group #{self.federated_rank}",
+                    )
         else:
             logger.error(
                 f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"

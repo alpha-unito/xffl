@@ -607,12 +607,12 @@ def setup_distributed_process_group(
 
         if symmetric_federated_scaling:  # Symmetric federation
             state.set_symmetric_federated_scaling(federated_group_size=federated)
-
         elif asymmetric_federated_scaling:  # Asymmetric federation
             if federated_rank is None and "XFFL_FEDERATED_RANK" in os.environ:
                 federated_rank = int(os.environ.get("XFFL_FEDERATED_RANK"))
+
             state.set_asymmetric_federated_scaling(
-                federated_local_rank=state.rank % federated[federated_rank],
+                federated_local_rank=state.rank - sum(federated[:federated_rank]),
                 federated_local_size=federated,
                 federated_rank=federated_rank,
                 federated_world_size=len(federated),

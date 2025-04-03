@@ -34,14 +34,13 @@ def distributed_training(
     train_dataloader: DataLoader,
     eval_dataloader: DataLoader,
     state: DistributedState,
-    federated_span: Optional[int] = None,
+    federated_batches: Optional[int] = None,
     validate: bool = True,
     epochs: int = 1,
     save_path: Optional[PathLike] = None,
     output_model_name: Optional[str] = None,
     lr_scheduler: Optional[LRScheduler] = None,
     wandb_run: Optional[Run] = None,
-    async_fs: Optional[bool] = None,
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
 
@@ -55,8 +54,8 @@ def distributed_training(
     :type eval_dataloader: DataLoader
     :param state: Instantiated distributed state
     :type state: DistributedState
-    :param federated_span: Number of training batched to process between two federated averaging
-    :type federated_span: Optional[int]
+    :param federated_batches: Number of training batched to process between two federated averaging
+    :type federated_batches: Optional[int]
     :param validate: Activate validation, defaults to True
     :type validate: bool, optional
     :param epochs: Number of epochs to train, defaults to 1
@@ -69,8 +68,6 @@ def distributed_training(
     :type lr_scheduler: Optional[LRScheduler], optional
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
     :type wandb_run: Optional[wandb.Run], optional
-    :param async_fs: Use asynchronous federated averaging, defaults to None
-    :type async_fs: bool, optional
     :return: Dictionary of metrics names and achieved values
     :rtype: Dict[str, float]
     """
@@ -97,7 +94,6 @@ def distributed_training(
 
         model.train()
 
-        handles: List[dist.Work] | None = None
         total_loss: float = 0.0
         total_length: int = len(train_dataloader)
         pbar: tqdm = tqdm(
@@ -115,16 +111,6 @@ def distributed_training(
                 batch[key] = batch[key].to(
                     device=torch.cuda.current_device(), non_blocking=True
                 )
-
-            if handles is not None:
-                for handle in handles:
-                    handle.wait(timeout=get_timeout(seconds=60))
-                with torch.no_grad():
-                    for param, updated_param in zip(
-                        list(model.parameters())[1:], buffer[1]
-                    ):
-                        param.copy_(updated_param, non_blocking=True)
-                handles = None
 
             loss: torch.Tensor = model(**batch).loss
 
@@ -150,14 +136,9 @@ def distributed_training(
 
             with torch.no_grad():
                 if state.is_federated_scaling_setup() and (
-                    (step + 1) % federated_span == 0 or step + 1 == total_length
+                    (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    if async_fs:
-                        handles, buffer = async_federated_averaging(
-                            model=model, state=state
-                        )
-                    else:
-                        sync_federated_averaging(model=model, state=state)
+                    sync_federated_averaging_v3(model=model, state=state)
 
                 if state.rank == 0:
                     torch.cuda.synchronize()

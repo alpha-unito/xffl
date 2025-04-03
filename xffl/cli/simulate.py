@@ -69,6 +69,7 @@ def simulate(
     args = check_cli_arguments(args=args, parser=simulate_parser)
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
+    args.world_size = args.num_nodes * args.gpus_per_node
 
     # Environment creation
     try:
@@ -87,12 +88,13 @@ def simulate(
             federated_local_ranks, federated_local_size = get_cells_ids(
                 nodes=args.nodelist, cell_size=180
             )
-            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = (
-                str(federated_local_size)
-                .replace("]", "")
-                .replace("[", "")
-                .replace(" ", "")
-            )
+            if federated_local_size:
+                env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = (
+                    str(federated_local_size)
+                    .replace("]", "")
+                    .replace("[", "")
+                    .replace(" ", "")
+                )
         else:
             federated_local_ranks: List[int] = [
                 federated_rank

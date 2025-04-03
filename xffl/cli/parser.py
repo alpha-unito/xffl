@@ -142,7 +142,7 @@ simulate_parser.add_argument(
     "--facility",
     help="Facility's name",
     type=str,
-    default=None,
+    default="leonardo",
 )
 
 virtualisation_group = simulate_parser.add_mutually_exclusive_group()
@@ -164,11 +164,11 @@ virtualisation_group.add_argument(
 )
 
 simulate_parser.add_argument(
-    "-ws",
-    "--world-size",
-    help="Number of process to spawn (max. number of available GPUs)",
+    "-gn",
+    "--gpus-per-node",
+    help="Number of GPUs available on each compute node",
     type=int,
-    default=1,
+    default=4,
 )
 
 simulate_parser.add_argument(

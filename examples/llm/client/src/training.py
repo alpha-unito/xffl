@@ -13,13 +13,13 @@ from typing import Dict, Optional, Union
 
 import torch
 import wandb
-from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, default_data_collator
 
+from datasets import Dataset, DatasetDict
 from xffl.custom import DATASETS, MODELS
 from xffl.learning import data, distributed, modelling, processing, utils
 from xffl.utils.logging import setup_logging
@@ -229,8 +229,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
         save_path=args.output,
         output_model_name=args.output_model,
         epochs=args.epochs,
-        federated_span=args.federated_span,
-        async_fs=args.asynchronous_federated_scaling,
+        federated_batches=args.federated_batches,
     )
 
     if state.rank == 0:
