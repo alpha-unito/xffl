@@ -122,7 +122,7 @@ class DistributedState:
                     Federated rank={self.federated_rank}
                     Federated world size={self.federated_world_size}
                 MESHES:
-                    SDP={self.fsdp_mesh}
+                    FSDP={self.fsdp_mesh}
                     HSDP={self.hsdp_mesh}
                     Federated group={federated_group}
                     Replica group={replica_group}
@@ -327,24 +327,24 @@ class DistributedState:
         :param hsdp: Size of an HSDP replica
         :type hsdp: int
         """
-        self.partial_hsdp_setup(hsdp=hsdp)
+        self._partial_hsdp_setup(hsdp=hsdp)
         self.hsdp_mesh = self._get_global_hsdp_mesh()
 
-    def partial_hsdp_setup(self, hsdp: int) -> None:
+    def _partial_hsdp_setup(self, hsdp: int) -> None:
         """
         Initialize PyTorch's HSDP parameters without creating the device mesh.
 
         :param hsdp: Size of an HSDP replica
         :type hsdp: int
         """
-        self._partial_hsdp_setup(
+        self._partial_hsdp_setup_manual(
             replica_local_rank=self.rank % hsdp,
             replica_local_size=hsdp,
             replica_rank=self.rank // hsdp,
             replica_world_size=(self.world_size // hsdp,),
         )
 
-    def _partial_hsdp_setup(
+    def _partial_hsdp_setup_manual(
         self,
         replica_local_rank: int,
         replica_local_size: int,
@@ -424,7 +424,30 @@ class DistributedState:
         self.replica_world_size = None
         self.hsdp_mesh = None
 
-    def set_symmetric_federated_scaling(self, federated_group_size: int) -> None:
+    def set_federated_scaling(
+        self, federated_group_size: Tuple[int], hsdp: Optional[int] = None
+    ) -> None:
+        if hsdp is not None:  # Setting HSDP if needed
+            self._partial_hsdp_setup(hsdp=hsdp)
+
+        if len(set(federated_group_size)) == 1:
+            logger.debug(
+                f"Setting Symmetric Federated Scaling with sizes {federated_group_size}"
+            )
+            self._set_symmetric_federated_scaling(
+                federated_group_size=federated_group_size
+            )
+        else:
+            logger.debug(
+                f"Setting Asymmetric Federated Scaling with sizes {federated_group_size}"
+            )
+            self._set_asymmetric_federated_scaling(
+                federated_group_size=federated_group_size
+            )
+
+    def _set_symmetric_federated_scaling(
+        self, federated_group_size: Tuple[int]
+    ) -> None:
         """
         Create the federated scaling process groups
 
@@ -433,12 +456,10 @@ class DistributedState:
         """
         if torch.distributed.is_initialized():
 
-            federated_local_rank: int = self.rank % federated_group_size
-            federated_rank: int = self.rank // federated_group_size
-            federated_world_size: int = self.world_size // federated_group_size
-            federated_local_size: Tuple[int, ...] = tuple(
-                federated_group_size for _ in range(federated_world_size)
-            )
+            federated_local_rank: int = self.rank % federated_group_size[0]
+            federated_local_size: Tuple[int, ...] = federated_group_size
+            federated_rank: int = self.rank // federated_group_size[0]
+            federated_world_size: int = self.world_size // federated_group_size[0]
 
             _federated_local_size: int = federated_local_size[federated_rank]
 
@@ -486,7 +507,7 @@ class DistributedState:
                         )
                         self.unset_hsdp()
                     else:
-                        self._partial_hsdp_setup(
+                        self._partial_hsdp_setup_manual(
                             replica_local_rank=self.federated_local_rank
                             % self.replica_local_size,
                             replica_local_size=self.replica_local_size,
@@ -614,12 +635,8 @@ class DistributedState:
                 f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
             )
 
-    def set_asymmetric_federated_scaling(
-        self,
-        federated_local_rank: int,
-        federated_local_size: Tuple[int],
-        federated_rank: int,
-        federated_world_size: int,
+    def _set_asymmetric_federated_scaling(
+        self, federated_group_size: Tuple[int]
     ) -> None:
         """
         Create the federated scaling process groups
@@ -628,18 +645,25 @@ class DistributedState:
         E.g.: if a model is sharded among four processes and replicated across two process groups (i.e., device_mesh=[[0,1,2,3],[4,5,6,7]])
         then the federated scaling process groups correspond to the groups of processes having the same local rank (i.e., [[0,4][1,5][2,6][3,7]])
 
-        :param federated_local_rank:
-        :type federated_local_rank:
-        :param federated_local_size:
-        :type federated_local_size:
-        :param federated_rank:
-        :type federated_rank:
-        :param federated_world_size:
-        :type federated_world_size:
-        :return:
-        :rtype:
+        :param federated_group_size: Number of processes making up one federated group
+        :type federated_group_size: int
         """
         if torch.distributed.is_initialized():
+
+            _federated_rank: int = -1
+            index: int = 0
+            while _federated_rank < 0:
+                if self.rank < sum(federated_group_size[: index + 1]):
+                    _federated_rank = index
+                index += 1
+
+            federated_local_rank = self.rank - sum(
+                federated_group_size[:_federated_rank]
+            )
+            federated_local_size = federated_group_size
+            federated_rank = _federated_rank
+            federated_world_size = len(federated_group_size)
+
             if (
                 federated_local_rank < 0
                 or federated_local_rank >= federated_local_size[federated_rank]

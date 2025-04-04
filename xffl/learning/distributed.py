@@ -42,50 +42,62 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
     :param state: Partially instantiated distributed state (rank, world_size, backend)
     :type state: DistributedState
     """
-    replica_world_size: int = min(state.replica_world_size)
-    communicating_processes: int = (
-        (state.replica_local_size // replica_world_size)
-        if replica_world_size <= state.replica_local_size
-        else 1
-    )
 
-    param_list = list(model.parameters())
-    buffer = [
+    # TODO: contiguous?
+    param_list: List[nn.Parameter] = list(model.parameters())
+    buffer: Tuple[nn.Parameter, torch.Tensor] = (
         param_list[0],  # Tensor 0 has different dimensions
         torch.stack(param_list[1:]),
-    ]
+    )
 
-    if (
-        communicating_processes * state.replica_rank
-        <= state.replica_local_rank
-        < communicating_processes * (state.replica_rank + 1)
-    ):
-        for param in buffer:
-            dist.all_reduce(
-                tensor=param.contiguous(),
-                op=dist.ReduceOp.AVG,
-                group=state.federated_group[0],
-            )
-            dist.broadcast(
-                tensor=param.contiguous(),
-                src=state.rank,
-                group=state.replica_group[0],
-            )
-    else:
-        federated_local_size: int = state.federated_local_size[state.federated_rank]
-        src: int = (
-            state.replica_local_rank + (federated_local_size * state.federated_rank)
-            if state.replica_local_rank < communicating_processes * state.replica_rank
-            else state.replica_local_rank
-            + (state.replica_local_size * (state.replica_rank + 1))
-            + (federated_local_size * state.federated_rank)
+    # TODO: Streams (and also process groups) are fixed
+    if state.is_hsdp_setup():
+        replica_world_size: int = min(state.replica_world_size)
+        communicating_processes: int = (
+            (state.replica_local_size // replica_world_size)
+            if replica_world_size <= state.replica_local_size
+            else 1
         )
 
+        if (
+            communicating_processes * state.replica_rank
+            <= state.replica_local_rank
+            < communicating_processes * (state.replica_rank + 1)
+        ):
+            for param in buffer:
+                dist.all_reduce(
+                    tensor=param,
+                    op=dist.ReduceOp.AVG,
+                    group=state.federated_group[0],
+                )
+                dist.broadcast(
+                    tensor=param,
+                    src=state.rank,
+                    group=state.replica_group[0],
+                )
+        else:
+            federated_local_size: int = state.federated_local_size[state.federated_rank]
+            src: int = (
+                state.replica_local_rank + (federated_local_size * state.federated_rank)
+                if state.replica_local_rank
+                < communicating_processes * state.replica_rank
+                else state.replica_local_rank
+                + (state.replica_local_size * (state.replica_rank + 1))
+                + (federated_local_size * state.federated_rank)
+            )
+
+            for param in buffer:
+                dist.broadcast(
+                    tensor=param,
+                    src=src,
+                    group=state.replica_group[0],
+                )
+    else:
         for param in buffer:
-            dist.broadcast(
-                tensor=param.contiguous(),
-                src=src,
-                group=state.replica_group[0],
+            dist.all_reduce(
+                tensor=param,
+                op=dist.ReduceOp.AVG,
+                group=state.federated_group[0],
             )
 
     for param, updated_param in zip(param_list[1:], buffer[1]):
@@ -239,22 +251,60 @@ def sync_federated_averaging_v3(model: nn.Module, state: DistributedState) -> No
     :param state: Partially instantiated distributed state (rank, world_size, backend)
     :type state: DistributedState
     """
-    replica_world_size: int = (
-        min(state.replica_world_size)
-        if not isinstance(state.replica_world_size, int)
-        else state.replica_world_size
-    )
-    communicating_processes: int = (
-        (state.replica_local_size // replica_world_size)
-        if replica_world_size <= state.replica_local_size
-        else 1
-    )
+    if state.is_hsdp_setup():
+        replica_world_size: int = (
+            min(state.replica_world_size)
+            if not isinstance(state.replica_world_size, int)
+            else state.replica_world_size
+        )
+        communicating_processes: int = (
+            (state.replica_local_size // replica_world_size)
+            if replica_world_size <= state.replica_local_size
+            else 1
+        )
 
-    if (
-        communicating_processes * state.replica_rank
-        <= state.replica_local_rank
-        < communicating_processes * (state.replica_rank + 1)
-    ):
+        if (
+            communicating_processes * state.replica_rank
+            <= state.replica_local_rank
+            < communicating_processes * (state.replica_rank + 1)
+        ):
+            for index, param in enumerate(model.parameters()):
+                stream_index = index % len(state.streams)
+                with torch.cuda.StreamContext(state.streams[stream_index]):
+                    dist.all_reduce(
+                        tensor=param,
+                        op=dist.ReduceOp.AVG,
+                        group=state.federated_group[stream_index],
+                    )
+                    dist.broadcast(
+                        tensor=param,
+                        src=state.rank,
+                        group=state.replica_group[stream_index],
+                    )
+        else:
+            federated_local_size: int = (
+                state.federated_local_size[state.federated_rank]
+                if not isinstance(state.federated_local_size, int)
+                else state.federated_local_size
+            )
+            src: int = (
+                state.replica_local_rank + (federated_local_size * state.federated_rank)
+                if state.replica_local_rank
+                < communicating_processes * state.replica_rank
+                else state.replica_local_rank
+                + (state.replica_local_size * (state.replica_rank + 1))
+                + (federated_local_size * state.federated_rank)
+            )
+
+            for index, param in enumerate(model.parameters()):
+                stream_index = index % len(state.streams)
+                with torch.cuda.StreamContext(state.streams[stream_index]):
+                    dist.broadcast(
+                        tensor=param,
+                        src=src,
+                        group=state.replica_group[stream_index],
+                    )
+    else:
         for index, param in enumerate(model.parameters()):
             stream_index = index % len(state.streams)
             with torch.cuda.StreamContext(state.streams[stream_index]):
@@ -262,33 +312,6 @@ def sync_federated_averaging_v3(model: nn.Module, state: DistributedState) -> No
                     tensor=param,
                     op=dist.ReduceOp.AVG,
                     group=state.federated_group[stream_index],
-                )
-                dist.broadcast(
-                    tensor=param,
-                    src=state.rank,
-                    group=state.replica_group[stream_index],
-                )
-    else:
-        federated_local_size: int = (
-            state.federated_local_size[state.federated_rank]
-            if not isinstance(state.federated_local_size, int)
-            else state.federated_local_size
-        )
-        src: int = (
-            state.replica_local_rank + (federated_local_size * state.federated_rank)
-            if state.replica_local_rank < communicating_processes * state.replica_rank
-            else state.replica_local_rank
-            + (state.replica_local_size * (state.replica_rank + 1))
-            + (federated_local_size * state.federated_rank)
-        )
-
-        for index, param in enumerate(model.parameters()):
-            stream_index = index % len(state.streams)
-            with torch.cuda.StreamContext(state.streams[stream_index]):
-                dist.broadcast(
-                    tensor=param,
-                    src=src,
-                    group=state.replica_group[stream_index],
                 )
 
 
@@ -494,10 +517,9 @@ def setup_distributed_process_group(
     backend: Literal["nccl", "gloo", "mpi"] = "nccl",
     master_addr: Optional[str] = None,
     master_port: Optional[int] = None,
-    federated_rank: Optional[int] = None,
     device: Literal["cpu", "cuda"] = "cuda",
     hsdp: Optional[int] = None,
-    federated: Optional[int | Tuple[int]] = None,
+    federated: Optional[Tuple[int]] = None,
 ) -> DistributedState:
     """Setup PyTorch's distributed environment
 
@@ -522,8 +544,6 @@ def setup_distributed_process_group(
     :type backend: Optional[Literal["nccl", "gloo", "mpi"]], optional
     :param master_addr: IP address for the PyTorch.distributed rendez-vous, otherwise obtained from the environment, defaults to None
     :type master_addr: Optional[str], optional
-    :param federated_rank: ID of the current network cell, defaults to None
-    :type federated_rank: Optional[int], optional
     :param master_port: Port number for the PyTorch.distributed rendez-vous, otherwise obtained from the environment, defaults to None
     :type master_port: Optional[int], optional
     :param device: Device type used by the distributed processes, if not specified we will try to guess it, defaults to None
@@ -585,38 +605,29 @@ def setup_distributed_process_group(
     )
 
     # Check if asymmetric Federated Scaling is required #
-    if federated is None and "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
-        federated = tuple(
-            int(item) * state.node_local_size
-            for item in os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE").split(",")
-        )
+    if federated is None:
+        if "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
+            federated = tuple(
+                int(item) * state.node_local_size
+                for item in os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE").split(",")
+            )
+    elif len(federated) == 1:
+        if state.world_size % federated[0] == 0:
+            federated = tuple(
+                federated[0] for _ in range(state.world_size // federated[0])
+            )
+        else:
+            logger.error(
+                f"The world size {state.world_size} is not divisible by the specified federated group size {federated} - deactivating Federated Scaling"
+            )
+            federated = None
 
     if federated is not None:
-        symmetric_federated_scaling: bool = isinstance(federated, int)
-        asymmetric_federated_scaling: bool = isinstance(federated, Tuple)
-
-        if symmetric_federated_scaling and asymmetric_federated_scaling:
-            logger.warning(
-                "Both symmetric and asymmetric federated scaling are enabled - falling back to symmetric federated scaling"
+        if sum(federated) != state.world_size:
+            logger.error(
+                f"The world size {state.world_size} is not divisible by the specified federated group size {federated} - deactivating Federated Scaling"
             )
-            asymmetric_federated_scaling = False
-
-        # Setting HSDP if needed
-        if hsdp is not None:
-            state.partial_hsdp_setup(hsdp)
-
-        if symmetric_federated_scaling:  # Symmetric federation
-            state.set_symmetric_federated_scaling(federated_group_size=federated)
-        elif asymmetric_federated_scaling:  # Asymmetric federation
-            if federated_rank is None and "XFFL_FEDERATED_RANK" in os.environ:
-                federated_rank = int(os.environ.get("XFFL_FEDERATED_RANK"))
-
-            state.set_asymmetric_federated_scaling(
-                federated_local_rank=state.rank - sum(federated[:federated_rank]),
-                federated_local_size=federated,
-                federated_rank=federated_rank,
-                federated_world_size=len(federated),
-            )
+        state.set_federated_scaling(federated_group_size=federated, hsdp=hsdp)
     else:  # Setting non-federated techniques
         if hsdp is not None:
             state.set_hsdp(hsdp=hsdp)

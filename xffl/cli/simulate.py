@@ -82,12 +82,9 @@ def simulate(
     facilitator_script = get_facilitator_path()
 
     # Nodes cell IDs calculation for the FederatedScaling feature
-    federated_local_ranks: List[Optional[int]] = [None for _ in args.nodelist]
     if args.federated_scaling is not None:
         if args.federated_scaling == "auto":
-            federated_local_ranks, federated_local_size = get_cells_ids(
-                nodes=args.nodelist, cell_size=180
-            )
+            federated_local_size = get_cells_ids(nodes=args.nodelist, cell_size=180)
             if federated_local_size:
                 env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = (
                     str(federated_local_size)
@@ -96,11 +93,6 @@ def simulate(
                     .replace(" ", "")
                 )
         else:
-            federated_local_ranks: List[int] = [
-                federated_rank
-                for federated_rank, cell in enumerate(args.federated_scaling.split(","))
-                for _ in range(int(cell))
-            ]  # TODO: che succede quando un modello è splittato su più nodi e non tutti sono nella stessa isola?
             env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = args.federated_scaling
 
     env_str = ""
@@ -114,7 +106,7 @@ def simulate(
         processes = []
         return_code = 0
 
-        for index, (node, cell) in enumerate(zip(args.nodelist, federated_local_ranks)):
+        for index, node in enumerate(args.nodelist):
             command = (
                 [
                     "ssh",
@@ -123,7 +115,6 @@ def simulate(
                     '"',
                     env_str,
                     f"XFFL_NODEID={index}",
-                    f"XFFL_FEDERATED_RANK={cell}" if cell is not None else "",
                     facilitator_script,
                     args.executable,
                 ]

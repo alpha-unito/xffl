@@ -149,8 +149,9 @@ parser.add_argument(
 parser.add_argument(
     "-fs",
     "--federated-scaling",
-    help="Enable Federated scaling with the specified federated group size",
+    help="Enable Federated scaling with the specified federated group size(s)",
     type=int,
+    nargs="+",
     default=None,
 )
 
