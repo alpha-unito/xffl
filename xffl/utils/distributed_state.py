@@ -453,21 +453,21 @@ class DistributedState:
                 federated_group_size=federated_group_size
             )
 
-        if hsdp is not None:  # Setting sender/receiver processes
-            self._set_rank_role()
-
     def _get_communicating_processes(self, federated_rank: int) -> Tuple[int, ...]:
         communicating_processes: List[int] = []
         for process in range(self.replica_local_size):
             communicating_processes.append(
-                (process % self.replica_world_size[federated_rank])
-                * self.replica_local_size
-                + process
+                (
+                    (process % self.replica_world_size[federated_rank])
+                    * self.replica_local_size
+                    + process
+                )
+                + sum(self.federated_local_size[:federated_rank])
             )
         return tuple(communicating_processes)
 
     def _set_rank_role(self) -> None:
-        self.is_sender = self.federated_local_rank in self._get_communicating_processes(
+        self.is_sender = self.rank in self._get_communicating_processes(
             federated_rank=self.federated_rank
         )
 
@@ -762,6 +762,7 @@ class DistributedState:
                                     replica_world_size[:-1]
                                 )
                         self.replica_world_size = tuple(replica_world_size)
+                        self._set_rank_role()
 
                 # HSDP asymmetric federation
                 if self.is_federated_scaling_setup():
@@ -804,24 +805,27 @@ class DistributedState:
                         mesh_dim_names=("replica", "shard"),
                     )
 
-                    # Group of processes sharing the same shard across the federated groups
-                    self.federated_group = tuple(
-                        self.create_process_group(
-                            ranks=tuple(
-                                [
-                                    int(
-                                        federated_mesh[
-                                            self.replica_rank, self.replica_local_rank
-                                        ]
-                                    )
-                                    for federated_mesh in mesh
-                                    if self.replica_rank < len(federated_mesh)
-                                ]
-                            ),
-                            group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
+                    # Create the AllReduce process group
+                    if self.is_sender:
+                        communicating_processes: List[Tuple[int, ...]] = []
+                        for federated_rank in range(self.federated_world_size):
+                            communicating_processes.append(
+                                self._get_communicating_processes(
+                                    federated_rank=federated_rank
+                                )
+                            )
+                        federated_group: Tuple[int, ...] = list(
+                            zip(*communicating_processes)
+                        )[self.replica_local_rank]
+
+                        # Group of processes sharing the same shard across the federated groups
+                        self.federated_group = tuple(
+                            self.create_process_group(
+                                ranks=federated_group,
+                                group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
+                            )
+                            for i in range(len(self.streams))
                         )
-                        for i in range(len(self.streams))
-                    )
 
                     # Group of processes sharing the same shard inside the federated group
                     self.replica_group = tuple(
