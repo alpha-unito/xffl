@@ -52,18 +52,10 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
 
     # TODO: Streams (and also process groups) are fixed
     if state.is_hsdp_setup():
-        replica_world_size: int = min(state.replica_world_size)
-        communicating_processes: int = (
-            (state.replica_local_size // replica_world_size)
-            if replica_world_size <= state.replica_local_size
-            else 1
-        )
-
-        if (
-            communicating_processes * state.replica_rank
-            <= state.replica_local_rank
-            < communicating_processes * (state.replica_rank + 1)
-        ):
+        if state.is_sender:
+            logger.debug(
+                f"[RANK {state.rank}]: All-reduce on {dist.get_process_group_ranks(state.federated_group[0])} + broadcast on {dist.get_process_group_ranks(state.replica_group[0])} with source {state.rank}"
+            )
             for param in buffer:
                 dist.all_reduce(
                     tensor=param,
@@ -76,20 +68,13 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
                     group=state.replica_group[0],
                 )
         else:
-            federated_local_size: int = state.federated_local_size[state.federated_rank]
-            src: int = (
-                state.replica_local_rank + (federated_local_size * state.federated_rank)
-                if state.replica_local_rank
-                < communicating_processes * state.replica_rank
-                else state.replica_local_rank
-                + (state.replica_local_size * (state.replica_rank + 1))
-                + (federated_local_size * state.federated_rank)
+            logger.debug(
+                f"[RANK {state.rank}]: Broadcast on {dist.get_process_group_ranks(state.replica_group[0])} with source {state.receive_from}"
             )
-
             for param in buffer:
                 dist.broadcast(
                     tensor=param,
-                    src=src,
+                    src=state.receive_from,
                     group=state.replica_group[0],
                 )
     else:

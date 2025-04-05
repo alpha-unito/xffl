@@ -138,7 +138,7 @@ def distributed_training(
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    sync_federated_averaging_v3(model=model, state=state)
+                    sync_federated_averaging(model=model, state=state)
 
                 if state.rank == 0:
                     torch.cuda.synchronize()

@@ -67,6 +67,12 @@ class DistributedState:
     """FSDP device mesh"""
     hsdp_mesh: Optional[DeviceMesh] = None
     """HSDP device mesh"""
+    is_sender: Optional[bool] = (
+        None  # TODO: do not create federated group if this is false
+    )
+    """True if the rank should communicate (All-Gather) across network cells, False otherwise"""
+    receive_from: Optional[int] = None
+    """The rank from which to receive the averaged parameters (Broadcast)"""
     federated_group: Optional[Tuple[ProcessGroup, ...]] = None
     """Process group collecting ranks holding the same model's shard across federated groups"""
     replica_group: Optional[Tuple[ProcessGroup, ...]] = None
@@ -124,6 +130,8 @@ class DistributedState:
                 MESHES:
                     FSDP={self.fsdp_mesh}
                     HSDP={self.hsdp_mesh}
+                    Is sender={self.is_sender}
+                    Receives from={self.receive_from}
                     Federated group={federated_group}
                     Replica group={replica_group}
                     Federation={federation}
@@ -443,6 +451,34 @@ class DistributedState:
             )
             self._set_asymmetric_federated_scaling(
                 federated_group_size=federated_group_size
+            )
+
+        if hsdp is not None:  # Setting sender/receiver processes
+            self._set_rank_role()
+
+    def _get_communicating_processes(self, federated_rank: int) -> Tuple[int, ...]:
+        communicating_processes: List[int] = []
+        for process in range(self.replica_local_size):
+            communicating_processes.append(
+                (process % self.replica_world_size[federated_rank])
+                * self.replica_local_size
+                + process
+            )
+        return tuple(communicating_processes)
+
+    def _set_rank_role(self) -> None:
+        self.is_sender = self.federated_local_rank in self._get_communicating_processes(
+            federated_rank=self.federated_rank
+        )
+
+        if not self.is_sender:
+            federated_local_size: int = self.federated_local_size[self.federated_rank]
+            self.receive_from = (
+                self.replica_local_rank + (federated_local_size * self.federated_rank)
+                if self.replica_local_rank < self.replica_local_size * self.replica_rank
+                else self.replica_local_rank
+                + (self.replica_local_size * (self.replica_rank + 1))
+                + (federated_local_size * self.federated_rank)
             )
 
     def _set_symmetric_federated_scaling(
