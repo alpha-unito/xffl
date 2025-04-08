@@ -205,6 +205,10 @@ class DistributedState:
             self.master_addr = master_addr
             self.master_port = master_port
             self.device = device
+
+            torch.cuda.set_device(
+                self.node_local_rank if torch.cuda.is_available() else "cpu"
+            )
             self.streams = tuple(cuda.Stream() for _ in range(streams))
 
     def set_node(
@@ -226,31 +230,26 @@ class DistributedState:
         :param node_world_size: Number of compute nodes involved in the training process
         :type node_world_size: int
         """
-        if torch.distributed.is_initialized():
-            if node_local_rank < 0 or node_local_rank >= node_local_size:
-                logger.error(
-                    f"Impossible setting up distributed environment on local node with local rank {node_local_rank} and local world size {node_local_size}"
-                )
-            elif (
-                self.world_size % node_local_size != 0
-                or self.world_size // node_local_size != node_world_size
-            ):
-                logger.error(
-                    f"Impossible setting up distributed environment on local node with global world size {self.world_size} and local world size {node_local_size}: global world size is not divisible by the local world size into {node_world_size} nodes"
-                )
-            elif node_rank < 0 or node_rank >= node_world_size:
-                logger.error(
-                    f"Impossible setting up distributed environment on local node with node world size {node_world_size} and node rank {node_rank}"
-                )
-            else:
-                self.node_local_rank = node_local_rank
-                self.node_local_size = node_local_size
-                self.node_rank = node_rank
-                self.node_world_size = node_world_size
-        else:
+        if node_local_rank < 0 or node_local_rank >= node_local_size:
             logger.error(
-                f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
+                f"Impossible setting up distributed environment on local node with local rank {node_local_rank} and local world size {node_local_size}"
             )
+        elif (
+            self.world_size % node_local_size != 0
+            or self.world_size // node_local_size != node_world_size
+        ):
+            logger.error(
+                f"Impossible setting up distributed environment on local node with global world size {self.world_size} and local world size {node_local_size}: global world size is not divisible by the local world size into {node_world_size} nodes"
+            )
+        elif node_rank < 0 or node_rank >= node_world_size:
+            logger.error(
+                f"Impossible setting up distributed environment on local node with node world size {node_world_size} and node rank {node_rank}"
+            )
+        else:
+            self.node_local_rank = node_local_rank
+            self.node_local_size = node_local_size
+            self.node_rank = node_rank
+            self.node_world_size = node_world_size
 
     def is_node_setup(self) -> bool:
         """
@@ -805,36 +804,34 @@ class DistributedState:
                         mesh_dim_names=("replica", "shard"),
                     )
 
-                    # Create the AllReduce process group
-                    if self.is_sender:
-                        communicating_processes: List[Tuple[int, ...]] = []
-                        for federated_rank in range(self.federated_world_size):
-                            communicating_processes.append(
-                                self._get_communicating_processes(
-                                    federated_rank=federated_rank
-                                )
+                    # Group of processes sharing the same shard across the federated groups
+                    communicating_processes: List[Tuple[int, ...]] = []
+                    for federated_rank in range(self.federated_world_size):
+                        communicating_processes.append(
+                            self._get_communicating_processes(
+                                federated_rank=federated_rank
                             )
-                        federated_group: Tuple[int, ...] = list(
-                            zip(*communicating_processes)
-                        )[self.replica_local_rank]
-
-                        # Group of processes sharing the same shard across the federated groups
-                        self.federated_group = tuple(
-                            self.create_process_group(
-                                ranks=federated_group,
-                                group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
-                            )
-                            for i in range(len(self.streams))
                         )
+                    federated_group: Tuple[int, ...] = list(
+                        zip(*communicating_processes)
+                    )[self.replica_local_rank]
+
+                    self.federated_group = tuple(
+                        self.create_process_group(
+                            ranks=federated_group if self.is_sender else (self.rank,),
+                            group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
+                        )
+                        for i in range(len(self.streams))
+                    )
 
                     # Group of processes sharing the same shard inside the federated group
+                    broadcast_processes: Tuple[int, ...] = tuple(
+                        mesh[self.federated_rank][:, self.replica_local_rank].tolist()
+                    )
+
                     self.replica_group = tuple(
                         self.create_process_group(
-                            ranks=tuple(
-                                mesh[self.federated_rank][
-                                    :, self.replica_local_rank
-                                ].tolist()
-                            ),
+                            ranks=broadcast_processes,
                             group_desc=f"Federated replica averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(len(self.streams))
@@ -893,6 +890,7 @@ class DistributedState:
         self,
         ranks: Tuple[int, ...] | torch.Tensor,
         group_desc: Optional[str],
+        use_local_synchronization: bool = True,
     ) -> ProcessGroup:
         """Creates a new process group with the specified ranks
 
@@ -910,7 +908,7 @@ class DistributedState:
             timeout=get_timeout(),
             backend=self.backend,
             pg_options=get_default_nccl_process_group_options(),
-            use_local_synchronization=True,
+            use_local_synchronization=use_local_synchronization,
             group_desc=group_desc,
         )
 

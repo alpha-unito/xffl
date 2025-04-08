@@ -44,7 +44,7 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
     """
 
     # TODO: contiguous?
-    param_list: List[nn.Parameter] = list(model.parameters())
+    param_list: List[nn.Parameter] = list(model.parameters()) # TODO: maybe module?
     buffer: Tuple[nn.Parameter, torch.Tensor] = (
         param_list[0],  # Tensor 0 has different dimensions
         torch.stack(param_list[1:]),
@@ -544,18 +544,6 @@ def setup_distributed_process_group(
     """
     state: DistributedState = DistributedState()
 
-    # Distributed state technical information
-    state.set_technical(
-        backend=backend,
-        master_addr=(
-            os.environ.get("MASTER_ADDR") if master_addr is None else master_addr
-        ),
-        master_port=(
-            int(os.environ.get("MASTER_PORT")) if master_port is None else master_port
-        ),
-        device=device,
-    )
-
     # Distributed state global information
     state.set_global(
         rank=int(os.environ.get("RANK")) if rank is None else rank,
@@ -563,9 +551,6 @@ def setup_distributed_process_group(
             os.environ.get("WORLD_SIZE") if world_size is None else world_size
         ),
     )
-
-    # Basic PyTorch distributed setup
-    init_distributed_process_group(state=state)
 
     # Distributed state local information
     state.set_node(
@@ -588,6 +573,21 @@ def setup_distributed_process_group(
             else group_world_size
         ),
     )
+
+    # Distributed state technical information
+    state.set_technical(
+        backend=backend,
+        master_addr=(
+            os.environ.get("MASTER_ADDR") if master_addr is None else master_addr
+        ),
+        master_port=(
+            int(os.environ.get("MASTER_PORT")) if master_port is None else master_port
+        ),
+        device=device,
+    )
+
+    # Basic PyTorch distributed setup
+    init_distributed_process_group(state=state)
 
     # Check if asymmetric Federated Scaling is required #
     if federated is None:

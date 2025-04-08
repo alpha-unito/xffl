@@ -183,13 +183,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
     if state.is_federated_scaling_setup():
         args.learning_rate = (
-            (
-                state.federated_local_size[state.federated_rank]
-                if isinstance(state.federated_local_size, tuple)
-                else state.federated_local_size
-            )
-            * args.learning_rate
-            / 4
+            state.federated_local_size[state.federated_rank] * args.learning_rate / 4
         )
     else:
         args.learning_rate = state.world_size * args.learning_rate / 4

@@ -104,6 +104,7 @@ def distributed_training(
         )
 
         for step, batch in enumerate(train_dataloader):
+            logger.warning(f"[RANK {state.rank}]:1")
             if state.rank == 0:
                 torch.cuda.synchronize()
                 start_time = time.perf_counter()
@@ -114,6 +115,7 @@ def distributed_training(
 
             loss: torch.Tensor = model(**batch).loss
 
+            logger.warning(f"[RANK {state.rank}]2")
             if state.rank == 0:
                 torch.cuda.synchronize()
                 batch_time = time.perf_counter() - start_time
@@ -121,6 +123,7 @@ def distributed_training(
 
             loss.backward()
 
+            logger.warning(f"[RANK {state.rank}]:3")
             if state.rank == 0:
                 torch.cuda.synchronize()
                 back_time = time.perf_counter() - start_time
@@ -129,6 +132,7 @@ def distributed_training(
             optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
 
+            logger.warning(f"[RANK {state.rank}]:4")
             if state.rank == 0:
                 torch.cuda.synchronize()
                 optimizer_time = time.perf_counter() - start_time
@@ -140,6 +144,7 @@ def distributed_training(
                 ):
                     sync_federated_averaging(model=model, state=state)
 
+                logger.warning(f"[RANK {state.rank}]:6")
                 if state.rank == 0:
                     torch.cuda.synchronize()
                     comm_time = time.perf_counter() - start_time
