@@ -109,7 +109,7 @@ def save_fsdp_model(
     :type precision: Optional[torch.dtype], optional
     """
 
-    # Gather the full, unsharded state dict
+    # Gather the full, un-sharded state dict
     state_dict, _ = get_state_dict(
         model=model,
         optimizers=optimizer,
@@ -144,12 +144,12 @@ def save_fsdp_model(
                 )
 
         # This is HF specific (modelling_utils.py)
-        # Saves the model (torch.save) togheter with its configuration files
+        # Saves the model (torch.save) together with its configuration files
         # so that it can be reloaded with PreTrainedModel.from_pretrained
         model.save_pretrained(
             save_directory=save_path,
             state_dict=state_dict,
-            safe_serialization=True,  # Safeternsor or Pickle
+            safe_serialization=True,  # Safetensor or Pickle
         )  # Shard size can be controlled (can improve transfer performance)
 
         logger.info(f"Model saved to {save_path}")

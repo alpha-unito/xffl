@@ -2,7 +2,7 @@
 
 import time
 from logging import Logger, getLogger
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
@@ -22,7 +22,6 @@ from xffl.learning.distributed import (
     sync_federated_averaging_v3,
 )
 from xffl.learning.modelling import save_fsdp_model
-from xffl.utils.utils import get_timeout
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -103,6 +102,8 @@ def distributed_training(
             dynamic_ncols=True,
         )
 
+        step: int
+        batch: Dict[str, Any]
         for step, batch in enumerate(train_dataloader):
             logger.warning(f"[RANK {state.rank}]:1")
             if state.rank == 0:
@@ -182,12 +183,8 @@ def distributed_training(
             dist.all_reduce(total_loss, op=dist.ReduceOp.SUM, group=state.federation)
 
         train_epoch_loss: torch.Tensor = (
-            (
-                (total_loss / total_length) / state.federated_local_size
-                if isinstance(state.federated_local_size, int)
-                else (total_loss / total_length)
-                / state.federated_local_size[state.federated_rank]
-            )
+            (total_loss / total_length)
+            / state.federated_local_size[state.federated_rank]
             if state.is_federated_scaling_setup()
             else (total_loss / total_length) / state.world_size
         )
@@ -271,6 +268,7 @@ def fsdp_evaluation(
     val_step_perplexity: List[float] = []
     eval_loss: float = 0.0
 
+    batch: Dict[str, Any]
     for _, batch in enumerate(
         tqdm(
             eval_dataloader,

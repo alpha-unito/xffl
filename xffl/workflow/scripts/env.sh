@@ -46,7 +46,7 @@ Limit_PyTorch_threads () {
     return 0
 }
 
-# To agevolate PyTorch's FSDP hybrid sharding is fundamental that each process knows how many other processes are allocated on the same machine (i.e., the number of local GPUs), so that inter-node sharding and inter-node replication is handled correctly
+# To ease PyTorch's FSDP hybrid sharding is fundamental that each process knows how many other processes are allocated on the same machine (i.e., the number of local GPUs), so that inter-node sharding and inter-node replication is handled correctly
 # This is necessary since each process is run on only 1GPU, and some SLURM installation do not reset correctly the CUDA_VISIBLE_DEVICES variable
 Reset_visible_devices () {
     if [ "${XFFL_SIMULATION}" = "true" ] ; then
@@ -74,7 +74,7 @@ Gpu_detection () {
     # Check Nvidia GPU
     if command -v nvidia-smi > /dev/null ; then 
         export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES		
-        GPU_FLAG="--nv"
+        export GPU_FLAG="--nv"
         return 0
     fi 
 
@@ -82,9 +82,9 @@ Gpu_detection () {
     if command -v rocm-smi > /dev/null ; then 
         export HIP_VISIBLE_DEVICES=$VISIBLE_DEVICES
         export ROCR_VISIBLE_DEVICES=$VISIBLE_DEVICES		
-        GPU_FLAG="--rocm"
+        export GPU_FLAG="--rocm"
         return 0
-    fi 
+    fi
 
     echo "No GPU detected - falling back to CPU training"
     return 0
@@ -94,19 +94,19 @@ Gpu_detection () {
 Container_platform_detection () {
     # Check if `singularity` command exists
     if command -v singularity > /dev/null ; then 
-        CONTAINER_PLT="singularity"
+        export CONTAINER_PLT="singularity"
         return 0
     fi 
 
     # Check if `apptainer` command exists
     if command -v apptainer > /dev/null ; then 
-        CONTAINER_PLT="apptainer" 
+        export CONTAINER_PLT="apptainer"
         return 0
     fi 
 
     # Check if `docker` command exists
     if command -v docker > /dev/null ; then 
-        CONTAINER_PLT="docker"
+        export CONTAINER_PLT="docker"
         return 0
     fi 
 

@@ -2,9 +2,10 @@
 
 import os
 from logging import Logger, getLogger
-from typing import Dict, Optional, Union
+from typing import Dict, Mapping, Union
 
 from datasets import Dataset, DatasetDict, load_from_disk
+
 from xffl.custom.types import FolderLike, PathLike
 
 logger: Logger = getLogger(__name__)
@@ -12,8 +13,8 @@ logger: Logger = getLogger(__name__)
 
 
 def load_datasets_from_disk(
-    splits: Dict[str, PathLike], base_path: FolderLike = ""
-) -> Dict[str, Union[Dataset, DatasetDict]]:
+    splits: Mapping[str, PathLike], base_path: FolderLike = ""
+) -> Dict[str, Dataset | DatasetDict]:
     """Load multiple datasets from disk
 
     Useful when train, test, and validation sets are different files/folders

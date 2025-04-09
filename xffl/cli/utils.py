@@ -39,17 +39,17 @@ def check_default_value(
     :param parser: Parser from which the argument originated
     :type parser: argparse.ArgumentParser
     """
-    deafult_value = parser.get_default(dest=argument_name)
-    if argument_value == deafult_value:
+    default_value = parser.get_default(dest=argument_name)
+    if argument_value == default_value:
         logger.warning(
-            f'CLI argument "{argument_name}" has got default value "{deafult_value}"'
+            f'CLI argument "{argument_name}" has got default value "{default_value}"'
         )
 
 
 def check_cli_arguments(
     args: argparse.Namespace, parser: argparse.ArgumentParser
 ) -> SimpleNamespace:
-    """Checks which cli arguments have the default value and expands relative path into absolte ones
+    """Checks which cli arguments have the default value and expands relative path into absolute ones
 
     :param args: Command line arguments
     :type args: argparse.Namespace
@@ -65,7 +65,7 @@ def check_cli_arguments(
             namespace_input = (
                 get_param_name(action.option_strings, parser.prefix_chars)
                 if input in namespace
-                else action.dest  # Argmuents can be stored in a variable with a name different from their flag, namely dest
+                else action.dest  # Arguments can be stored in a variable with a name different from their flag, namely dest
             )
             namespace[namespace_input] = (
                 os.path.abspath(namespace[namespace_input])
@@ -79,13 +79,13 @@ def check_cli_arguments(
 
 
 def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
-    """Exapnds relative paths in absolute one when variable type is not available
+    """Expands relative paths in absolute one when variable type is not available
 
     :param args: List of command-line arguments
     :type args: List[str]
     :param prefix: Prefix symbol preceding a flag, defaults to "-"
     :type prefix: str, optional
-    :raises FileExistsError: If the file path does not exists
+    :raises FileExistsError: If the file path does not exist
     :raises FileNotFoundError: If the file path is not found
     :return: List of command-line arguments with expanded paths
     :rtype: List[str]
@@ -100,7 +100,7 @@ def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
 
 
 def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
-    """Creates a mapping between the CLI arguments and new enviromental variables
+    """Creates a mapping between the CLI arguments and new environmental variables
 
     :param args: CLI arguments
     :type args: Dict[str, Any]

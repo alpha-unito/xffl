@@ -890,7 +890,6 @@ class DistributedState:
         self,
         ranks: Tuple[int, ...] | torch.Tensor,
         group_desc: Optional[str],
-        use_local_synchronization: bool = True,
     ) -> ProcessGroup:
         """Creates a new process group with the specified ranks
 
@@ -908,7 +907,7 @@ class DistributedState:
             timeout=get_timeout(),
             backend=self.backend,
             pg_options=get_default_nccl_process_group_options(),
-            use_local_synchronization=use_local_synchronization,
+            use_local_synchronization=True,
             group_desc=group_desc,
         )
 

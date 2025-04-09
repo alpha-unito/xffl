@@ -18,7 +18,7 @@ Limit_PyTorch_threads
 Reset_visible_devices
 LLaMA_default_env
 Gpu_detection
-if [ ! -n "$VENV" ] ; then
+if [ -z "$VENV" ] ; then
 	Container_platform_detection
 fi
 
@@ -28,7 +28,7 @@ if [ ! -f "${XFFL_FACILITY_SCRIPT}" ]; then
   echo "${XFFL_FACILITY_SCRIPT} does not exist."
   exit 1
 fi
-source "${XFFL_FACILITY_SCRIPT}"
+eval "${XFFL_FACILITY_SCRIPT}"
 
 if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then 
 	XFFL_OUTPUT_FOLDER=$XFFL_LOCAL_TMPDIR
@@ -39,7 +39,7 @@ if [ "${XFFL_SIMULATION}" = "true" ] ; then
 	pids=()
 
 	if [ -n "${VENV}" ] ; then
-		source ${VENV}
+		eval "${VENV}"
 	fi
 
 	for _RANK in $( seq $(( XFFL_NODEID * LOCAL_WORLD_SIZE )) 1 $(( XFFL_NODEID * LOCAL_WORLD_SIZE + LOCAL_WORLD_SIZE - 1 )) ) ; do
@@ -79,12 +79,12 @@ if [ "${XFFL_SIMULATION}" = "true" ] ; then
 
 # StreamFlow execution
 else
-	XFFL_EXECUTABLE_FOLDER=$(dirname $1)
-	XFFL_RESOLVED_MODEL_FOLDER=$(readlink -f ${XFFL_MODEL_FOLDER})
-	XFFL_RESOLVED_DATASET_FOLDER=$(readlink -f ${XFFL_DATASET_FOLDER})
-	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(readlink -f $1)
-	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(dirname ${XFFL_RESOLVED_EXECUTABLE_FOLDER})
-	# TODO: mount the whole workdir. It avoids to mount each single path to incluce the data are created by the step
+	XFFL_EXECUTABLE_FOLDER=$(dirname "$1")
+	XFFL_RESOLVED_MODEL_FOLDER=$(readlink -f "${XFFL_MODEL_FOLDER}")
+	XFFL_RESOLVED_DATASET_FOLDER=$(readlink -f "${XFFL_DATASET_FOLDER}")
+	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(readlink -f "$1")
+	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(dirname "${XFFL_RESOLVED_EXECUTABLE_FOLDER}")
+	# TODO: mount the whole workdir. It avoids to mount each single path to include the data are created by the step
 	#	however, if the data are not in the workdir (e.g. the dataset). It is necessary to mount also the real path
 	COMMAND="${CONTAINER_PLT} exec \
 		--mount type=bind,src=${XFFL_MODEL_FOLDER},dst=${XFFL_MODEL_FOLDER} \

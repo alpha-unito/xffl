@@ -83,7 +83,7 @@ run_parser.add_argument(
 run_parser.add_argument(
     "-p",
     "--project",
-    help="Name of the project/Python execultable file",
+    help="Name of the project/Python executable file",
     type=str,
     default="project",
 )
@@ -124,7 +124,7 @@ simulate_parser.add_argument(
 
 simulate_parser.add_argument(
     "executable",
-    help="Name of the Python execultable file",
+    help="Name of the Python executable file",
     type=PathLike,
     default=None,
 )
@@ -145,9 +145,9 @@ simulate_parser.add_argument(
     default="leonardo",
 )
 
-virtualisation_group = simulate_parser.add_mutually_exclusive_group()
+virtualization_group = simulate_parser.add_mutually_exclusive_group()
 
-virtualisation_group.add_argument(
+virtualization_group.add_argument(
     "-v",
     "--venv",
     help="Virtual environment to use for the experiment",
@@ -155,7 +155,7 @@ virtualisation_group.add_argument(
     default=None,
 )
 
-virtualisation_group.add_argument(
+virtualization_group.add_argument(
     "-i",
     "--image",
     help="Path to the Docker/Singularity/Apptainer image",

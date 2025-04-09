@@ -1,6 +1,6 @@
 """LLM training example script
 
-Inspired from llama-recipes' finetuning.py script:
+Inspired from llama-recipes' fine-tuning.py script:
 https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetuning.py
 """
 
@@ -9,32 +9,38 @@ import sys
 import time
 from logging import Logger, getLogger
 from parser import parser
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import torch
 import wandb
+from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
-from transformers import AutoModelForCausalLM, default_data_collator
+from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
-from datasets import Dataset, DatasetDict
-from xffl.custom import DATASETS, MODELS
+from xffl.custom import DATASETS, MODELS, DatasetInfo, ModelInfo
 from xffl.learning import data, distributed, modelling, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
-"""Deafult xFFL logger"""
+"""Default xFFL logger"""
 
 
-def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
+def pretraining(
+    args: argparse.Namespace, model_info: ModelInfo, dataset_info: DatasetInfo
+) -> None:
     """LLM pre-training script
 
     This is not considered fine-tuning since no parameter reduction/quantization technique is applied
 
     :param args: Command-line arguments
     :type args: argparse.Namespace
+    :param model_info: Model information class
+    :type model_info: ModelInfo
+    :param dataset_info: Dataset information class
+    :type dataset_info: DatasetInfo
     """
     setup_time: float = time.perf_counter()
 
@@ -53,7 +59,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
-            f"Randez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
+            f"Rendez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
     # Large data preloading in background
@@ -85,7 +91,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
     # LLM loading from saved model
     start_time = time.perf_counter()
-    model: AutoModelForCausalLM = (
+    model: AutoModel = (
         AutoModelForCausalLM.from_pretrained(  # Configuration is automatically loaded from the JSON file inside the model folder
             pretrained_model_name_or_path=model_info.path,
             use_cache=False,
@@ -130,7 +136,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
     # Dataset loading
     start_time = time.perf_counter()
-    datasets: Dict[str, Union[Dataset, DatasetDict]] = data.load_datasets_from_disk(
+    datasets: Dict[str, Dataset | DatasetDict] = data.load_datasets_from_disk(
         splits=dataset_info.splits, base_path=dataset_info.path
     )  # Original LLaMA training packs the datasets
     if state.rank == 0:
@@ -174,7 +180,7 @@ def pretraining(args: argparse.Namespace, model_info, dataset_info) -> None:
 
         if state.rank == 0:
             logger.debug(
-                f"{split} dataloader size: {len(dataloaders[split])} minibatches"
+                f"{split} dataloader size: {len(dataloaders[split])} mini-batches"
             )
     if state.rank == 0:
         logger.debug(

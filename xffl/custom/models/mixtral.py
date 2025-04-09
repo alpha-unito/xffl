@@ -4,6 +4,7 @@ import functools
 from dataclasses import dataclass
 from typing import Callable, Type
 
+from model_info import ModelInfo
 from torch.distributed.fsdp import wrap
 from transformers import MixtralForCausalLM
 from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
@@ -12,7 +13,7 @@ from xffl.custom.types import FolderLike
 
 
 @dataclass
-class mixtral:
+class Mixtral(ModelInfo):
     """Mixtral essential information"""
 
     model_type: Type = MixtralForCausalLM

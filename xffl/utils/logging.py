@@ -24,11 +24,11 @@ def setup_logging(log_level: int = logging.INFO):
 
 
 def get_default_handler(log_level: int = logging.INFO) -> logging.StreamHandler:
-    """Returns xFFL's default logging handler configuration
+    """Returns the xFFL default logging handler configuration
 
     :param log_level: log level to be used [0-50], defaults to logging.INFO [20]
     :type log_level: int, optional
-    :return: xFFL's default logging handler
+    :return: xFFL default logging handler
     :rtype: logging.StreamHandler
     """
     handler = logging.StreamHandler(stream=sys.stdout)

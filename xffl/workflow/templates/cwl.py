@@ -2,12 +2,15 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import MutableMapping
+from logging import Logger, getLogger
 from typing import Any
 
 import cwl_utils.parser.cwl_v1_2 as cwl
 
-from xffl.custom.types import FileLike, FolderLike
 from xffl.workflow.config import YamlConfig
+
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 
 
 class CWLConfig(YamlConfig):
@@ -35,6 +38,8 @@ class CWLConfig(YamlConfig):
 
         :param facility_name: Facility's name
         :type facility_name: str
+        :param extra_inputs: Extra inputs
+        :type extra_inputs: MutableMapping[str, Any]
         """
         self.content |= {f"facility_{facility_name}": facility_name} | {
             f"{name}_{facility_name}": value for name, value in extra_inputs.items()
@@ -162,7 +167,7 @@ class MainWorkflow(Workflow):
         :rtype: cwl.Process
         """
 
-        loadingOptions = cwl.LoadingOptions(
+        loading_options = cwl.LoadingOptions(
             namespaces={"cwltool": "http://commonwl.org/cwltool#"}
         )
         return cwl.Workflow(
@@ -175,7 +180,7 @@ class MainWorkflow(Workflow):
                 cwl.WorkflowInputParameter(id="model_basename", type_="string"),
                 cwl.WorkflowInputParameter(id="max_rounds", type_="int"),
             ],
-            loadingOptions=loadingOptions,
+            loadingOptions=loading_options,
             outputs=[
                 cwl.WorkflowOutputParameter(
                     id="new_model",
@@ -219,7 +224,7 @@ class MainWorkflow(Workflow):
                     out=[cwl.WorkflowStepOutput(id="new_model")],
                     requirements=[
                         cwl.Loop(
-                            loadingOptions=loadingOptions,
+                            loadingOptions=loading_options,
                             loop=[
                                 cwl.LoopInput(id="model", loopSource="new_model"),
                                 cwl.LoopInput(

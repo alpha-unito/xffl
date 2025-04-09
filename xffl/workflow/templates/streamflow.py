@@ -73,7 +73,7 @@ class StreamFlowFile(YamlConfig):
         :type step_workdir: FolderLike
         :param slurm_template: Facility's SLURM file template
         :type slurm_template: FileLike
-        :raises ValueError: If the facilty is already present in the StreamFlow configuration
+        :raises ValueError: If the facility is already present in the StreamFlow configuration
         """
         if facility_name in self.deployments.keys():
             raise ValueError(
@@ -109,7 +109,7 @@ class StreamFlowFile(YamlConfig):
         :type facility_name: str
         :param mapping: Mapping between the StreamFlow binding names and their values
         :type mapping: MutableMapping[str, str]
-        :raises ValueError: If the facilty is already present in the StreamFlow configuration
+        :raises ValueError: If the facility is already present in the StreamFlow configuration
         """
         if facility_name in self.step_bindings.keys():
             raise ValueError(
@@ -151,8 +151,8 @@ class StreamFlowFile(YamlConfig):
         )
         self.content["deployments"] |= self.deployments["local"]
 
+    @staticmethod
     def create_binding(
-        self,
         name: str,
         values: MutableMapping[str, Any],
         location: Optional[str] = None,
@@ -162,11 +162,13 @@ class StreamFlowFile(YamlConfig):
 
         :param name: Name of the StreamFlow binding
         :type name: str
-        :param value: Value of the StreamFlow binding
-        :type value: FolderLike
+        :param values: Value of the StreamFlow binding
+        :type values: FolderLike
         :param location: Facility's name, defaults to None
-        :type facility: Optional[str], optional
-        :return: A well-formattted StreamFlow binding
+        :type location: Optional[str], optional
+        :param _type: Type of StreamFlow binding, defaults to "step"
+        :type _type: str
+        :return: A well-formatted StreamFlow binding
         :rtype: MutableMapping[str, Any]
         """
         return {

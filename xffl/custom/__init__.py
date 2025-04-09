@@ -2,18 +2,20 @@
 
 from typing import Callable, Final, Mapping
 
-from .datasets.clean_mc4_it import clean_mc4_it
-from .models.llama import llama
-from .models.mixtral import mixtral
+from .datasets.clean_mc4_it import CleanMc4It
+from .datasets.dataset_info import DatasetInfo
+from .models.llama import Llama
+from .models.mixtral import Mixtral
+from .models.model_info import ModelInfo
 
 MODELS: Final[Mapping[str, Callable]] = {
-    "llama3.1-8b": llama,
-    "llama3.1-70b": llama,
-    "mixtral-8x7b": mixtral,
+    "llama3.1-8b": Llama,
+    "llama3.1-70b": Llama,
+    "mixtral-8x7b": Mixtral,
 }
 """ Supported models dictionary """
 
 DATASETS: Final[Mapping[str, Callable]] = {
-    "clean_mc4_it": clean_mc4_it,
+    "clean_mc4_it": CleanMc4It,
 }
 """ Supported datasets dictionary """

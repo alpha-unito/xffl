@@ -6,7 +6,7 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 import numpy
 import torch
@@ -16,7 +16,7 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     apply_activation_checkpointing,
     checkpoint_wrapper,
 )
-from transformers import PreTrainedModel
+from transformers import AutoModel, PreTrainedModel
 
 from xffl.custom.types import PathLike
 from xffl.learning.distributed import DistributedState
@@ -100,7 +100,7 @@ def setup_devices(
                     == 0
                     else "meta"
                 )
-            )  # TODO: Caricare il modello un rank per nodo è vantaggioso rispetto a un rank e basta?
+            )
         )
         if torch.distributed.is_initialized()
         else exec_device
@@ -114,7 +114,7 @@ def setup_devices(
     return exec_device, init_device, meta_initialization
 
 
-def get_model_size(model: nn.Module) -> int:
+def get_model_size(model: nn.Module | AutoModel) -> int:
     """Returns the model's trainable parameters number
 
     :param model: PyTorch model
@@ -141,7 +141,7 @@ def seed_dataloader_worker(worker_id: int) -> None:
 
 
 def set_activation_checkpointing(
-    model: nn.Module | PreTrainedModel, layer: Optional[nn.Module] = None
+    model: nn.Module | PreTrainedModel, layer: type = None
 ) -> None:
     """Sets up activation (gradient) checkpointing
 
@@ -154,7 +154,7 @@ def set_activation_checkpointing(
     """
     if isinstance(model, PreTrainedModel):
         # Specific for HuggingFace models
-        # model.enable_input_require_grads()  # TODO: Solo per finetuning?
+        # model.enable_input_require_grads()  # TODO: fine-tuning specific?
         try:
             model.gradient_checkpointing_enable()
         except ValueError as e:

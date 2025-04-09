@@ -5,13 +5,13 @@ from collections.abc import Callable
 from datetime import timedelta
 from logging import Logger, getLogger
 from pathlib import Path, PurePath
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def get_param_flag(flag_list: List[str]) -> str:
+def get_param_flag(flag_list: Sequence[str]) -> str:
     """Gets the full command line parameter flag
 
     :param flag_list: List of the parameter's flags
@@ -22,7 +22,7 @@ def get_param_flag(flag_list: List[str]) -> str:
     return max(flag_list, key=len)
 
 
-def get_param_name(flag_list: List[str], prefix: str = "-") -> str:
+def get_param_name(flag_list: Sequence[str], prefix: str = "-") -> str:
     """Returns the command line parameter full name given its flag list
 
      This method also replaces scores with underscores
@@ -39,7 +39,7 @@ def get_param_name(flag_list: List[str], prefix: str = "-") -> str:
 
 
 def resolve_path(path: str, is_local_path: bool = True) -> str:
-    """Check the path is well formed, otherwise tries to fix it.
+    """Check the path is well formatted, otherwise tries to fix it.
     Moreover, the path is resolve to the absolute form if it is defined as a local path
 
     :param path: abbreviated path
@@ -67,7 +67,7 @@ def check_input(
 
     :param text: Question to be asked to the user
     :type text: str
-    :param warning_msg: Error message in case the inserted value does not satisfies the control condition
+    :param warning_msg: Error message in case the inserted value does not satisfy the control condition
     :type warning_msg: str
     :param control: Control function to be checked on the inserted value
     :type control: Callable
@@ -79,7 +79,8 @@ def check_input(
     :rtype: str
     """
 
-    condition = False
+    condition: bool = False
+    value: str = ""
     while not condition:
         value = input(text)
         if is_path:

@@ -44,7 +44,7 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
     """
 
     # TODO: contiguous?
-    param_list: List[nn.Parameter] = list(model.parameters()) # TODO: maybe module?
+    param_list: List[nn.Parameter] = list(model.parameters())  # TODO: maybe module?
     buffer: Tuple[nn.Parameter, torch.Tensor] = (
         param_list[0],  # Tensor 0 has different dimensions
         torch.stack(param_list[1:]),

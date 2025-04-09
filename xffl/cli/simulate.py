@@ -8,7 +8,8 @@ import subprocess
 import sys
 import time
 from logging import Logger, getLogger
-from typing import Dict, List, Optional
+from types import SimpleNamespace
+from typing import Dict
 
 from xffl.cli.parser import simulate_parser
 from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
@@ -18,7 +19,7 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
+def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
     """Sets up the simulation environment variables
 
     :param args: CLI arguments
@@ -137,8 +138,8 @@ def simulate(
         for process in processes:
             return_code += process.wait()
 
-    except (OSError, ValueError) as e:
-        logger.exception(e)
+    except (OSError, ValueError) as exception:
+        logger.exception(exception)
         return 1
     else:
         logger.info(
@@ -159,9 +160,9 @@ def main(args: argparse.Namespace) -> int:
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
     try:
         simulate(args=args)
-    except Exception as e:
-        logger.exception(e)
-        raise e
+    except Exception as exception:
+        logger.exception(exception)
+        raise exception
     finally:
         logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
         return 0

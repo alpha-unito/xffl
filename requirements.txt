@@ -1,5 +1,6 @@
 accelerate>=0.26.0
 datasets
+numpy
 PyYAML==6.0.2
 streamflow @ git+https://github.com/alpha-unito/streamflow@master
 torch>=2.2

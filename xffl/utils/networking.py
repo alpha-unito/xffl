@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 
 def get_cells_ids(
     nodes: List[str], cell_size: int
-) -> Tuple[List[int]]:  # TODO: this method suppose sorted node list
+) -> Tuple[int, ...]:  # TODO: this method suppose sorted node list
     """Calculates an incremental cell ID for each node participating in the training
 
     :param nodes: List of nodes assigned to the training
@@ -35,7 +35,7 @@ def get_cells_ids(
                 world_size += 1
         local_world_sizes.append(world_size)
 
-    return local_world_sizes
+    return tuple(local_world_sizes)
 
 
 print(
