@@ -68,7 +68,7 @@ class ArgumentParser(argparse.ArgumentParser):
             help="Model's name",
             type=str,
             default=None,
-            required=True,
+            # required=True,
             choices=list(MODELS.keys()),
         )
 

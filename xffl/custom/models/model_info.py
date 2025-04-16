@@ -1,4 +1,4 @@
-""" Abstract model class """
+"""Abstract model class"""
 
 from abc import ABC
 from dataclasses import dataclass

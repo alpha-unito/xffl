@@ -1,13 +1,14 @@
 import math
 from dataclasses import dataclass
 from logging import Logger, getLogger
-from typing import List, Literal, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.cuda as cuda
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from torch.distributed.device_mesh import DeviceMesh, init_device_mesh
+from torch.distributed.distributed_c10d import Backend
 
 from xffl.utils.utils import get_default_nccl_process_group_options, get_timeout
 
@@ -21,6 +22,12 @@ class DistributedState:
 
     # GLOBAL
     # These are global information about the distributed processes (invariant to the other groups)
+    backend: Optional[Backend] = None
+    """Communication backend"""
+    master_addr: Optional[str] = None
+    """Rendez-vous address"""
+    master_port: Optional[int] = None
+    """Rendez-vous port"""
     rank: Optional[int] = None
     """Global rank"""
     world_size: Optional[int] = None
@@ -80,15 +87,15 @@ class DistributedState:
     federation: Optional[ProcessGroup] = None
     """Process group collecting all ranks participating in the same federated group"""
 
-    # TECHNICAL
-    backend: Optional[Literal["nccl", "gloo", "mpi"]] = None
-    """Communication backend"""
-    master_addr: Optional[str] = None
-    """Rendez-vous address"""
-    master_port: Optional[int] = None
-    """Rendez-vous port"""
-    device: Optional[Literal["cpu", "cuda"]] = None
+    # DEVICE
+    device_type: Optional[torch.device] = None
     """Chosen deployment device"""
+    current_device: Optional[torch.device | int] = None
+    """Specific device currently in use by the process"""
+    init_device: Optional[torch.device] = None
+    """Chosen initialization device"""
+    meta_initialization: Optional[bool] = None
+    """True if meta initialization is enabled, False otherwise"""
     streams: Optional[Tuple[cuda.Stream, ...]] = None
     """Pool of available CUDA streams"""
 
@@ -110,6 +117,9 @@ class DistributedState:
         )
         return f"""\n
                 GLOBAL:
+                    Backend={self.backend}
+                    Master address={self.master_addr}
+                    Master port={self.master_port}
                     Rank={self.rank}
                     World size={self.world_size}
                 NODE:
@@ -135,58 +145,60 @@ class DistributedState:
                     Federated group={federated_group}
                     Replica group={replica_group}
                     Federation={federation}
-                TECHNICAL:
-                    Backend={self.backend}
-                    Master address={self.master_addr}
-                    Master port={self.master_port}
-                    Device={self.device}
+                DEVICE:
+                    Device type={self.device_type}
+                    Current device={self.current_device}
+                    Initialization device={self.init_device}
+                    Meta initialization={self.meta_initialization}
                     Streams={self.streams}
                 """
 
     ### Methods ###
 
-    def set_global(self, rank: int, world_size: int) -> None:
+    def set_global(
+        self,
+        backend: Backend,
+        device_type: torch.device,
+        master_addr: str,
+        master_port: int,
+        rank: int,
+        world_size: int,
+    ) -> None:
         """
         Set global process group information.
 
+        :param backend: Communication backend to use
+        :type backend: Backend
+        :param device_type: Type of device to use
+        :type device_type: Literal["cpu", "cuda"]
+        :param master_addr: Address of the master node for the rendez-vous
+        :type master_addr: str
+        :param master_port: Port of the master node for the rendez-vous
+        :type master_port: int
         :param rank: Global process rank
         :type rank: int
         :param world_size: Global world size
         :type world_size: int
         """
-        if 0 <= rank < world_size and world_size > 0:
-            self.rank = rank
-            self.world_size = world_size
-        else:
+        if backend not in Backend.backend_list:
             logger.error(
-                f"Impossible setting up a distributed computation with rank {rank} and world size {world_size}"
+                f"Impossible setting up distributed environment with backend {backend}: not in {Backend.backend_list}"
             )
-
-    def set_technical(
-        self,
-        backend: Literal["nccl", "gloo", "mpi"],
-        master_addr: str,
-        master_port: int,
-        device: Literal["cpu", "cuda"],
-        streams: int = 4,
-    ) -> None:
-        """
-        Set the technical properties of the distributed process group.
-
-        :param backend: Communication backend to use
-        :type backend: Literal["nccl", "gloo", "mpi"]
-        :param master_addr: Address of the master node for the rendez-vous
-        :type master_addr: str
-        :param master_port: Port of the master node for the rendez-vous
-        :type master_port: int
-        :param device: Type of device to use
-        :type device: Literal["cpu", "cuda"]
-        :param streams: Number of CUDA streams to instantiate, defaults to 4
-        :type streams: int
-        """
-        if backend not in ["nccl", "gloo", "mpi"]:
+        elif (
+            (backend == "nccl" and not torch.distributed.is_nccl_available())
+            or (backend == "gloo" and not torch.distributed.is_gloo_available())
+            or (backend == "mpi" and not torch.distributed.is_mpi_available())
+        ):
             logger.error(
-                f"Impossible setting up distributed environment with backend {backend}"
+                f"Impossible setting up distributed environment with backend {backend}: {backend} is not available"
+            )
+        elif str(device_type) not in ["cpu", "cuda"]:
+            logger.error(
+                f"Impossible setting up distributed environment with device {device_type}"
+            )
+        elif str(device_type) == "cuda" and not torch.cuda.is_available():
+            logger.error(
+                f"Impossible setting up distributed environment with device {device_type}: CUDA is not available"
             )
         elif master_addr is None or master_addr == "":
             logger.error(
@@ -196,20 +208,54 @@ class DistributedState:
             logger.error(
                 f"Impossible setting up distributed environment with master port {master_port}"
             )
-        elif device not in ["cpu", "cuda"]:
+        elif not 0 <= rank < world_size and world_size < 0:
             logger.error(
-                f"Impossible setting up distributed environment with device {device}"
+                f"Impossible setting up a distributed computation with rank {rank} and world size {world_size}"
             )
         else:
-            self.backend = backend
+            self.backend = Backend(backend)
+            self.device_type = device_type
             self.master_addr = master_addr
             self.master_port = master_port
-            self.device = device
+            self.rank = rank
+            self.world_size = world_size
 
-            torch.cuda.set_device(
-                self.node_local_rank if torch.cuda.is_available() else "cpu"
+    def set_device(
+        self,
+        current_device: torch.device | int,
+        init_device: torch.device,
+        meta_initialization: bool,
+        streams: int = 4,
+    ) -> None:
+        """
+        Set the devices of the distributed process group.
+
+        :param current_device: Training device
+        :type current_device: torch.device | int
+        :param init_device: Initialization device
+        :type init_device: torch.device
+        :param meta_initialization: If meta device initialization is required
+        :type meta_initialization: bool
+        :param streams: Number of CUDA streams to instantiate, defaults to 4
+        :type streams: int
+        """
+        if str(init_device) not in ["cpu", "cuda"]:
+            logger.error(
+                f"Impossible setting up distributed environment with device {init_device}"
             )
-            self.streams = tuple(cuda.Stream() for _ in range(streams))
+        elif str(init_device) == "cuda" and not torch.cuda.is_available():
+            logger.error(
+                f"Impossible setting up distributed environment with device {init_device}: CUDA is not available"
+            )
+        else:
+            self.current_device = current_device
+            self.init_device = init_device
+            self.meta_initialization = meta_initialization
+
+            if torch.cuda.is_available():
+                self.streams = tuple(
+                    cuda.Stream(device=current_device) for _ in range(streams)
+                )
 
     def set_node(
         self,
@@ -276,7 +322,7 @@ class DistributedState:
         mesh: Optional[DeviceMesh] = None
         if torch.distributed.is_initialized():
             mesh = init_device_mesh(
-                device_type=str(self.device),
+                device_type=str(self.device_type),
                 mesh_shape=(self.world_size,),
                 mesh_dim_names=("shard",),
             )
@@ -306,7 +352,7 @@ class DistributedState:
         """
         return self.fsdp_mesh is not None
 
-    def _get_global_hsdp_mesh(self) -> Optional[DeviceMesh]:
+    def _set_global_hsdp_mesh(self) -> Optional[DeviceMesh]:
         """
         Returns a global HSD device mesh.
         Do not call this method if global HSD device is not required.
@@ -314,10 +360,9 @@ class DistributedState:
         :return: A global HSDP device mesh if the distributed PyTorch environment is initialized, None otherwise
         :rtype: Optional[DeviceMesh]
         """
-        mesh: Optional[DeviceMesh] = None
         if torch.distributed.is_initialized():
             self.hsdp_mesh = init_device_mesh(
-                device_type=str(self.device),
+                device_type=str(self.device_type),
                 mesh_shape=(self.replica_world_size[0], self.replica_local_size),
                 mesh_dim_names=("replica", "shard"),
             )
@@ -325,7 +370,6 @@ class DistributedState:
             logger.error(
                 f"Impossible setting up HSDP: the distributed environment is not initialized"
             )
-        return mesh
 
     def set_hsdp(self, hsdp: int) -> None:
         """
@@ -335,7 +379,7 @@ class DistributedState:
         :type hsdp: int
         """
         self._partial_hsdp_setup(hsdp=hsdp)
-        self.hsdp_mesh = self._get_global_hsdp_mesh()
+        self._set_global_hsdp_mesh()
 
     def _partial_hsdp_setup(self, hsdp: int) -> None:
         """
@@ -466,19 +510,16 @@ class DistributedState:
         return tuple(communicating_processes)
 
     def _set_rank_role(self) -> None:
-        self.is_sender = self.rank in self._get_communicating_processes(
-            federated_rank=self.federated_rank
+        federated_group_communicating_processes: Tuple[int, ...] = (
+            self._get_communicating_processes(federated_rank=self.federated_rank)
         )
 
+        self.is_sender = self.rank in federated_group_communicating_processes
         if not self.is_sender:
-            federated_local_size: int = self.federated_local_size[self.federated_rank]
             self.receive_from = (
-                self.replica_local_rank + (federated_local_size * self.federated_rank)
-                if self.replica_local_rank < self.replica_local_size * self.replica_rank
-                else self.replica_local_rank
-                + (self.replica_local_size * (self.replica_rank + 1))
-                + (federated_local_size * self.federated_rank)
-            )
+                set(dist.get_process_group_ranks(self.replica_group[0]))
+                & set(federated_group_communicating_processes)
+            ).pop()
 
     def _set_symmetric_federated_scaling(
         self, federated_group_size: Tuple[int]
@@ -522,8 +563,9 @@ class DistributedState:
                 self.federated_rank = federated_rank
                 self.federated_world_size = federated_world_size
 
-                # Check that HSDP and federated configurations are interoperable
-                if self.is_hsdp_setup():
+                if (
+                    self.is_hsdp_setup()
+                ):  # Check that HSDP and federated configurations are interoperable
                     if (
                         self.federated_local_size[self.federated_rank]
                         % self.replica_local_size
@@ -565,7 +607,7 @@ class DistributedState:
                     )
 
                     self.hsdp_mesh = DeviceMesh.from_group(
-                        device_type=str(self.device),
+                        device_type=str(self.device_type),
                         group=[
                             self.create_process_group(
                                 ranks=tuple(
@@ -601,7 +643,7 @@ class DistributedState:
                             group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams)
+                            len(self.streams) if torch.cuda.is_available() else 1
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
 
@@ -616,9 +658,11 @@ class DistributedState:
                             group_desc=f"Federated replica averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams)
+                            len(self.streams) if torch.cuda.is_available() else 1
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
+
+                    self._set_rank_role()
 
                 else:  # FSDP federation
                     mesh: torch.Tensor = create_device_mesh(
@@ -630,7 +674,7 @@ class DistributedState:
 
                     self.set_fsdp(
                         DeviceMesh.from_group(
-                            device_type=str(self.device),
+                            device_type=str(self.device_type),
                             group=self.create_process_group(
                                 ranks=tuple(mesh[self.federated_rank].tolist()),
                                 group_desc=f"Federated sharding group #{self.federated_rank}",
@@ -646,7 +690,7 @@ class DistributedState:
                             group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams)
+                            len(self.streams) if torch.cuda.is_available() else 1
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
 
@@ -761,7 +805,6 @@ class DistributedState:
                                     replica_world_size[:-1]
                                 )
                         self.replica_world_size = tuple(replica_world_size)
-                        self._set_rank_role()
 
                 # HSDP asymmetric federation
                 if self.is_federated_scaling_setup():
@@ -780,7 +823,7 @@ class DistributedState:
                         offset += self.federated_local_size[rank]
 
                     self.hsdp_mesh = DeviceMesh.from_group(
-                        device_type=str(self.device),
+                        device_type=str(self.device_type),
                         group=[
                             self.create_process_group(
                                 ranks=tuple(
@@ -821,7 +864,9 @@ class DistributedState:
                             ranks=federated_group if self.is_sender else (self.rank,),
                             group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
                         )
-                        for i in range(len(self.streams))
+                        for i in range(
+                            len(self.streams) if torch.cuda.is_available() else 1
+                        )
                     )
 
                     # Group of processes sharing the same shard inside the federated group
@@ -834,7 +879,9 @@ class DistributedState:
                             ranks=broadcast_processes,
                             group_desc=f"Federated replica averaging group #{self.federated_rank} instance #{i}",
                         )
-                        for i in range(len(self.streams))
+                        for i in range(
+                            len(self.streams) if torch.cuda.is_available() else 1
+                        )
                     )
 
                     self.federation = self.create_process_group(
@@ -855,6 +902,8 @@ class DistributedState:
                         ),
                         group_desc=f"Federated group #{self.federated_rank}",
                     )
+
+                    self._set_rank_role()
         else:
             logger.error(
                 f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"

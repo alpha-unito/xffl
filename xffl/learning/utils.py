@@ -6,7 +6,7 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List, Literal
+from typing import List
 
 import numpy
 import torch
@@ -19,7 +19,6 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
 from transformers import AutoModel, PreTrainedModel
 
 from xffl.custom.types import PathLike
-from xffl.learning.distributed import DistributedState
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -60,58 +59,6 @@ def set_nondeterministic_execution() -> None:
     logger.debug(f"Setting PyTorch deterministic execution")
     torch.utils.deterministic.fill_uninitialized_memory = False
     torch.use_deterministic_algorithms(mode=False)
-
-
-def setup_devices(
-    state: DistributedState,
-) -> tuple[int, Literal["cpu", "cuda", "meta"] | int, bool]:
-    """PyTorch device setup
-
-        Sets the GPU for the current process and empties its cache
-        Also, returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
-    s
-        :param state: Instantiated distributed state
-        :type state: DistributedState
-        :return: Two devices, one for computation and the other for model initialisation, and if meta initialisation is enabled
-        :rtype: tuple[int, Literal["cpu", "cuda", "meta"] | int, bool]
-    """
-
-    device: Literal["cpu", "cuda"] | int = (
-        (state.node_local_rank if state.is_node_setup() else "cuda")
-        if torch.cuda.is_available()
-        else "cpu"
-    )
-    torch.cuda.set_device(device)
-    torch.cuda.empty_cache()
-
-    exec_device: int = torch.cuda.current_device()
-    init_device: Literal["cpu", "cuda", "meta"] | int = (
-        (
-            torch.device("cpu" if state.replica_local_rank == 0 else "meta")
-            if state.is_hsdp_setup()
-            else (
-                torch.device("cpu" if state.node_local_rank == 0 else "meta")
-                if state.federated_local_size[state.federated_rank]
-                > state.node_local_size
-                else (
-                    "cpu"
-                    if state.node_local_rank
-                    % state.federated_local_size[state.federated_rank]
-                    == 0
-                    else "meta"
-                )
-            )
-        )
-        if torch.distributed.is_initialized()
-        else exec_device
-    )
-    meta_initialization: bool = exec_device != init_device
-
-    logger.debug(
-        f"[Rank {state.rank}]: assigned local execution device {device}, initialisation device set to {init_device}; meta initialization set to {meta_initialization}"
-    )
-
-    return exec_device, init_device, meta_initialization
 
 
 def get_model_size(model: nn.Module | AutoModel) -> int:

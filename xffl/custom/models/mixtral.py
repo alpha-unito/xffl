@@ -1,15 +1,16 @@
-""" Mixtral modelling """
+"""Mixtral modelling"""
 
 import functools
 from dataclasses import dataclass
 from typing import Callable, Type
 
-from model_info import ModelInfo
 from torch.distributed.fsdp import wrap
 from transformers import MixtralForCausalLM
 from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 
 from xffl.custom.types import FolderLike
+
+from .model_info import ModelInfo
 
 
 @dataclass

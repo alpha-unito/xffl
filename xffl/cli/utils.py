@@ -56,8 +56,8 @@ def check_cli_arguments(
     :param parser: Command line argument parser
     :type parser: argparse.ArgumentParser
     """
-    for key, value in vars(args).items():
-        check_default_value(argument_name=key, argument_value=value, parser=parser)
+    # for key, value in vars(args).items():
+    #    check_default_value(argument_name=key, argument_value=value, parser=parser)
 
     namespace = vars(args)
     for action in parser._actions:

@@ -45,7 +45,7 @@ This process will produce a directory containing the necessary StreamFlow and xF
 
 Python>=3.9  
 Singularity/Docker  
-NodeJS
+Node.js
 
 
 ## Architecture

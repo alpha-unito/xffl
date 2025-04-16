@@ -7,7 +7,7 @@ from typing import Any, TypeVar
 
 from xffl.utils.utils import resolve_path
 
-PathLike = TypeVar("PathLike", str, Path, _PathLike)
+PathLike: TypeVar = TypeVar("PathLike", str, Path, _PathLike)
 """Path-like objects"""
 
 
@@ -22,7 +22,7 @@ def PathLike(path: Any) -> PathLike:
     return resolve_path(path=path)
 
 
-FolderLike = TypeVar("FolderLike", str, Path, _PathLike, PathLike)
+FolderLike: TypeVar = TypeVar("FolderLike", str, Path, _PathLike, PathLike)
 """Path to folder objects"""
 
 
@@ -40,7 +40,7 @@ def FolderLike(path: Any) -> FolderLike:
         raise ValueError
 
 
-FileLike = TypeVar("FileLike", str, Path, _PathLike, PathLike)
+FileLike: TypeVar = TypeVar("FileLike", str, Path, _PathLike, PathLike)
 """Path to file objects"""
 
 

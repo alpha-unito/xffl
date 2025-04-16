@@ -9,6 +9,7 @@ from .models.mixtral import Mixtral
 from .models.model_info import ModelInfo
 
 MODELS: Final[Mapping[str, Callable]] = {
+    "tiny_random_Llama-3": Llama,
     "llama3.1-8b": Llama,
     "llama3.1-70b": Llama,
     "mixtral-8x7b": Mixtral,

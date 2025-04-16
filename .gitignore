@@ -140,5 +140,5 @@ dmypy.json
 *.out
 *.err
 logs
-xffl/datasets
-xffl/models
+datasets/*
+models/*

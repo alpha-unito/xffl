@@ -10,10 +10,11 @@ from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
-from transformers import AutoModelForCausalLM
+from transformers import AutoModel
 
+from xffl.custom import ModelInfo
 from xffl.custom.types import PathLike
-from xffl.learning.distributed import (
+from xffl.distributed.distributed import (
     DistributedState,
     get_appropriate_sharding_strategy,
 )
@@ -23,27 +24,21 @@ logger: Logger = getLogger(__name__)
 
 
 def create_fsdp_model(
-    module: nn.Module | AutoModelForCausalLM,
+    module: nn.Module | AutoModel,
     state: DistributedState,
-    model_info,
-    current_device: Optional[torch.DeviceObjType | int] = None,
+    model_info: ModelInfo,
     mixed_precision: Optional[MixedPrecision] = None,
-    meta_initialization: Optional[bool] = False,
 ) -> FullyShardedDataParallel:
     """Creates an FSDP model
 
     :param module: FSDP-wrapped model to be saved
-    :type module: nn.Module | AutoModelForCausalLM
+    :type module: nn.Module | AutoModel
     :param state: Instantiated distributed state
     :type state: DistributedState
     :param model_info: Dataclass with model's information
-    :type model_info: _type_
-    :param current_device: Current device used by the module, defaults to None
-    :type current_device: Optional[torch.DeviceObjType], optional
+    :type model_info: ModelInfo
     :param mixed_precision: Precision to use for the module, defaults to None
     :type mixed_precision: Optional[MixedPrecision], optional
-    :param meta_initialization: If the module uses meta devices for efficient distributed initialization, defaults to False
-    :type meta_initialization: Optional[bool], optional
     :return: The original module wrapped by FSDP
     :rtype: FullyShardedDataParallel
     """
@@ -54,21 +49,18 @@ def create_fsdp_model(
     elif state.is_fsdp_setup():
         device_mesh = state.fsdp_mesh
 
-    logger.debug(
-        f"[Rank {state.rank}]: is calling FSDP on device mesh {device_mesh} with meta initialization {meta_initialization}"
-    )
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=module,
         sharding_strategy=get_appropriate_sharding_strategy(state=state),
         auto_wrap_policy=model_info.wrapping_policy,
-        device_id=current_device if current_device else torch.cuda.current_device(),
+        device_id=state.current_device,
         forward_prefetch=True,
         limit_all_gathers=False,
         mixed_precision=mixed_precision,
-        sync_module_states=meta_initialization,
+        sync_module_states=state.meta_initialization,
         param_init_fn=lambda layer: (
-            layer.to_empty(device=current_device, recurse=False)
-            if meta_initialization
+            layer.to_empty(device=state.current_device, recurse=False)
+            if state.meta_initialization
             else None
         ),
         device_mesh=device_mesh,

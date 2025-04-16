@@ -164,8 +164,8 @@ virtualization_group.add_argument(
 )
 
 simulate_parser.add_argument(
-    "-gn",
-    "--gpus-per-node",
+    "-p",
+    "--processes-per-node",
     help="Number of GPUs available on each compute node",
     type=int,
     default=4,

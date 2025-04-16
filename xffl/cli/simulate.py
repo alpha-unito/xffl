@@ -13,7 +13,7 @@ from typing import Dict
 
 from xffl.cli.parser import simulate_parser
 from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
-from xffl.utils.networking import get_cells_ids
+from xffl.distributed.networking import get_cells_ids
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -70,7 +70,7 @@ def simulate(
     args = check_cli_arguments(args=args, parser=simulate_parser)
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
-    args.world_size = args.num_nodes * args.gpus_per_node
+    args.world_size = args.num_nodes * args.processes_per_node
 
     # Environment creation
     try:

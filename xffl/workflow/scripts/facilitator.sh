@@ -39,7 +39,7 @@ if [ "${XFFL_SIMULATION}" = "true" ] ; then
 	pids=()
 
 	if [ -n "${VENV}" ] ; then
-		eval "${VENV}"
+		source "${VENV}/bin/activate"
 	fi
 
 	for _RANK in $( seq $(( XFFL_NODEID * LOCAL_WORLD_SIZE )) 1 $(( XFFL_NODEID * LOCAL_WORLD_SIZE + LOCAL_WORLD_SIZE - 1 )) ) ; do

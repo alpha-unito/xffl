@@ -15,7 +15,7 @@ parser.add_argument(
     "--attention",
     help="Type of attention implementation to use",
     type=str,
-    default="flash_attention_2",
+    default="sdpa",
     choices=["sdpa", "eager", "flash_attention_2"],
 )
 

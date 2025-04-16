@@ -13,15 +13,16 @@ from typing import Dict, Optional
 
 import torch
 import wandb
-from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
+from datasets import Dataset, DatasetDict
 from xffl.custom import DATASETS, MODELS, DatasetInfo, ModelInfo
-from xffl.learning import data, distributed, modelling, processing, utils
+from xffl.distributed import distributed
+from xffl.learning import data, modelling, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -55,7 +56,8 @@ def pretraining(
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
-        hsdp=args.hsdp, federated=args.federated_scaling
+        hsdp=args.hsdp,
+        federated=args.federated_scaling,
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -65,9 +67,6 @@ def pretraining(
     # Large data preloading in background
     if state.node_local_rank == 0:
         utils.preload(files=[model_info.path])
-
-    # Devices setup
-    current_device, init_device, meta_initialization = utils.setup_devices(state=state)
 
     # WandB setup
     wandb_run: wandb.wandb_run.Run = wandb.init(  # Default entity
@@ -99,7 +98,7 @@ def pretraining(
             local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
             attn_implementation=args.attention,
             torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
-            device_map=init_device,
+            device_map=state.init_device,
             use_safetensors=True,
         )
     )
@@ -119,9 +118,9 @@ def pretraining(
         module=model,
         state=state,
         model_info=model_info,
-        current_device=current_device,
+        # current_device=state.current_device,
         mixed_precision=mixed_precision,
-        meta_initialization=meta_initialization,
+        # meta_initialization=state.meta_initialization,
     )
 
     # Activation checkpointing
@@ -216,7 +215,7 @@ def pretraining(
         )
 
     # Main training function
-    logger.debug(f"[Rank {state.rank}]: --- STARTING TRAINING ---")
+    # logger.debug(f"[Rank {state.rank}]: --- STARTING TRAINING ---")
     results = processing.distributed_training(
         model=model,
         state=state,

@@ -1,4 +1,4 @@
-""" Abstract dataset class """
+"""Abstract dataset class"""
 
 from dataclasses import dataclass
 from typing import Mapping
