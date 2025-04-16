@@ -861,7 +861,12 @@ class DistributedState:
 
                     self.federated_group = tuple(
                         self.create_process_group(
-                            ranks=federated_group if self.is_sender else (self.rank,),
+                            ranks=(
+                                federated_group
+                                if self.rank
+                                in communicating_processes[self.federated_rank]
+                                else (self.rank,)
+                            ),
                             group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(

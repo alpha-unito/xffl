@@ -45,7 +45,7 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
                     group=state.federated_group[0],
                 )
                 if not state.backend == "nccl":
-                    torch.div(param, state.federated_world_size)
+                    torch.Tensor.div_(param, state.federated_world_size)
                 dist.broadcast(
                     tensor=param,
                     src=state.rank,
@@ -69,7 +69,7 @@ def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
                 group=state.federated_group[0],
             )
             if not state.backend == "nccl":
-                torch.div(param, state.federated_world_size)
+                torch.Tensor.div_(param, state.federated_world_size)
 
     for param, updated_param in zip(param_list[1:], buffer[1]):
         param.copy_(updated_param, non_blocking=True)
@@ -254,7 +254,7 @@ def layer_by_layer_aggregation(model: nn.Module, state: DistributedState) -> Non
                         op=dist.ReduceOp.SUM,
                         group=state.federated_group[0],
                     )
-                    torch.div(param, state.federated_world_size)
+                    torch.Tensor.div_(param, state.federated_world_size)
                     if len(dist.get_process_group_ranks(state.replica_group[0])) > 1:
                         dist.broadcast(
                             tensor=param,
@@ -301,7 +301,7 @@ def layer_by_layer_aggregation(model: nn.Module, state: DistributedState) -> Non
                     op=dist.ReduceOp.SUM,
                     group=state.federated_group[0],
                 )
-                torch.div(param, state.federated_world_size)
+                torch.Tensor.div_(param, state.federated_world_size)
 
 
 def sync_federated_averaging_v4(model: nn.Module, state: DistributedState) -> None:
