@@ -55,37 +55,19 @@ class ArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
-            "-mp",
-            "--model-path",
-            help="Path to the model's folder",
-            type=FolderLike,
-            default=None,
-        )
-
-        self.add_argument(
-            "-mn",
-            "--model-name",
-            help="Model's name",
+            "-m",
+            "--model",
+            help="Path to the model's configuration class",
             type=str,
-            default=None,
-            # required=True,
+            required=True,
             choices=list(MODELS.keys()),
         )
 
         self.add_argument(
-            "-dp",
-            "--dataset-path",
-            help="Path to the dataset's folder",
-            type=FolderLike,
-            default=None,
-        )
-
-        self.add_argument(
-            "-dn",
-            "--dataset-name",
+            "-d",
+            "--dataset",
             help="Dataset's name",
             type=str,
-            default=None,
             required=True,
             choices=list(DATASETS.keys()),
         )

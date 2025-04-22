@@ -248,8 +248,8 @@ def main():
         args = parser.parse_args(sys.argv[1:])
         pretraining(
             args=args,
-            model_info=MODELS[args.model_name](path=args.model_path),
-            dataset_info=DATASETS[args.dataset_name](path=args.dataset_path),
+            model_info=MODELS[args.model],
+            dataset_info=DATASETS[args.dataset],
         )
     except KeyboardInterrupt as e:
         logger.exception(e)

@@ -1,6 +1,6 @@
 """List of already supported models and datasets"""
 
-from typing import Callable, Final, Mapping
+from typing import Final, Mapping
 
 from .datasets.clean_mc4_it import CleanMc4It
 from .datasets.dataset_info import DatasetInfo
@@ -8,15 +8,23 @@ from .models.llama import Llama
 from .models.mixtral import Mixtral
 from .models.model_info import ModelInfo
 
-MODELS: Final[Mapping[str, Callable]] = {
+MODELS: Final[Mapping[str, ModelInfo]] = {
     "tiny_random_Llama-3": Llama,
-    "llama3.1-8b": Llama,
-    "llama3.1-70b": Llama,
-    "mixtral-8x7b": Mixtral,
+    "llama3.1-8b": Llama(
+        path="/leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b"
+    ),
+    "llama3.1-70b": Llama(
+        path="/leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-70b"
+    ),
+    "mixtral-8x7b": Mixtral(
+        path="/leonardo_scratch/fast/uToID_bench/xffl/models/lmixtral-8x7b-v0.1"
+    ),
 }
 """ Supported models dictionary """
 
-DATASETS: Final[Mapping[str, Callable]] = {
-    "clean_mc4_it": CleanMc4It,
+DATASETS: Final[Mapping[str, DatasetInfo]] = {
+    "clean_mc4_it": CleanMc4It(
+        path="/leonardo_scratch/fast/uToID_bench/xffl/datasets/clean_mc4_it"
+    ),
 }
 """ Supported datasets dictionary """

@@ -17,7 +17,7 @@ XFFL_FACILITY_SCRIPT="${XFFL_SCRIPTS_FOLDER}/facilities/${XFFL_FACILITY}.sh"
 if [ ! -f "${XFFL_FACILITY_SCRIPT}" ]; then
     echo "${XFFL_FACILITY_SCRIPT} does not exist."
 else
-    source $XFFL_FACILITY_SCRIPT
+    source "$XFFL_FACILITY_SCRIPT"
 fi
 
 # Set general env variables for distributed ML
@@ -67,7 +67,6 @@ ${XFFL_IMAGE} \
 		fi
 
 		# Run the local simulation process
-		echo "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND $*" &
 		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND $*" &
 		pids[_RANK]=$!
 	done

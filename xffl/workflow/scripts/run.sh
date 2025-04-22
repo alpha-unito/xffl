@@ -7,7 +7,7 @@
 EXECUTABLE=$1; shift
 
 if [ "${XFFL_SIMULATION}" = "true" ] ; then
-	if [ -n "${VENV}" ] ; then
+	if [ -n "${XFFL_VENV}" ] ; then
 	  if [[ $RANK -eq 0 ]]; then
       #COMMAND="nsys profile --trace=osrt,mpi,cuda --nic-metrics=true python ${EXECUTABLE} $*"
       COMMAND="python ${EXECUTABLE} $*"
