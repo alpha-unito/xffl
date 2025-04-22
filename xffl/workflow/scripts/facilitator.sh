@@ -12,23 +12,23 @@
 XFFL_SCRIPTS_FOLDER="$(dirname "$0")"
 source "${XFFL_SCRIPTS_FOLDER}/env.sh"
 
+# Set specific facility env variables
+XFFL_FACILITY_SCRIPT="${XFFL_SCRIPTS_FOLDER}/facilities/${XFFL_FACILITY}.sh"
+if [ ! -f "${XFFL_FACILITY_SCRIPT}" ]; then
+    echo "${XFFL_FACILITY_SCRIPT} does not exist."
+else
+    source $XFFL_FACILITY_SCRIPT
+fi
+
 # Set general env variables for distributed ML
 Derive_env
 Limit_PyTorch_threads
 Reset_visible_devices
 LLaMA_default_env
 Gpu_detection
-if [ -z "$VENV" ] ; then
+if [ -z "$XFFL_VENV" ] ; then
 	Container_platform_detection
 fi
-
-# Set specific facility env variables
-XFFL_FACILITY_SCRIPT="${XFFL_SCRIPTS_FOLDER}/facilities/${XFFL_FACILITY}.sh"
-if [ ! -f "${XFFL_FACILITY_SCRIPT}" ]; then
-  echo "${XFFL_FACILITY_SCRIPT} does not exist."
-  exit 1
-fi
-eval "${XFFL_FACILITY_SCRIPT}"
 
 if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then 
 	XFFL_OUTPUT_FOLDER=$XFFL_LOCAL_TMPDIR
@@ -38,8 +38,8 @@ fi
 if [ "${XFFL_SIMULATION}" = "true" ] ; then
 	pids=()
 
-	if [ -n "${VENV}" ] ; then
-		source "${VENV}/bin/activate"
+	if [ -n "${XFFL_VENV}" ] ; then
+		source "${XFFL_VENV}/bin/activate"
 	fi
 
 	for _RANK in $( seq $(( XFFL_NODEID * LOCAL_WORLD_SIZE )) 1 $(( XFFL_NODEID * LOCAL_WORLD_SIZE + LOCAL_WORLD_SIZE - 1 )) ) ; do
@@ -52,22 +52,22 @@ if [ "${XFFL_SIMULATION}" = "true" ] ; then
 		XFFL_TASKSET="taskset --cpu-list "$(( LOCAL_RANK * OMP_NUM_THREADS ))"-"$(( LOCAL_RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
 
 		# Python virtual environment
-		if [ -n "$VENV" ] ; then
+		if [ -n "$XFFL_VENV" ] ; then
 			COMMAND="${XFFL_SCRIPTS_FOLDER}/run.sh"
 		else
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
-				--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
-				--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets/ \
-				--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
-				--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
-				--home /code/ \
-				$GPU_FLAG \
-				${XFFL_IMAGE} \
-				/code/xffl/workflow/scripts/run.sh"
+--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
+--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets/ \
+--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
+--home /code/ \
+$GPU_FLAG \
+${XFFL_IMAGE} \
+/code/xffl/workflow/scripts/run.sh"
 		fi
 
 		# Run the local simulation process
+		echo "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND $*" &
 		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND $*" &
 		pids[_RANK]=$!
 	done

@@ -138,6 +138,22 @@ simulate_parser.add_argument(
 )
 
 simulate_parser.add_argument(
+    "-m",
+    "--model",
+    help="Model directory path",
+    type=PathLike,
+    default=os.getcwd(),
+)
+
+simulate_parser.add_argument(
+    "-d",
+    "--dataset",
+    help="Dataset directory path",
+    type=PathLike,
+    default=os.getcwd(),
+)
+
+simulate_parser.add_argument(
     "-f",
     "--facility",
     help="Facility's name",

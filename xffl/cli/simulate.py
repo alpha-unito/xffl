@@ -29,27 +29,24 @@ def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
     :rtype: Dict[str, str]
     """
     # Creating the environment mapping with the virtualization technology specified
+    base_env_mapping: Dict[str, str] = {
+            "XFFL_WORLD_SIZE": "world_size",
+            "XFFL_NUM_NODES": "num_nodes",
+            "MASTER_ADDR": "masteraddr",
+            "XFFL_FACILITY": "facility",}
     if args.venv:
         logger.debug(f"Using virtual environment: {args.venv}")
-        env_mapping = {
-            "XFFL_WORLD_SIZE": "world_size",
-            "XFFL_NUM_NODES": "num_nodes",
-            "MASTER_ADDR": "masteraddr",
-            "VENV": "venv",
-            "XFFL_FACILITY": "facility",
-        }
+        env_mapping: Dict[str, str] = {
+            "XFFL_VENV": "venv",
+        } | base_env_mapping
     elif args.image:
         logger.debug(f"Using container image: {args.venv}")
-        env_mapping = {
+        env_mapping: Dict[str, str] = {
             "CODE_FOLDER": "workdir",
-            "MODEL_FOLDER": "model",
-            "DATASET_FOLDER": "dataset",
-            "XFFL_WORLD_SIZE": "world_size",
-            "XFFL_NUM_NODES": "num_nodes",
-            "MASTER_ADDR": "masteraddr",
-            "IMAGE": "image",
-            "XFFL_FACILITY": "facility",
-        }
+            "XFFL_MODEL_FOLDER": "model",
+            "XFFL_DATASET_FOLDER": "dataset",
+            "XFFL_IMAGE": "image",
+        } | base_env_mapping
     else:
         raise ValueError("No execution environment specified [container/virtual env]")
 
