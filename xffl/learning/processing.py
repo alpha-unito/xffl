@@ -19,9 +19,7 @@ from xffl.distributed.aggregation import (
     layer_by_layer_aggregation,
     sync_federated_averaging,
 )
-from xffl.distributed.distributed import (
-    DistributedState,
-)
+from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_fsdp_model
 
 logger: Logger = getLogger(__name__)

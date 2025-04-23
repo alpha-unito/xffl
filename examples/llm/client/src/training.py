@@ -73,8 +73,8 @@ def pretraining(
         project="xFFL",
         group=args.wandb_name,
         name=f"client_{state.rank}",
-        notes=f"{args.model_name} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
-        tags=["xFFL", f"{args.model_name}", "clean_mc4_it"],
+        notes=f"{args.model} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
+        tags=["xFFL", f"{args.model}", "clean_mc4_it"],
         mode=args.wandb_mode,  # Set to "disable" to execute without wandb
         config=vars(args),
     )
@@ -109,7 +109,7 @@ def pretraining(
             f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
         logger.debug(
-            f"Training {args.model_name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
+            f"Training {args.model}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
 
     # FSDP/HSDP setup
@@ -118,9 +118,7 @@ def pretraining(
         module=model,
         state=state,
         model_info=model_info,
-        # current_device=state.current_device,
         mixed_precision=mixed_precision,
-        # meta_initialization=state.meta_initialization,
     )
 
     # Activation checkpointing
@@ -201,7 +199,6 @@ def pretraining(
         params=model.parameters(),
         lr=args.learning_rate,
         weight_decay=args.weight_decay,
-        # No optimisation
         # foreach=True,  # Optimizes performances but uses more memory
         fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
@@ -215,7 +212,6 @@ def pretraining(
         )
 
     # Main training function
-    # logger.debug(f"[Rank {state.rank}]: --- STARTING TRAINING ---")
     results = processing.distributed_training(
         model=model,
         state=state,

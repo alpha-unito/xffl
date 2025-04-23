@@ -226,9 +226,9 @@ def layer_by_layer_aggregation(model: nn.Module, state: DistributedState) -> Non
         if state.is_sender:
             ag_group = dist.get_process_group_ranks(state.federated_group[0])
             bc_group = dist.get_process_group_ranks(state.replica_group[0])
-            logger.warning(
-                f"[RANK {state.rank}] AllGather to {ag_group} and Broadcast to {bc_group} with source {state.rank}"
-            )
+            # logger.warning(
+            #    f"[RANK {state.rank}] AllGather to {ag_group} and Broadcast to {bc_group} with source {state.rank}"
+            # )
 
             for index, param in enumerate(model.parameters()):
                 if state.backend == "nccl":
@@ -261,12 +261,12 @@ def layer_by_layer_aggregation(model: nn.Module, state: DistributedState) -> Non
                             src=state.rank,
                             group=state.replica_group[0],
                         )
-            logger.warning(f"[RANK {state.rank}] FATTO!")
+            # logger.warning(f"[RANK {state.rank}] FATTO!")
         else:
             bc_group = dist.get_process_group_ranks(state.replica_group[0])
-            logger.warning(
-                f"[RANK {state.rank}] Broadcast to {bc_group} from {state.receive_from}"
-            )
+            # logger.warning(
+            #    f"[RANK {state.rank}] Broadcast to {bc_group} from {state.receive_from}"
+            # )
 
             if len(dist.get_process_group_ranks(state.replica_group[0])) > 1:
                 for index, param in enumerate(model.parameters()):
@@ -284,7 +284,7 @@ def layer_by_layer_aggregation(model: nn.Module, state: DistributedState) -> Non
                             src=state.receive_from,
                             group=state.replica_group[0],
                         )
-                logger.warning(f"[RANK {state.rank}] FATTO!")
+                # logger.warning(f"[RANK {state.rank}] FATTO!")
     else:  # FSDP
         for index, param in enumerate(model.parameters()):
             if state.backend == "nccl":

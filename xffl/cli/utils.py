@@ -8,7 +8,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List
 
-import xffl
 from xffl.custom.types import FileLike, FolderLike, PathLike
 from xffl.utils.utils import get_param_name, resolve_path
 
@@ -22,6 +21,8 @@ def get_facilitator_path() -> FileLike:
     :return: Facilitator absolute file path
     :rtype: FileLike
     """
+    import xffl.workflow
+
     return os.path.join(
         os.path.dirname(inspect.getfile(xffl.workflow)), "scripts", "facilitator.sh"
     )

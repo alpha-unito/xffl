@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from logging import Logger, getLogger
 from pathlib import Path, PurePath
-from typing import List, Optional, Sequence
+from typing import Optional, Sequence
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -91,11 +91,11 @@ def check_input(
 
 
 def get_timeout(
-    seconds: Optional[int] = 180,
+    seconds: Optional[int] = 12,
 ) -> timedelta:  # TODO: make this a parameter
     """Maximum allowed timeout for distributed communications
 
-    :param seconds: Maximum allowed timeout in seconds, defaults to 60
+    :param seconds: Maximum allowed timeout in seconds, defaults to 12
     :type seconds: Optional[int], optional
     :return: Maximum allowed time delta
     :rtype: timedelta

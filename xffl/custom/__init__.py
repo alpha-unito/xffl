@@ -9,7 +9,9 @@ from .models.mixtral import Mixtral
 from .models.model_info import ModelInfo
 
 MODELS: Final[Mapping[str, ModelInfo]] = {
-    "tiny_random_Llama-3": Llama,
+    "tiny-random-llama-3": Llama(
+        path="/leonardo_scratch/fast/uToID_bench/xffl/models/tiny-random-llama-3"
+    ),
     "llama3.1-8b": Llama(
         path="/leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b"
     ),

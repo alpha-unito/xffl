@@ -220,11 +220,9 @@ class DistributedState:
             self.rank = rank
             self.world_size = world_size
 
-    def set_device(
+    def set_exec_device(
         self,
         current_device: torch.device | int,
-        init_device: torch.device,
-        meta_initialization: bool,
         streams: int = 4,
     ) -> None:
         """
@@ -239,23 +237,52 @@ class DistributedState:
         :param streams: Number of CUDA streams to instantiate, defaults to 4
         :type streams: int
         """
-        if str(init_device) not in ["cpu", "cuda"]:
+        if str(current_device).split(":")[0] not in ["cpu", "cuda"] or (
+            isinstance(current_device, int)
+            and current_device > torch.cuda.device_count()
+        ):
             logger.error(
-                f"Impossible setting up distributed environment with device {init_device}"
+                f"Impossible setting up distributed environment with current device {current_device}"
             )
-        elif str(init_device) == "cuda" and not torch.cuda.is_available():
+        elif (
+            str(current_device).split(":")[0] == "cuda"
+            and not torch.cuda.is_available()
+        ):
             logger.error(
-                f"Impossible setting up distributed environment with device {init_device}: CUDA is not available"
+                f"Impossible setting up distributed environment with current device {current_device}: CUDA is not available"
             )
         else:
             self.current_device = current_device
-            self.init_device = init_device
-            self.meta_initialization = meta_initialization
 
-            if torch.cuda.is_available():
+            if str(current_device).split(":")[0] == "cuda":
                 self.streams = tuple(
                     cuda.Stream(device=current_device) for _ in range(streams)
                 )
+
+    def set_init_device(
+        self,
+        init_device: Optional[torch.device] = None,
+        meta_initialization: bool = False,
+    ) -> None:
+        """
+        Set the devices of the distributed process group.
+
+        :param current_device: Training device
+        :type current_device: torch.device | int
+        :param init_device: Initialization device
+        :type init_device: torch.device
+        :param meta_initialization: If meta device initialization is required
+        :type meta_initialization: bool
+        :param streams: Number of CUDA streams to instantiate, defaults to 4
+        :type streams: int
+        """
+        if str(init_device) not in ["cpu", "cuda", "meta"]:
+            logger.error(
+                f"Impossible setting up distributed environment with initialization device {init_device}"
+            )
+        else:
+            self.init_device = init_device
+            self.meta_initialization = meta_initialization
 
     def set_node(
         self,
@@ -482,16 +509,18 @@ class DistributedState:
             self._partial_hsdp_setup(hsdp=hsdp)
 
         if len(set(federated_group_size)) == 1:
-            logger.debug(
-                f"Setting Symmetric Federated Scaling with sizes {federated_group_size}"
-            )
+            if self.rank == 0:
+                logger.debug(
+                    f"Setting Symmetric Federated Scaling with sizes {federated_group_size}"
+                )
             self._set_symmetric_federated_scaling(
                 federated_group_size=federated_group_size
             )
         else:
-            logger.debug(
-                f"Setting Asymmetric Federated Scaling with sizes {federated_group_size}"
-            )
+            if self.rank == 0:
+                logger.debug(
+                    f"Setting Asymmetric Federated Scaling with sizes {federated_group_size}"
+                )
             self._set_asymmetric_federated_scaling(
                 federated_group_size=federated_group_size
             )
@@ -643,7 +672,7 @@ class DistributedState:
                             group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams) if torch.cuda.is_available() else 1
+                            len(self.streams) if self.streams is not None else 1
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
 
@@ -658,7 +687,7 @@ class DistributedState:
                             group_desc=f"Federated replica averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams) if torch.cuda.is_available() else 1
+                            len(self.streams) if self.streams is not None else 1
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
 
@@ -690,7 +719,7 @@ class DistributedState:
                             group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams) if torch.cuda.is_available() else 1
+                            len(self.streams) if self.streams is not None else 1
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
 
@@ -870,7 +899,7 @@ class DistributedState:
                             group_desc=f"Federated shard averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams) if torch.cuda.is_available() else 1
+                            len(self.streams) if self.streams is not None else 1
                         )
                     )
 
@@ -885,7 +914,7 @@ class DistributedState:
                             group_desc=f"Federated replica averaging group #{self.federated_rank} instance #{i}",
                         )
                         for i in range(
-                            len(self.streams) if torch.cuda.is_available() else 1
+                            len(self.streams) if self.streams is not None else 1
                         )
                     )
 
@@ -975,8 +1004,3 @@ def create_device_mesh(mesh_shape: Tuple[int, ...]) -> torch.Tensor:
     :rtype: torch.Tensor
     """
     return torch.arange(math.prod(mesh_shape), dtype=torch.int).view(mesh_shape)
-
-
-### TESTING ###
-
-processes: int = 8

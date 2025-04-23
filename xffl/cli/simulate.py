@@ -30,10 +30,11 @@ def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
     """
     # Creating the environment mapping with the virtualization technology specified
     base_env_mapping: Dict[str, str] = {
-            "XFFL_WORLD_SIZE": "world_size",
-            "XFFL_NUM_NODES": "num_nodes",
-            "MASTER_ADDR": "masteraddr",
-            "XFFL_FACILITY": "facility",}
+        "XFFL_WORLD_SIZE": "world_size",
+        "XFFL_NUM_NODES": "num_nodes",
+        "MASTER_ADDR": "masteraddr",
+        "XFFL_FACILITY": "facility",
+    }
     if args.venv:
         logger.debug(f"Using virtual environment: {args.venv}")
         env_mapping: Dict[str, str] = {
