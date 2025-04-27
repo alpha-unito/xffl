@@ -1,496 +1,389 @@
 """Aggregation strategies for local xFFL"""
 
+import itertools
+import time
+from collections import defaultdict
+from contextlib import nullcontext
+from dataclasses import dataclass
 from logging import Logger, getLogger
-from typing import List, Tuple
+from typing import ContextManager, Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-from torch import nn
+from torch import cuda, nn
 
 from xffl.distributed.distributed_state import DistributedState
+from xffl.distributed.utils import is_broadcast_necessary
+from xffl.learning.utils import get_model_size, get_model_size_in_bits
 from xffl.utils.utils import get_timeout
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def sync_federated_averaging(model: nn.Module, state: DistributedState) -> None:
-    """Federated averaging of corresponding model's shards on different hosts
+@dataclass
+class Strategy:
+    mapping: Tuple[Tuple[Tuple[int], torch.Tensor, cuda.StreamContext, int], ...]
+    reduce_op: dist.ReduceOp
+    use_contiguous_memory: bool
+    src: int
+    broadcast: bool
+    requires_copy: bool = False
+    param_list: Optional[List[torch.Tensor]] = None
 
-    :param model: PyTorch model
-    :type model: nn.Module
-    :param state: Partially instantiated distributed state (rank, world_size, backend)
-    :type state: DistributedState
-    """
 
-    # TODO: contiguous?
-    param_list: List[nn.Parameter] = list(model.parameters())  # TODO: maybe module?
-    buffer: Tuple[nn.Parameter, torch.Tensor] = (
-        param_list[0],  # Tensor 0 has different dimensions
-        torch.stack(param_list[1:]),
+def benchmark_aggregation_strategies(
+    state: DistributedState, model: nn.Module, iter: int = 10
+) -> None:
+    aggregation_strategies: Tuple[callable] = (
+        layer_by_layer,
+        layer_by_layer_optimized,
+        stacked,
+        stacked_optimized,
     )
 
-    reduce_op = dist.ReduceOp.AVG if state.backend == "nccl" else dist.ReduceOp.SUM
+    for aggreagation_strategy in aggregation_strategies:
+        print("\n")
 
-    # TODO: Streams (and also process groups) are fixed
-    if state.is_hsdp_setup():
-        if state.is_sender:
-            logger.debug(
-                f"[RANK {state.rank}]: All-reduce on {dist.get_process_group_ranks(state.federated_group[0])} + broadcast on {dist.get_process_group_ranks(state.replica_group[0])} with source {state.rank}"
+        for use_multiple_cuda_streams, use_contiguous_memory in itertools.product(
+            [False, True], repeat=2
+        ):
+
+            strategy: Strategy = aggreagation_strategy(
+                model=model,
+                state=state,
+                use_multiple_cuda_streams=use_multiple_cuda_streams,
+                use_contiguous_memory=use_contiguous_memory,
             )
-            for param in buffer:
-                dist.all_reduce(
-                    tensor=param,
-                    op=reduce_op,
-                    group=state.federated_group[0],
+
+            if state.rank == 0:
+                # logger.debug(strategy)
+                start_time = time.perf_counter()
+
+            for _ in range(iter):
+                if torch.cuda.is_available() and state.rank == 0:
+                    torch.cuda.synchronize()
+                _all_reduce_and_broadcast(strategy=strategy, state=state)
+
+            if torch.cuda.is_available() and state.rank == 0:
+                torch.cuda.synchronize()
+
+            if state.rank == 0:
+                comm_time = (time.perf_counter() - start_time) / iter
+
+                logger.debug(
+                    f"[RANK {state.rank}] {aggreagation_strategy.__name__} use_multiple_cuda_streams {use_multiple_cuda_streams} use_contiguous_memory {use_contiguous_memory}: {comm_time:.2f}"
                 )
-                if not state.backend == "nccl":
-                    torch.Tensor.div_(param, state.federated_world_size)
-                dist.broadcast(
-                    tensor=param,
-                    src=state.rank,
-                    group=state.replica_group[0],
-                )
-        else:
-            logger.debug(
-                f"[RANK {state.rank}]: Broadcast on {dist.get_process_group_ranks(state.replica_group[0])} with source {state.receive_from}"
-            )
-            for param in buffer:
-                dist.broadcast(
-                    tensor=param,
-                    src=state.receive_from,
-                    group=state.replica_group[0],
-                )
-    else:
-        for param in buffer:
+                if not is_broadcast_necessary(state=state):
+                    throughput: float = (
+                        (get_model_size_in_bits(model=model) / comm_time)
+                        * (
+                            2
+                            * (state.federated_world_size - 1)
+                            / (state.federated_world_size)
+                        )
+                        / 10**9
+                    )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
+                    logger.debug(
+                        f"[RANK {state.rank}] AllReduce throughput: {throughput:.2f} Gb/s"
+                    )
+    print("\n")
+
+
+def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> None:
+    for layer_index, tensor, stream_context, stream_index in strategy.mapping:
+        with stream_context:
             dist.all_reduce(
-                tensor=param,
-                op=reduce_op,
-                group=state.federated_group[0],
+                tensor=(
+                    tensor.contiguous() if strategy.use_contiguous_memory else tensor
+                ),
+                op=strategy.reduce_op,
+                group=state.federated_group[stream_index],
             )
-            if not state.backend == "nccl":
-                torch.Tensor.div_(param, state.federated_world_size)
 
-    for param, updated_param in zip(param_list[1:], buffer[1]):
-        param.copy_(updated_param, non_blocking=True)
+            if strategy.reduce_op == dist.ReduceOp.SUM:
+                torch.Tensor.div_(tensor, state.federated_world_size)
 
-
-def sync_federated_averaging_v1(model: nn.Module, state: DistributedState) -> None:
-    """Federated averaging of corresponding model's shards on different hosts
-
-    :param model: PyTorch model
-    :type model: nn.Module
-    :param state: Partially instantiated distributed state (rank, world_size, backend)
-    :type state: DistributedState
-    """
-    replica_world_size: int = (
-        min(state.replica_world_size)
-        if not isinstance(state.replica_world_size, int)
-        else state.replica_world_size
-    )
-    communicating_processes: int = (
-        (state.replica_local_size // replica_world_size)
-        if replica_world_size <= state.replica_local_size
-        else 1
-    )
-
-    bucket = 16
-
-    all_reduce_stream = torch.cuda.default_stream()
-    broadcast_stream = torch.cuda.Stream()
-
-    param_list = list(model.parameters())
-    buffer = [param_list[0]] + [
-        torch.stack(param_list[i : i + bucket])
-        for i in range(1, len(param_list), bucket)
-    ]
-
-    if (
-        communicating_processes * state.replica_rank
-        <= state.replica_local_rank
-        < communicating_processes * (state.replica_rank + 1)
-    ):
-        for param in buffer:
-            with torch.cuda.StreamContext(all_reduce_stream):
-                dist.all_reduce(
-                    tensor=param,
-                    op=dist.ReduceOp.AVG,
-                    group=state.federated_group,
-                )
-            with torch.cuda.StreamContext(broadcast_stream):
-                broadcast_stream.wait_stream(all_reduce_stream)
+            if strategy.broadcast:
                 dist.broadcast(
-                    tensor=param,
-                    src=state.rank,
-                    group=state.replica_group,
+                    tensor=(
+                        tensor.contiguous()
+                        if strategy.use_contiguous_memory
+                        else tensor
+                    ),
+                    src=strategy.src,
+                    group=state.replica_group[stream_index],
                 )
-    else:
-        federated_local_size: int = (
-            state.federated_local_size[state.federated_rank]
-            if not isinstance(state.federated_local_size, int)
-            else state.federated_local_size
-        )
-        src: int = (
-            state.replica_local_rank + (federated_local_size * state.federated_rank)
-            if state.replica_local_rank < communicating_processes * state.replica_rank
-            else state.replica_local_rank
-            + (state.replica_local_size * (state.replica_rank + 1))
-            + (federated_local_size * state.federated_rank)
-        )
 
-        for param in buffer:
-            dist.broadcast(
-                tensor=param,
-                src=src,
-                group=state.replica_group,
-            )
-
-    for index, param in enumerate(param_list[1:], start=0):
-        param.copy_(buffer[(index // bucket) + 1][index % bucket])
-
-
-def sync_federated_averaging_v2(model: nn.Module, state: DistributedState) -> None:
-    """Federated averaging of corresponding model's shards on different hosts
-
-    :param model: PyTorch model
-    :type model: nn.Module
-    :param state: Partially instantiated distributed state (rank, world_size, backend)
-    :type state: DistributedState
-    """
-    replica_world_size: int = (
-        min(state.replica_world_size)
-        if not isinstance(state.replica_world_size, int)
-        else state.replica_world_size
-    )
-    communicating_processes: int = (
-        (state.replica_local_size // replica_world_size)
-        if replica_world_size <= state.replica_local_size
-        else 1
-    )
-
-    # param_list = list(model.parameters())
-    # buffer = [layer.contiguous() for layer in param_list]
-    all_reduce_stream = torch.cuda.default_stream()
-    broadcast_stream = torch.cuda.Stream()
-
-    if (
-        communicating_processes * state.replica_rank
-        <= state.replica_local_rank
-        < communicating_processes * (state.replica_rank + 1)
-    ):
-        for param in model.parameters():
-            with torch.cuda.StreamContext(all_reduce_stream):
-                dist.all_reduce(
-                    tensor=param,
-                    op=dist.ReduceOp.AVG,
-                    group=state.federated_group,
-                )
-            with torch.cuda.StreamContext(broadcast_stream):
-                broadcast_stream.wait_stream(all_reduce_stream)
-                dist.broadcast(
-                    tensor=param,
-                    src=state.rank,
-                    group=state.replica_group,
-                )
-    else:
-        federated_local_size: int = (
-            state.federated_local_size[state.federated_rank]
-            if not isinstance(state.federated_local_size, int)
-            else state.federated_local_size
-        )
-        src: int = (
-            state.replica_local_rank + (federated_local_size * state.federated_rank)
-            if state.replica_local_rank < communicating_processes * state.replica_rank
-            else state.replica_local_rank
-            + (state.replica_local_size * (state.replica_rank + 1))
-            + (federated_local_size * state.federated_rank)
-        )
-
-        for param in model.parameters():
-            dist.broadcast(
-                tensor=param,
-                src=src,
-                group=state.replica_group,
-            )
-
-
-def layer_by_layer_aggregation(model: nn.Module, state: DistributedState) -> None:
-    """Federated averaging of corresponding model's shards on different hosts
-
-    :param model: PyTorch model
-    :type model: nn.Module
-    :param state: Partially instantiated distributed state (rank, world_size, backend)
-    :type state: DistributedState
-    """
-    if state.is_hsdp_setup():
-        if state.is_sender:
-            ag_group = dist.get_process_group_ranks(state.federated_group[0])
-            bc_group = dist.get_process_group_ranks(state.replica_group[0])
-            # logger.warning(
-            #    f"[RANK {state.rank}] AllGather to {ag_group} and Broadcast to {bc_group} with source {state.rank}"
-            # )
-
-            for index, param in enumerate(model.parameters()):
-                if state.backend == "nccl":
-                    stream_index = index % len(state.streams)
-                    with torch.cuda.StreamContext(state.streams[stream_index]):
-                        dist.all_reduce(
-                            tensor=param,
-                            op=dist.ReduceOp.AVG,
-                            group=state.federated_group[stream_index],
-                        )
-                        if (
-                            len(dist.get_process_group_ranks(state.replica_group[0]))
-                            > 1
-                        ):
-                            dist.broadcast(
-                                tensor=param,
-                                src=state.rank,
-                                group=state.replica_group[stream_index],
-                            )
-                else:
-                    dist.all_reduce(
-                        tensor=param,
-                        op=dist.ReduceOp.SUM,
-                        group=state.federated_group[0],
+            if strategy.requires_copy:
+                for aggregated_index, local_index in enumerate(layer_index):
+                    strategy.param_list[local_index].copy_(
+                        tensor[aggregated_index], non_blocking=True
                     )
-                    torch.Tensor.div_(param, state.federated_world_size)
-                    if len(dist.get_process_group_ranks(state.replica_group[0])) > 1:
-                        dist.broadcast(
-                            tensor=param,
-                            src=state.rank,
-                            group=state.replica_group[0],
-                        )
-            # logger.warning(f"[RANK {state.rank}] FATTO!")
+
+
+def layer_by_layer(
+    model: nn.Module,
+    state: DistributedState,
+    use_multiple_cuda_streams: bool = False,
+    use_contiguous_memory: bool = False,
+) -> Strategy:
+    """Layer-by-layer aggregation
+
+    In case of multiple CUDA streams the layers are assigned to each of them in a round-robin fashion
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param use_multiple_cuda_streams: use multiple CUDA streams if available, deafaults to False
+    :type use_multiple_cuda_streams: bool
+    :param use_contiguous_memory: convert tensors to a contiguous memory representation, deafaults to False
+    :type use_contiguous_memory: bool
+    :returns: The Aggregation strategy configuration
+    :rtype: Strategy
+    """
+    if use_multiple_cuda_streams:
+        if state.streams is None or len(state.streams) < 2:
+            logger.warning(
+                f"Impossible using multiple CUDA streams: current CUDA stream(s) -> {state.streams}"
+            )
+            use_multiple_cuda_streams = False
+
+    stream_index: int = 0
+    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    stream_context: ContextManager = nullcontext
+    if state.backend == "nccl":
+        reduce_op = dist.ReduceOp.AVG
+        stream_context = torch.cuda.StreamContext(cuda.default_stream())
+
+    mapping: List[Tuple[int, torch.Tensor, cuda.StreamContext, int]] = []
+    for layer_index, param in enumerate(model.parameters()):
+        if use_multiple_cuda_streams:
+            stream_index = layer_index % len(state.streams)
+            stream_context = torch.cuda.StreamContext(state.streams[stream_index])
+        mapping.append(
+            (
+                (layer_index,),
+                param,
+                stream_context,
+                stream_index,
+            )
+        )
+
+    return Strategy(
+        mapping=tuple(mapping),
+        reduce_op=reduce_op,
+        use_contiguous_memory=use_contiguous_memory,
+        src=state.rank if state.is_sender else state.receive_from,
+        broadcast=is_broadcast_necessary(state=state),
+    )
+
+
+def layer_by_layer_optimized(
+    model: nn.Module,
+    state: DistributedState,
+    use_multiple_cuda_streams: bool = False,
+    use_contiguous_memory: bool = False,
+) -> Strategy:
+    """Layer-by-layer aggregation through a bucket-based approach
+
+    In case of multiple CUDA streams the layers are assigned to each of them trying to divide the parameters equally
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param use_multiple_cuda_streams: use multiple CUDA streams if available, deafaults to False
+    :type use_multiple_cuda_streams: bool
+    :param use_contiguous_memory: convert tensors to a contiguous memory representation, deafaults to False
+    :type use_contiguous_memory: bool
+    :returns: The Aggregation strategy configuration
+    :rtype: Strategy
+    """
+    streams: int = 1
+    if use_multiple_cuda_streams:
+        if state.streams is None or len(state.streams) < 2:
+            logger.warning(
+                f"Impossible using multiple CUDA streams: current CUDA stream(s) -> {state.streams}"
+            )
+            use_multiple_cuda_streams = False
         else:
-            bc_group = dist.get_process_group_ranks(state.replica_group[0])
-            # logger.warning(
-            #    f"[RANK {state.rank}] Broadcast to {bc_group} from {state.receive_from}"
-            # )
+            streams = len(state.streams)
 
-            if len(dist.get_process_group_ranks(state.replica_group[0])) > 1:
-                for index, param in enumerate(model.parameters()):
-                    if state.backend == "nccl":
-                        stream_index = index % len(state.streams)
-                        with torch.cuda.StreamContext(state.streams[stream_index]):
-                            dist.broadcast(
-                                tensor=param,
-                                src=state.receive_from,
-                                group=state.replica_group[stream_index],
-                            )
-                    else:
-                        dist.broadcast(
-                            tensor=param,
-                            src=state.receive_from,
-                            group=state.replica_group[0],
-                        )
-                # logger.warning(f"[RANK {state.rank}] FATTO!")
-    else:  # FSDP
-        for index, param in enumerate(model.parameters()):
-            if state.backend == "nccl":
-                stream_index = index % len(state.streams)
-                with torch.cuda.StreamContext(state.streams[stream_index]):
-                    dist.all_reduce(
-                        tensor=param,
-                        op=dist.ReduceOp.AVG,
-                        group=state.federated_group[stream_index],
+    stream_index: int = 0
+    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    stream_context: ContextManager = nullcontext
+    if state.backend == "nccl":
+        reduce_op = dist.ReduceOp.AVG
+        stream_context = torch.cuda.StreamContext(cuda.default_stream())
+
+    param_list: List[torch.Tensor] = list(model.parameters())
+    bucket_size: int = get_model_size(model=model) // streams
+
+    parameter_counter: int = 0
+    mapping: List[Tuple[int, torch.Tensor, cuda.StreamContext, int]] = []
+    for layer_index, layer in enumerate(param_list):
+        if use_multiple_cuda_streams:
+            stream_context = torch.cuda.StreamContext(state.streams[stream_index])
+
+        mapping.append(
+            (
+                (layer_index,),
+                layer,
+                stream_context,
+                stream_index,
+            )
+        )
+        parameter_counter += layer.numel()
+        if parameter_counter >= bucket_size:
+            stream_index += 1
+            parameter_counter = 0
+
+    return Strategy(
+        mapping=tuple(mapping),
+        reduce_op=reduce_op,
+        use_contiguous_memory=use_contiguous_memory,
+        src=state.rank if state.is_sender else state.receive_from,
+        broadcast=is_broadcast_necessary(state=state),
+    )
+
+
+def stacked(
+    model: nn.Module,
+    state: DistributedState,
+    use_multiple_cuda_streams: bool = False,
+    use_contiguous_memory: bool = False,
+) -> Strategy:
+    """Weights averaging through a stacking-based approach
+
+    All layers are stacked into "buckets" according to their size and sent on different CUDA streams in a round-robin fashion
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :returns: The Aggregation strategy configuration
+    :rtype: Strategy
+    """
+    if use_multiple_cuda_streams:
+        if state.streams is None or len(state.streams) < 2:
+            logger.warning(
+                f"Impossible using multiple CUDA streams: current CUDA stream(s) -> {state.streams}"
+            )
+            use_multiple_cuda_streams = False
+
+    stream_index: int = 0
+    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    stream_context: ContextManager = nullcontext
+    if state.backend == "nccl":
+        reduce_op = dist.ReduceOp.AVG
+        stream_context = torch.cuda.StreamContext(cuda.default_stream())
+
+    param_list: List[torch.Tensor] = list(model.parameters())
+
+    size_map: Dict[int, List[int]] = defaultdict(list)
+    for layer_index, layer in enumerate(param_list):
+        size_map[layer.numel()].append(layer_index)
+
+    mapping: List[Tuple[Tuple[int], torch.Tensor, cuda.StreamContext, int]] = []
+    for index, (_, layer_list) in enumerate(size_map.items()):
+        if use_multiple_cuda_streams:
+            stream_index = index % len(state.streams)
+            stream_context = torch.cuda.StreamContext(state.streams[stream_index])
+        mapping.append(
+            (
+                tuple(layer_list),
+                torch.stack([param_list[index] for index in layer_list]),
+                stream_context,
+                stream_index,
+            )
+        )
+
+    return Strategy(
+        mapping=tuple(mapping),
+        reduce_op=reduce_op,
+        use_contiguous_memory=use_contiguous_memory,
+        src=state.rank if state.is_sender else state.receive_from,
+        broadcast=is_broadcast_necessary(state=state),
+        requires_copy=True,
+        param_list=param_list,
+    )
+
+
+def stacked_optimized(
+    model: nn.Module,
+    state: DistributedState,
+    use_multiple_cuda_streams: bool = False,
+    use_contiguous_memory: bool = False,
+) -> Strategy:
+    """Weights averaging through a stacking-based approach
+
+    All layers are stacked into "buckets" according to their size and sent on different CUDA streams trying to divide the information sent equally between them
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :returns: The Aggregation strategy configuration
+    :rtype: Strategy
+    """
+    streams: int = 1
+    if use_multiple_cuda_streams:
+        if state.streams is None or len(state.streams) < 2:
+            logger.warning(
+                f"Impossible using multiple CUDA streams: current CUDA stream(s) -> {state.streams}"
+            )
+            use_multiple_cuda_streams = False
+        else:
+            streams = len(state.streams)
+
+    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    stream_context: ContextManager = nullcontext
+    if state.backend == "nccl":
+        reduce_op = dist.ReduceOp.AVG
+        stream_context = torch.cuda.StreamContext(cuda.default_stream())
+
+    param_list: List[torch.Tensor] = list(model.parameters())
+    bucket_size: int = get_model_size(model=model) // streams
+
+    size_map: Dict[int, List[int]] = defaultdict(list)
+    for layer_index, layer in enumerate(param_list):
+        size_map[layer.numel()].append(layer_index)
+
+    stream_index: int = 0
+    parameter_counter: int = 0
+    layers_in_current_stack: List[int] = []
+    mapping: List[Tuple[int, torch.Tensor, cuda.StreamContext, int]] = []
+    for layer_size, layer_list in size_map.items():
+        for i, layer in enumerate(layer_list):
+            if use_multiple_cuda_streams:
+                stream_context = torch.cuda.StreamContext(state.streams[stream_index])
+
+            parameter_counter += layer_size
+            layers_in_current_stack.append(layer)
+            if i == len(layer_list) - 1 or parameter_counter >= bucket_size:
+                mapping.append(
+                    (
+                        tuple(layers_in_current_stack),
+                        torch.stack(
+                            [param_list[index] for index in layers_in_current_stack]
+                        ),
+                        stream_context,
+                        stream_index,
                     )
-            else:
-                dist.all_reduce(
-                    tensor=param,
-                    op=dist.ReduceOp.SUM,
-                    group=state.federated_group[0],
                 )
-                torch.Tensor.div_(param, state.federated_world_size)
+                layers_in_current_stack = []
+            if parameter_counter >= bucket_size:
+                stream_index += 1
+                parameter_counter = 0
 
-
-def sync_federated_averaging_v4(model: nn.Module, state: DistributedState) -> None:
-    """Federated averaging of corresponding model's shards on different hosts
-
-    :param model: PyTorch model
-    :type model: nn.Module
-    :param state: Partially instantiated distributed state (rank, world_size, backend)
-    :type state: DistributedState
-    """
-    replica_world_size: int = (
-        min(state.replica_world_size)
-        if not isinstance(state.replica_world_size, int)
-        else state.replica_world_size
+    return Strategy(
+        mapping=tuple(mapping),
+        reduce_op=reduce_op,
+        use_contiguous_memory=use_contiguous_memory,
+        src=state.rank if state.is_sender else state.receive_from,
+        broadcast=is_broadcast_necessary(state=state),
+        requires_copy=True,
+        param_list=param_list,
     )
-    communicating_processes: int = (
-        (state.replica_local_size // replica_world_size)
-        if replica_world_size <= state.replica_local_size
-        else 1
-    )
-
-    bucket = 16
-
-    param_list = list(model.parameters())
-    bucket_len = (len(param_list) - 1) // bucket
-
-    if (
-        communicating_processes * state.replica_rank
-        <= state.replica_local_rank
-        < communicating_processes * (state.replica_rank + 1)
-    ):
-        for index in range(bucket + 1):
-            with torch.cuda.StreamContext(state.streams[index % len(state.streams)]):
-                if index == 0:
-                    param = param_list[0]
-                else:
-                    begin = ((index - 1) * bucket_len) + 1
-                    end = (index * bucket_len) + 1
-                    param = torch.stack(param_list[begin:end])
-
-                dist.all_reduce(
-                    tensor=param,
-                    op=dist.ReduceOp.AVG,
-                    group=state.federated_group[index % len(state.federated_group)],
-                )
-                dist.broadcast(
-                    tensor=param,
-                    src=state.rank,
-                    group=state.replica_group[index % len(state.replica_group)],
-                )
-                if index > 0:
-                    begin = ((index - 1) * bucket_len) + 1
-                    end = (index * bucket_len) + 1
-                    for i, layer in enumerate(param_list[begin:end], start=0):
-                        layer.copy_(param[i])
-
-    else:
-        federated_local_size: int = (
-            state.federated_local_size[state.federated_rank]
-            if not isinstance(state.federated_local_size, int)
-            else state.federated_local_size
-        )
-        src: int = (
-            state.replica_local_rank + (federated_local_size * state.federated_rank)
-            if state.replica_local_rank < communicating_processes * state.replica_rank
-            else state.replica_local_rank
-            + (state.replica_local_size * (state.replica_rank + 1))
-            + (federated_local_size * state.federated_rank)
-        )
-
-        for index in range(bucket + 1):
-            with torch.cuda.StreamContext(state.streams[index % len(state.streams)]):
-                if index == 0:
-                    param = param_list[0]
-                else:
-                    begin = ((index - 1) * bucket_len) + 1
-                    end = (index * bucket_len) + 1
-                    param = torch.stack(param_list[begin:end])
-
-                dist.broadcast(
-                    tensor=param,
-                    src=src,
-                    group=state.replica_group[index % len(state.replica_group)],
-                )
-                if index > 0:
-                    begin = ((index - 1) * bucket_len) + 1
-                    end = (index * bucket_len) + 1
-                    for i, layer in enumerate(param_list[begin:end], start=0):
-                        layer.copy_(param[i])
-
-
-def async_federated_averaging(
-    model: nn.Module, state: DistributedState
-) -> Tuple[List[dist.Work], List[torch.Tensor]]:
-    """Federated averaging of corresponding model's shards on different hosts
-
-    :param model: PyTorch model
-    :type model: nn.Module
-    :param state: Partially instantiated distributed state (rank, world_size, backend)
-    :type state: DistributedState
-    """
-    replica_world_size: int = (
-        min(state.replica_world_size)
-        if not isinstance(state.replica_world_size, int)
-        else state.replica_world_size
-    )
-    communicating_processes: int = (
-        (state.replica_local_size // replica_world_size)
-        if replica_world_size <= state.replica_local_size
-        else 1
-    )
-
-    param_list = list(model.parameters())
-    buffer = [
-        param_list[0],  # Tensor 0 has different dimensions
-        torch.stack(param_list[1:]),
-    ]
-
-    # pre_values = []
-    # post_values = []
-    # differences = []
-
-    # for p in model.parameters():
-    #    if p.requires_grad:  # only change learnable parameters
-    #        with torch.no_grad():
-    #            p.fill_(state.federated_rank)
-
-    # for param in model.parameters():
-    #    pre_values.append(param.clone().detach().cpu())
-
-    all_reduce_handles: List[dist.Work] = []
-    broadcast_handles: List[dist.Work] = []
-    if (
-        communicating_processes * state.replica_rank
-        <= state.replica_local_rank
-        < communicating_processes * (state.replica_rank + 1)
-    ):
-        for param in buffer:
-            all_reduce_handles.append(
-                dist.all_reduce(
-                    tensor=param.contiguous(),
-                    op=dist.ReduceOp.AVG,
-                    group=state.federated_group,
-                    async_op=True,
-                )
-            )
-        for all_reduce_handle, param in zip(all_reduce_handles, buffer):
-            all_reduce_handle.wait(timeout=get_timeout(seconds=60))
-            broadcast_handles.append(
-                dist.broadcast(
-                    tensor=param.contiguous(),
-                    src=state.rank,
-                    group=state.replica_group,
-                    async_op=True,
-                )
-            )
-    else:
-        federated_local_size: int = (
-            state.federated_local_size[state.federated_rank]
-            if not isinstance(state.federated_local_size, int)
-            else state.federated_local_size
-        )
-        src: int = (
-            state.replica_local_rank + (federated_local_size * state.federated_rank)
-            if state.replica_local_rank < communicating_processes * state.replica_rank
-            else state.replica_local_rank
-            + (state.replica_local_size * (state.replica_rank + 1))
-            + (federated_local_size * state.federated_rank)
-        )
-
-        for param in buffer:
-            broadcast_handles.append(
-                dist.broadcast(
-                    tensor=param.contiguous(),
-                    src=src,
-                    group=state.replica_group,
-                    async_op=True,
-                )
-            )
-
-    return broadcast_handles, buffer
-
-    # for param in model.parameters():
-    #    post_values.append(param.clone().detach().cpu())
-
-    # for layer, _ in enumerate(model.parameters()):
-    #    differences.append(pre_values[layer] - post_values[layer])
-
-    # logger.warning(f"[RANK {state.rank}]:\n"
-    #               f"pre-values: {pre_values}\n"
-    #               f"post-values: {post_values}\n"
-    #               f"differences: {differences}\n")

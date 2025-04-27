@@ -91,7 +91,7 @@ def check_input(
 
 
 def get_timeout(
-    seconds: Optional[int] = 12,
+    seconds: Optional[int] = 60,
 ) -> timedelta:  # TODO: make this a parameter
     """Maximum allowed timeout for distributed communications
 

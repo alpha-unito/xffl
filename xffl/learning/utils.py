@@ -72,6 +72,26 @@ def get_model_size(model: nn.Module | AutoModel) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
+def get_model_size_in_bits(model: nn.Module | AutoModel) -> int:
+    """Returns the model's trainable parameters size in bits
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :return: Size of trainable parameters in bits
+    :rtype: int
+    """
+    return sum(
+        p.numel()
+        * (
+            torch.finfo(p.data.dtype).bits
+            if p.data.is_floating_point()
+            else torch.iinfo(p.data.dtype).bits
+        )
+        for p in model.parameters()
+        if p.requires_grad
+    )
+
+
 def seed_dataloader_worker(worker_id: int) -> None:
     """Seeds PyTorch's data loader workers to guarantee reproducibility
 

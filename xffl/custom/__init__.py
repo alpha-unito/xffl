@@ -18,8 +18,8 @@ MODELS: Final[Mapping[str, ModelInfo]] = {
     "llama3.1-70b": Llama(
         path="/leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-70b"
     ),
-    "mixtral-8x7b": Mixtral(
-        path="/leonardo_scratch/fast/uToID_bench/xffl/models/lmixtral-8x7b-v0.1"
+    "mixtral-8x7b-v0.1": Mixtral(
+        path="/leonardo_scratch/fast/uToID_bench/xffl/models/mixtral-8x7b-v0.1"
     ),
 }
 """ Supported models dictionary """

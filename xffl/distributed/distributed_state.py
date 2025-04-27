@@ -223,7 +223,7 @@ class DistributedState:
     def set_exec_device(
         self,
         current_device: torch.device | int,
-        streams: int = 4,
+        streams: int = 4,  # TODO: make this a parameter
     ) -> None:
         """
         Set the devices of the distributed process group.
@@ -502,6 +502,21 @@ class DistributedState:
         self.replica_world_size = None
         self.hsdp_mesh = None
 
+    def _set_rank_role(self) -> None:
+        if self.is_hsdp_setup():
+            federated_group_communicating_processes: Tuple[int, ...] = (
+                self._get_communicating_processes(federated_rank=self.federated_rank)
+            )
+
+            self.is_sender = self.rank in federated_group_communicating_processes
+            if not self.is_sender:
+                self.receive_from = (
+                    set(dist.get_process_group_ranks(self.replica_group[0]))
+                    & set(federated_group_communicating_processes)
+                ).pop()
+        else:
+            self.is_sender = True
+
     def set_federated_scaling(
         self, federated_group_size: Tuple[int], hsdp: Optional[int] = None
     ) -> None:
@@ -524,6 +539,7 @@ class DistributedState:
             self._set_asymmetric_federated_scaling(
                 federated_group_size=federated_group_size
             )
+        self._set_rank_role()  # Establishing the communicating processes
 
     def _get_communicating_processes(self, federated_rank: int) -> Tuple[int, ...]:
         communicating_processes: List[int] = []
@@ -537,18 +553,6 @@ class DistributedState:
                 + sum(self.federated_local_size[:federated_rank])
             )
         return tuple(communicating_processes)
-
-    def _set_rank_role(self) -> None:
-        federated_group_communicating_processes: Tuple[int, ...] = (
-            self._get_communicating_processes(federated_rank=self.federated_rank)
-        )
-
-        self.is_sender = self.rank in federated_group_communicating_processes
-        if not self.is_sender:
-            self.receive_from = (
-                set(dist.get_process_group_ranks(self.replica_group[0]))
-                & set(federated_group_communicating_processes)
-            ).pop()
 
     def _set_symmetric_federated_scaling(
         self, federated_group_size: Tuple[int]
@@ -690,9 +694,6 @@ class DistributedState:
                             len(self.streams) if self.streams is not None else 1
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
-
-                    self._set_rank_role()
-
                 else:  # FSDP federation
                     mesh: torch.Tensor = create_device_mesh(
                         mesh_shape=(
@@ -936,8 +937,6 @@ class DistributedState:
                         ),
                         group_desc=f"Federated group #{self.federated_rank}",
                     )
-
-                    self._set_rank_role()
         else:
             logger.error(
                 f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"

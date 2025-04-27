@@ -15,10 +15,7 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.distributed.aggregation import (
-    layer_by_layer_aggregation,
-    sync_federated_averaging,
-)
+from xffl.distributed.aggregation import benchmark_aggregation_strategies
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_fsdp_model
 
@@ -99,6 +96,7 @@ def distributed_training(
             desc=f"Training Epoch: {epoch+1}",
             total=total_length,
             dynamic_ncols=True,
+            disable=state.rank != 0,
         )
 
         step: int
@@ -111,11 +109,7 @@ def distributed_training(
                 start_time = time.perf_counter()
             for key in batch.keys():
                 batch[key] = batch[key].to(
-                    device=(
-                        torch.cuda.current_device()
-                        if torch.cuda.is_available()
-                        else "cpu"
-                    ),
+                    device=(state.current_device),
                     non_blocking=True,
                 )
 
@@ -145,20 +139,15 @@ def distributed_training(
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 optimizer_time = time.perf_counter() - start_time
-                start_time = time.perf_counter()
 
             with torch.no_grad():
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    layer_by_layer_aggregation(model=model, state=state)
+                    benchmark_aggregation_strategies(model=model, state=state)
 
                 # logger.warning(f"[RANK {state.rank}]:6")
-                if state.rank == 0:
-                    if torch.cuda.is_available():
-                        torch.cuda.synchronize()
-                    comm_time = time.perf_counter() - start_time
-                    start_time = time.perf_counter()
+                start_time = time.perf_counter()
 
                 total_loss += loss.detach().float()
                 train_step_perplexity.append(float(torch.exp(loss.detach().float())))
@@ -182,9 +171,9 @@ def distributed_training(
             if state.rank == 0:
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
-                logger.debug(
-                    f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
-                )
+                # logger.debug(
+                #    f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
+                # )
 
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)
