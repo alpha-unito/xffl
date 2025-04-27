@@ -43,7 +43,8 @@ def benchmark_aggregation_strategies(
     )
 
     for aggreagation_strategy in aggregation_strategies:
-        print("\n")
+        if state.rank == 0:
+            print("\n")
 
         for use_multiple_cuda_streams, use_contiguous_memory in itertools.product(
             [False, True], repeat=2
@@ -57,22 +58,20 @@ def benchmark_aggregation_strategies(
             )
 
             if state.rank == 0:
-                # logger.debug(strategy)
-                start_time = time.perf_counter()
+                None  # logger.debug(strategy)
 
+            start_time = time.perf_counter()
             for _ in range(iter):
-                if torch.cuda.is_available() and state.rank == 0:
+                if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 _all_reduce_and_broadcast(strategy=strategy, state=state)
-
-            if torch.cuda.is_available() and state.rank == 0:
+            if torch.cuda.is_available():
                 torch.cuda.synchronize()
+            comm_time = (time.perf_counter() - start_time) / iter
 
             if state.rank == 0:
-                comm_time = (time.perf_counter() - start_time) / iter
-
                 logger.debug(
-                    f"[RANK {state.rank}] {aggreagation_strategy.__name__} use_multiple_cuda_streams {use_multiple_cuda_streams} use_contiguous_memory {use_contiguous_memory}: {comm_time:.2f}"
+                    f"{aggreagation_strategy.__name__} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}: {comm_time:.2f}"
                 )
                 if not is_broadcast_necessary(state=state):
                     throughput: float = (
@@ -84,10 +83,10 @@ def benchmark_aggregation_strategies(
                         )
                         / 10**9
                     )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
-                    logger.debug(
-                        f"[RANK {state.rank}] AllReduce throughput: {throughput:.2f} Gb/s"
-                    )
-    print("\n")
+                    logger.debug(f"AllReduce throughput: {throughput:.2f} Gb/s")
+
+    if state.rank == 0:
+        print("\n")
 
 
 def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> None:

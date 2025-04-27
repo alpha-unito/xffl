@@ -15,7 +15,7 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.distributed.aggregation import benchmark_aggregation_strategies
+from xffl.distributed.aggregation import layer_by_layer_optimized
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_fsdp_model
 
@@ -103,10 +103,10 @@ def distributed_training(
         batch: Dict[str, Any]
         for step, batch in enumerate(train_dataloader):
             # logger.warning(f"[RANK {state.rank}]:1")
-            if state.rank == 0:
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                start_time = time.perf_counter()
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            start_time = time.perf_counter()
+
             for key in batch.keys():
                 batch[key] = batch[key].to(
                     device=(state.current_device),
@@ -116,37 +116,43 @@ def distributed_training(
             loss: torch.Tensor = model(**batch).loss
 
             # logger.warning(f"[RANK {state.rank}]2")
-            if state.rank == 0:
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                batch_time = time.perf_counter() - start_time
-                start_time = time.perf_counter()
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            batch_time = time.perf_counter() - start_time
+            start_time = time.perf_counter()
 
             loss.backward()
 
             # logger.warning(f"[RANK {state.rank}]:3")
-            if state.rank == 0:
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                back_time = time.perf_counter() - start_time
-                start_time = time.perf_counter()
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            back_time = time.perf_counter() - start_time
+            start_time = time.perf_counter()
 
             optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
 
             # logger.warning(f"[RANK {state.rank}]:4")
-            if state.rank == 0:
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                optimizer_time = time.perf_counter() - start_time
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            optimizer_time = time.perf_counter() - start_time
+            start_time = time.perf_counter()
 
             with torch.no_grad():
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    benchmark_aggregation_strategies(model=model, state=state)
+                    layer_by_layer_optimized(
+                        model=model,
+                        state=state,
+                        use_multiple_cuda_streams=True,
+                        use_contiguous_memory=True,
+                    )
 
                 # logger.warning(f"[RANK {state.rank}]:6")
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                comm_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
                 total_loss += loss.detach().float()
@@ -168,12 +174,13 @@ def distributed_training(
                         }
                     )
 
-            if state.rank == 0:
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
-                # logger.debug(
-                #    f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
-                # )
+
+                if state.rank == 0:
+                    logger.debug(
+                        f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
+                    )
 
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)

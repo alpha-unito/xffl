@@ -162,3 +162,10 @@ parser.add_argument(
     type=int,
     default=1,
 )
+
+parser.add_argument(
+    "-b",
+    "--benchmark",
+    help="Benchmark the aggregation strategies",
+    action="store_true",
+)

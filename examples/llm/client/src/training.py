@@ -211,6 +211,18 @@ def pretraining(
             f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds"
         )
 
+    if args.benchmark:
+        with torch.no_grad():
+            if state.is_federated_scaling_setup():
+                from xffl.distributed.aggregation import (
+                    benchmark_aggregation_strategies,
+                )
+
+                benchmark_aggregation_strategies(model=model, state=state)
+
+        distributed.cleanup_distributed_process_group(state=state)
+        quit()
+
     # Main training function
     results = processing.distributed_training(
         model=model,
