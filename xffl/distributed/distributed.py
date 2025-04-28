@@ -47,6 +47,7 @@ def setup_distributed_process_group(
     device: Optional[torch.device] = None,
     hsdp: Optional[int] = None,
     federated: Optional[Tuple[int]] = None,
+    streams: Optional[int] = None,
 ) -> DistributedState:
     """Setup PyTorch's distributed environment
 
@@ -79,6 +80,8 @@ def setup_distributed_process_group(
     :type hsdp: Optional[int], optional
     :param federated:Activate Federated Scaling with specified federated group size, defaults to None
     :type federated: Optional[int], optional
+    :param streams: Number of CUDA streams to instantiate, defaults to None
+    :type streams: Optional[int]
     :raises AttributeError: If backend is not in nccl, gloo, or mpi
     :raises ValueError: If no valid MASTER_ADDR and MASTER_PORT are set
     :return: Distributed state of the current training setup
@@ -177,6 +180,7 @@ def setup_distributed_process_group(
         current_device=current_device,
         init_device=init_device,
         meta_initialization=meta_initialization,
+        streams=streams,
     )
 
     logger.debug(f"[Rank {state.rank}]: distributed setup: {state}")

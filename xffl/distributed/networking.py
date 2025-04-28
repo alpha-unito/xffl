@@ -16,7 +16,7 @@ def get_cells_ids(
     :rtype: List[int]
     """
     nodes: List[int] = [
-        int("".join(filter(str.isdigit, node))) // cell_size for node in nodes
+        int("".join(filter(str.isdigit, str(node)))) // cell_size for node in nodes
     ]
 
     local_world_sizes: List[Optional[int]] = []

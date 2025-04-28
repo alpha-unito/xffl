@@ -169,3 +169,11 @@ parser.add_argument(
     help="Benchmark the aggregation strategies",
     action="store_true",
 )
+
+parser.add_argument(
+    "-c",
+    "--cuda-streams",
+    help=" Number of CUDA streams to instantiate",
+    type=int,
+    default=4,
+)

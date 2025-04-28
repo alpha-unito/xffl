@@ -56,8 +56,7 @@ def pretraining(
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
-        hsdp=args.hsdp,
-        federated=args.federated_scaling,
+        hsdp=args.hsdp, federated=args.federated_scaling, streams=args.streams
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(

@@ -15,7 +15,6 @@ from torch import cuda, nn
 from xffl.distributed.distributed_state import DistributedState
 from xffl.distributed.utils import is_broadcast_necessary
 from xffl.learning.utils import get_model_size, get_model_size_in_bits
-from xffl.utils.utils import get_timeout
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -23,8 +22,8 @@ logger: Logger = getLogger(__name__)
 
 @dataclass
 class Strategy:
-    mapping: Tuple[Tuple[Tuple[int], torch.Tensor, cuda.StreamContext, int], ...]
-    reduce_op: dist.ReduceOp
+    mapping: Tuple[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int], ...]
+    reduce_op: dist.ReduceOp.RedOpType
     use_contiguous_memory: bool
     src: int
     broadcast: bool
@@ -33,16 +32,16 @@ class Strategy:
 
 
 def benchmark_aggregation_strategies(
-    state: DistributedState, model: nn.Module, iter: int = 10
+    state: DistributedState, model: nn.Module, iterations: int = 10
 ) -> None:
-    aggregation_strategies: Tuple[callable] = (
+    aggregation_strategies: Tuple[callable, ...] = (
         layer_by_layer,
         layer_by_layer_optimized,
         stacked,
         stacked_optimized,
     )
 
-    for aggreagation_strategy in aggregation_strategies:
+    for aggregation_strategy in aggregation_strategies:
         if state.rank == 0:
             print("\n")
 
@@ -50,28 +49,28 @@ def benchmark_aggregation_strategies(
             [False, True], repeat=2
         ):
 
-            strategy: Strategy = aggreagation_strategy(
+            strategy: Strategy = aggregation_strategy(
                 model=model,
                 state=state,
                 use_multiple_cuda_streams=use_multiple_cuda_streams,
                 use_contiguous_memory=use_contiguous_memory,
             )
 
-            if state.rank == 0:
-                None  # logger.debug(strategy)
+            # if state.rank == 0:
+            #    logger.debug(strategy)
 
             start_time = time.perf_counter()
-            for _ in range(iter):
+            for _ in range(iterations):
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 _all_reduce_and_broadcast(strategy=strategy, state=state)
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
-            comm_time = (time.perf_counter() - start_time) / iter
+            comm_time = (time.perf_counter() - start_time) / iterations
 
             if state.rank == 0:
                 logger.debug(
-                    f"{aggreagation_strategy.__name__} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}: {comm_time:.2f}"
+                    f"{aggregation_strategy.__name__} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}: {comm_time:.2f}"
                 )
                 if not is_broadcast_necessary(state=state):
                     throughput: float = (
@@ -79,7 +78,7 @@ def benchmark_aggregation_strategies(
                         * (
                             2
                             * (state.federated_world_size - 1)
-                            / (state.federated_world_size)
+                            / state.federated_world_size
                         )
                         / 10**9
                     )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
@@ -135,9 +134,9 @@ def layer_by_layer(
     :type model: nn.Module
     :param state: xFFL distributed state
     :type state: DistributedState
-    :param use_multiple_cuda_streams: use multiple CUDA streams if available, deafaults to False
+    :param use_multiple_cuda_streams: use multiple CUDA streams if available, defaults to False
     :type use_multiple_cuda_streams: bool
-    :param use_contiguous_memory: convert tensors to a contiguous memory representation, deafaults to False
+    :param use_contiguous_memory: convert tensors to a contiguous memory representation, defaults to False
     :type use_contiguous_memory: bool
     :returns: The Aggregation strategy configuration
     :rtype: Strategy
@@ -150,13 +149,13 @@ def layer_by_layer(
             use_multiple_cuda_streams = False
 
     stream_index: int = 0
-    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    reduce_op: dist.ReduceOp.RedOpType = dist.ReduceOp.SUM
     stream_context: ContextManager = nullcontext
     if state.backend == "nccl":
         reduce_op = dist.ReduceOp.AVG
         stream_context = torch.cuda.StreamContext(cuda.default_stream())
 
-    mapping: List[Tuple[int, torch.Tensor, cuda.StreamContext, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
     for layer_index, param in enumerate(model.parameters()):
         if use_multiple_cuda_streams:
             stream_index = layer_index % len(state.streams)
@@ -193,14 +192,14 @@ def layer_by_layer_optimized(
     :type model: nn.Module
     :param state: xFFL distributed state
     :type state: DistributedState
-    :param use_multiple_cuda_streams: use multiple CUDA streams if available, deafaults to False
+    :param use_multiple_cuda_streams: use multiple CUDA streams if available, defaults to False
     :type use_multiple_cuda_streams: bool
-    :param use_contiguous_memory: convert tensors to a contiguous memory representation, deafaults to False
+    :param use_contiguous_memory: convert tensors to a contiguous memory representation, defaults to False
     :type use_contiguous_memory: bool
     :returns: The Aggregation strategy configuration
     :rtype: Strategy
     """
-    streams: int = 1
+    stream_number: int = 1
     if use_multiple_cuda_streams:
         if state.streams is None or len(state.streams) < 2:
             logger.warning(
@@ -208,20 +207,20 @@ def layer_by_layer_optimized(
             )
             use_multiple_cuda_streams = False
         else:
-            streams = len(state.streams)
+            stream_number = len(state.streams)
 
     stream_index: int = 0
-    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    reduce_op: dist.ReduceOp.RedOpType = dist.ReduceOp.SUM
     stream_context: ContextManager = nullcontext
     if state.backend == "nccl":
         reduce_op = dist.ReduceOp.AVG
         stream_context = torch.cuda.StreamContext(cuda.default_stream())
 
     param_list: List[torch.Tensor] = list(model.parameters())
-    bucket_size: int = get_model_size(model=model) // streams
+    bucket_size: int = get_model_size(model=model) // stream_number
 
     parameter_counter: int = 0
-    mapping: List[Tuple[int, torch.Tensor, cuda.StreamContext, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
     for layer_index, layer in enumerate(param_list):
         if use_multiple_cuda_streams:
             stream_context = torch.cuda.StreamContext(state.streams[stream_index])
@@ -262,6 +261,10 @@ def stacked(
     :type model: nn.Module
     :param state: xFFL distributed state
     :type state: DistributedState
+    :param use_multiple_cuda_streams: use multiple CUDA streams if available, defaults to False
+    :type use_multiple_cuda_streams: bool
+    :param use_contiguous_memory: convert tensors to a contiguous memory representation, defaults to False
+    :type use_contiguous_memory: bool
     :returns: The Aggregation strategy configuration
     :rtype: Strategy
     """
@@ -273,7 +276,7 @@ def stacked(
             use_multiple_cuda_streams = False
 
     stream_index: int = 0
-    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    reduce_op: dist.ReduceOp.RedOpType = dist.ReduceOp.SUM
     stream_context: ContextManager = nullcontext
     if state.backend == "nccl":
         reduce_op = dist.ReduceOp.AVG
@@ -285,7 +288,7 @@ def stacked(
     for layer_index, layer in enumerate(param_list):
         size_map[layer.numel()].append(layer_index)
 
-    mapping: List[Tuple[Tuple[int], torch.Tensor, cuda.StreamContext, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
     for index, (_, layer_list) in enumerate(size_map.items()):
         if use_multiple_cuda_streams:
             stream_index = index % len(state.streams)
@@ -324,10 +327,14 @@ def stacked_optimized(
     :type model: nn.Module
     :param state: xFFL distributed state
     :type state: DistributedState
+    :param use_multiple_cuda_streams: use multiple CUDA streams if available, defaults to False
+    :type use_multiple_cuda_streams: bool
+    :param use_contiguous_memory: convert tensors to a contiguous memory representation, defaults to False
+    :type use_contiguous_memory: bool
     :returns: The Aggregation strategy configuration
     :rtype: Strategy
     """
-    streams: int = 1
+    stream_number: int = 1
     if use_multiple_cuda_streams:
         if state.streams is None or len(state.streams) < 2:
             logger.warning(
@@ -335,16 +342,16 @@ def stacked_optimized(
             )
             use_multiple_cuda_streams = False
         else:
-            streams = len(state.streams)
+            stream_number = len(state.streams)
 
-    reduce_op: dist.ReduceOp = dist.ReduceOp.SUM
+    reduce_op: dist.ReduceOp.RedOpType = dist.ReduceOp.SUM
     stream_context: ContextManager = nullcontext
     if state.backend == "nccl":
         reduce_op = dist.ReduceOp.AVG
         stream_context = torch.cuda.StreamContext(cuda.default_stream())
 
     param_list: List[torch.Tensor] = list(model.parameters())
-    bucket_size: int = get_model_size(model=model) // streams
+    bucket_size: int = get_model_size(model=model) // stream_number
 
     size_map: Dict[int, List[int]] = defaultdict(list)
     for layer_index, layer in enumerate(param_list):
@@ -353,7 +360,7 @@ def stacked_optimized(
     stream_index: int = 0
     parameter_counter: int = 0
     layers_in_current_stack: List[int] = []
-    mapping: List[Tuple[int, torch.Tensor, cuda.StreamContext, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
     for layer_size, layer_list in size_map.items():
         for i, layer in enumerate(layer_list):
             if use_multiple_cuda_streams:

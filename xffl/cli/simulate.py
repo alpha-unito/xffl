@@ -161,9 +161,9 @@ def main(args: argparse.Namespace) -> int:
     except Exception as exception:
         logger.exception(exception)
         raise exception
-    finally:
-        logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
-        return 0
+
+    logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
+    return 0
 
 
 if __name__ == "__main__":

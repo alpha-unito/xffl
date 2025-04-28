@@ -109,7 +109,7 @@ def distributed_training(
 
             for key in batch.keys():
                 batch[key] = batch[key].to(
-                    device=(state.current_device),
+                    device=state.current_device,
                     non_blocking=True,
                 )
 

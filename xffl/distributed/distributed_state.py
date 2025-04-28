@@ -220,24 +220,30 @@ class DistributedState:
             self.rank = rank
             self.world_size = world_size
 
-    def set_exec_device(
+    def set_device(
         self,
+        init_device: Optional[torch.device],
         current_device: torch.device | int,
-        streams: int = 4,  # TODO: make this a parameter
+        meta_initialization: bool = False,
+        streams: Optional[int] = None,
     ) -> None:
         """
         Set the devices of the distributed process group.
 
-        :param current_device: Training device
-        :type current_device: torch.device | int
         :param init_device: Initialization device
         :type init_device: torch.device
+        :param current_device: Training device
+        :type current_device: torch.device | int
         :param meta_initialization: If meta device initialization is required
         :type meta_initialization: bool
         :param streams: Number of CUDA streams to instantiate, defaults to 4
         :type streams: int
         """
-        if str(current_device).split(":")[0] not in ["cpu", "cuda"] or (
+        if str(init_device) not in ["cpu", "cuda", "meta"]:
+            logger.error(
+                f"Impossible setting up distributed environment with initialization device {init_device}"
+            )
+        elif str(current_device).split(":")[0] not in ["cpu", "cuda"] or (
             isinstance(current_device, int)
             and current_device > torch.cuda.device_count()
         ):
@@ -252,37 +258,14 @@ class DistributedState:
                 f"Impossible setting up distributed environment with current device {current_device}: CUDA is not available"
             )
         else:
+            self.init_device = init_device
             self.current_device = current_device
+            self.meta_initialization = meta_initialization
 
-            if str(current_device).split(":")[0] == "cuda":
+            if str(current_device).split(":")[0] == "cuda" and streams is not None:
                 self.streams = tuple(
                     cuda.Stream(device=current_device) for _ in range(streams)
                 )
-
-    def set_init_device(
-        self,
-        init_device: Optional[torch.device] = None,
-        meta_initialization: bool = False,
-    ) -> None:
-        """
-        Set the devices of the distributed process group.
-
-        :param current_device: Training device
-        :type current_device: torch.device | int
-        :param init_device: Initialization device
-        :type init_device: torch.device
-        :param meta_initialization: If meta device initialization is required
-        :type meta_initialization: bool
-        :param streams: Number of CUDA streams to instantiate, defaults to 4
-        :type streams: int
-        """
-        if str(init_device) not in ["cpu", "cuda", "meta"]:
-            logger.error(
-                f"Impossible setting up distributed environment with initialization device {init_device}"
-            )
-        else:
-            self.init_device = init_device
-            self.meta_initialization = meta_initialization
 
     def set_node(
         self,
