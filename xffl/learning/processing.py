@@ -15,7 +15,10 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.distributed.aggregation import layer_by_layer_optimized
+from xffl.distributed.aggregation import (
+    all_reduce_and_broadcast,
+    layer_by_layer_optimized,
+)
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_fsdp_model
 
@@ -142,45 +145,48 @@ def distributed_training(
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    layer_by_layer_optimized(
-                        model=model,
+                    all_reduce_and_broadcast(
+                        strategy=layer_by_layer_optimized(
+                            model=model,
+                            state=state,
+                            use_multiple_cuda_streams=True,
+                            use_contiguous_memory=True,
+                        ),
                         state=state,
-                        use_multiple_cuda_streams=True,
-                        use_contiguous_memory=True,
                     )
 
-                # logger.warning(f"[RANK {state.rank}]:6")
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                comm_time = time.perf_counter() - start_time
-                start_time = time.perf_counter()
+            # logger.warning(f"[RANK {state.rank}]:6")
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+            comm_time = time.perf_counter() - start_time
+            start_time = time.perf_counter()
 
-                total_loss += loss.detach().float()
-                train_step_perplexity.append(float(torch.exp(loss.detach().float())))
-                train_step_loss.append(loss.detach().float().item())
+            total_loss += loss.detach().float()
+            train_step_perplexity.append(float(torch.exp(loss.detach().float())))
+            train_step_loss.append(loss.detach().float().item())
 
-                pbar.update(1)
-                pbar.set_description(
-                    f"Training Epoch: {epoch + 1}/{epochs}, step {step}/{total_length} completed (loss: {train_step_loss[-1]:.4f})"
+            pbar.update(1)
+            pbar.set_description(
+                f"Training Epoch: {epoch + 1}/{epochs}, step {step}/{total_length} completed (loss: {train_step_loss[-1]:.4f})"
+            )
+
+            if wandb_run:
+                wandb_run.log(
+                    {
+                        "train/epoch": epoch + 1,
+                        "train/step": epoch * total_length + step,
+                        "train/loss": train_step_loss[-1],
+                        "train/perplexity": train_step_perplexity[-1],
+                    }
                 )
 
-                if wandb_run:
-                    wandb_run.log(
-                        {
-                            "train/epoch": epoch + 1,
-                            "train/step": epoch * total_length + step,
-                            "train/loss": train_step_loss[-1],
-                            "train/perplexity": train_step_perplexity[-1],
-                        }
-                    )
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
 
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-
-                if state.rank == 0:
-                    logger.debug(
-                        f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
-                    )
+            if state.rank == 0:
+                logger.debug(
+                    f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
+                )
 
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)

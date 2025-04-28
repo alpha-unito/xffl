@@ -63,7 +63,7 @@ def benchmark_aggregation_strategies(
             for _ in range(iterations):
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
-                _all_reduce_and_broadcast(strategy=strategy, state=state)
+                all_reduce_and_broadcast(strategy=strategy, state=state)
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
             comm_time = (time.perf_counter() - start_time) / iterations
@@ -88,7 +88,7 @@ def benchmark_aggregation_strategies(
         print("\n")
 
 
-def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> None:
+def all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> None:
     for layer_index, tensor, stream_context, stream_index in strategy.mapping:
         with stream_context:
             dist.all_reduce(

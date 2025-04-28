@@ -135,6 +135,11 @@ def setup_distributed_process_group(
         ),
     )
 
+    # Setting execution device
+    state.set_exec_device(
+        current_device=_get_current_device(state=state), streams=streams
+    )
+
     # Basic PyTorch distributed setup
     init_distributed_process_group(state=state)
 
@@ -173,14 +178,10 @@ def setup_distributed_process_group(
         else:
             state.set_fsdp()
 
-    current_device, init_device, meta_initialization = _setup_devices(state=state)
-
-    # Distributed state technical information
-    state.set_device(
-        current_device=current_device,
-        init_device=init_device,
-        meta_initialization=meta_initialization,
-        streams=streams,
+    # Setting initialization device
+    init_device, meta_initialization = _get_init_device(state=state)
+    state.set_init_device(
+        init_device=init_device, meta_initialization=meta_initialization
     )
 
     logger.debug(f"[Rank {state.rank}]: distributed setup: {state}")
@@ -219,6 +220,72 @@ def cleanup_distributed_process_group(state: DistributedState) -> None:
     dist.destroy_process_group(dist.GroupMember.WORLD)
 
 
+def _get_current_device(
+    state: DistributedState,
+) -> torch.device | int:
+    """PyTorch current device setup
+
+    Returns the device for the current process and empties its cache if it is a GPU
+
+    :param state: Instantiated distributed state
+    :type state: DistributedState
+    :return: The computation device
+    :rtype: torch.device | int
+    """
+
+    current_device: torch.device | int = torch.device("cpu")
+    if torch.cuda.is_available():
+        current_device = (
+            torch.device("cuda", state.node_local_rank)
+            if state.is_node_setup()
+            else torch.device("cuda")
+        )
+        torch.cuda.set_device(current_device)
+        torch.cuda.empty_cache()
+
+    return current_device
+
+
+def _get_init_device(
+    state: DistributedState,
+) -> tuple[
+    torch.device,
+    bool,
+]:
+    """PyTorch initiazation device setup
+
+    Returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True) and if meta initialisation is required
+
+    :param state: Instantiated distributed state
+    :type state: DistributedState
+    :return: The device for model initialisation and if meta initialisation is enabled
+    :rtype: tuple[torch.device, bool]
+    """
+
+    init_device: torch.device = torch.device("cpu")
+    meta_initialization: bool = False
+
+    if torch.cuda.is_available():
+        if torch.cuda.device_count() > 1:
+            if (
+                (
+                    state.is_federated_scaling_setup()
+                    and state.is_fsdp_setup()
+                    and state.federated_local_rank != 0
+                )
+                or (
+                    not state.is_federated_scaling_setup()
+                    and state.is_fsdp_setup()
+                    and state.rank != 0
+                )
+                or (state.is_hsdp_setup() and state.replica_local_rank != 0)
+            ):
+                init_device = torch.device("meta")
+            meta_initialization = True
+
+    return init_device, meta_initialization
+
+
 def _setup_devices(
     state: DistributedState,
 ) -> tuple[
@@ -238,9 +305,6 @@ def _setup_devices(
     """
 
     current_device: torch.device | int = torch.device("cpu")
-    init_device: torch.device = torch.device("cpu")
-    meta_initialization: bool = False
-
     if torch.cuda.is_available():
         current_device = (
             torch.device("cuda", state.node_local_rank)
@@ -250,6 +314,10 @@ def _setup_devices(
         torch.cuda.set_device(current_device)
         torch.cuda.empty_cache()
 
+    init_device: torch.device = torch.device("cpu")
+    meta_initialization: bool = False
+
+    if torch.cuda.is_available():
         if torch.cuda.device_count() > 1:
             if (
                 (

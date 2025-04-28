@@ -56,7 +56,7 @@ def pretraining(
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
-        hsdp=args.hsdp, federated=args.federated_scaling, streams=args.streams
+        hsdp=args.hsdp, federated=args.federated_scaling, streams=args.cuda_streams
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -217,32 +217,31 @@ def pretraining(
                     benchmark_aggregation_strategies,
                 )
 
-                benchmark_aggregation_strategies(model=model, state=state)
+                benchmark_aggregation_strategies(
+                    model=model, state=state, iterations=args.benchmark
+                )
+    else:
+        # Main training function
+        results = processing.distributed_training(
+            model=model,
+            state=state,
+            optimizer=optimizer,
+            train_dataloader=dataloaders["train"],
+            validate=False,
+            eval_dataloader=dataloaders["val"],
+            lr_scheduler=scheduler,
+            wandb_run=wandb_run,
+            save_path=args.output,
+            output_model_name=args.output_model,
+            epochs=args.epochs,
+            federated_batches=args.federated_batches,
+        )
 
-        distributed.cleanup_distributed_process_group(state=state)
-        quit()
-
-    # Main training function
-    results = processing.distributed_training(
-        model=model,
-        state=state,
-        optimizer=optimizer,
-        train_dataloader=dataloaders["train"],
-        validate=False,
-        eval_dataloader=dataloaders["val"],
-        lr_scheduler=scheduler,
-        wandb_run=wandb_run,
-        save_path=args.output,
-        output_model_name=args.output_model,
-        epochs=args.epochs,
-        federated_batches=args.federated_batches,
-    )
-
-    if state.rank == 0:
-        [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
-        if args.wandb:
-            for k, v in results.items():
-                wandb_run.summary[k] = v
+        if state.rank == 0:
+            [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
+            if args.wandb:
+                for k, v in results.items():
+                    wandb_run.summary[k] = v
 
     # PyTorch's distributed backend cleanup
     distributed.cleanup_distributed_process_group(state=state)

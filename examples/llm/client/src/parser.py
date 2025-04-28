@@ -167,7 +167,8 @@ parser.add_argument(
     "-b",
     "--benchmark",
     help="Benchmark the aggregation strategies",
-    action="store_true",
+    type=int,
+    default=None,
 )
 
 parser.add_argument(
