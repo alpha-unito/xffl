@@ -22,11 +22,34 @@ logger: Logger = getLogger(__name__)
 
 @dataclass
 class Strategy:
+    """Aggregation strategy class
+
+    Each strategy is described as a mapping in which each element corresponds to a single communication
+
+    :param mapping: Mapping between original layers index, layer parameter, appropriate context manager for communcation, and CUDA stream index
+    :type mapping: Tuple[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int], ...]
+    :param reduce_op: All reduce operation
+    :type reduce_op: dist.ReduceOp.RedOpType
+    :param use_contiguous_memory: Convert tensors to contiguous memroy before communication
+    :type use_contiguous_memory: bool
+    :param src: Source rank for broadcast communications
+    :type src: int
+    :param broadcast: If it is necessary to run broadcasts
+    :type broadcast: bool
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param requires_copy: Specified strategy requires copying back the aggregated tensors, defaults to False
+    :type requires_copy: bool
+    :param param_list: Original model parameter list necessary for copying, defaults to None
+    :type param_list: Optional[List[torch.Tensor]]
+    """
+
     mapping: Tuple[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int], ...]
     reduce_op: dist.ReduceOp.RedOpType
     use_contiguous_memory: bool
     src: int
     broadcast: bool
+    state: DistributedState
     requires_copy: bool = False
     param_list: Optional[List[torch.Tensor]] = None
 
@@ -34,6 +57,15 @@ class Strategy:
 def benchmark_aggregation_strategies(
     state: DistributedState, model: nn.Module, iterations: int = 10
 ) -> None:
+    """Benchmark method for testing the available aggregation strategies
+
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param model: PyTorch model
+    :type model: nn.Module
+    :param iterations: Number of iterations to run each aggreagtion strategy, defaults to 10
+    :type iterations: int, optional
+    """
     aggregation_strategies: Tuple[callable, ...] = (
         layer_by_layer,
         layer_by_layer_optimized,
@@ -63,7 +95,7 @@ def benchmark_aggregation_strategies(
             for _ in range(iterations):
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
-                all_reduce_and_broadcast(strategy=strategy, state=state)
+                _all_reduce_and_broadcast(strategy=strategy, state=state)
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
             comm_time = (time.perf_counter() - start_time) / iterations
@@ -88,7 +120,25 @@ def benchmark_aggregation_strategies(
         print("\n")
 
 
-def all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> None:
+def aggregate(strategy: Strategy) -> None:
+    """Aggregate the model's weigths according to the specififed aggregation strategy
+
+    :param strategy: Aggregation strategy
+    :type strategy: Strategy
+    """
+    _all_reduce_and_broadcast(strategy=strategy, state=strategy.state)
+
+
+def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> None:
+    """Communication part of the aggregation - complementary to the selected strategy
+
+    Executes an all-reduce followed by a broadcast (if needed) to average the model's weights according to the specified strategy and current distributed state configuration
+
+    :param strategy: Aggregation strategy
+    :type strategy: Strategy
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    """
     for layer_index, tensor, stream_context, stream_index in strategy.mapping:
         with stream_context:
             dist.all_reduce(
@@ -175,6 +225,7 @@ def layer_by_layer(
         use_contiguous_memory=use_contiguous_memory,
         src=state.rank if state.is_sender else state.receive_from,
         broadcast=is_broadcast_necessary(state=state),
+        state=state,
     )
 
 
@@ -244,6 +295,7 @@ def layer_by_layer_optimized(
         use_contiguous_memory=use_contiguous_memory,
         src=state.rank if state.is_sender else state.receive_from,
         broadcast=is_broadcast_necessary(state=state),
+        state=state,
     )
 
 
@@ -310,6 +362,7 @@ def stacked(
         broadcast=is_broadcast_necessary(state=state),
         requires_copy=True,
         param_list=param_list,
+        state=state,
     )
 
 
@@ -392,4 +445,5 @@ def stacked_optimized(
         broadcast=is_broadcast_necessary(state=state),
         requires_copy=True,
         param_list=param_list,
+        state=state,
     )
