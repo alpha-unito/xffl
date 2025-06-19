@@ -98,7 +98,7 @@ def setup_distributed_process_group(
         ),
         device_type=(
             device
-            if backend is not None
+            if device is not None
             else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         ),
         master_addr=(
@@ -137,7 +137,7 @@ def setup_distributed_process_group(
 
     # Setting execution device
     state.set_exec_device(
-        current_device=_get_current_device(state=state), streams=streams
+        current_device=_get_current_device(state=state)
     )
 
     # Basic PyTorch distributed setup
@@ -172,6 +172,9 @@ def setup_distributed_process_group(
                 f"The world size {state.world_size} is not divisible by the specified federated group size {federated} - falling back to standard FSDP/HSDP"
             )
         state.set_federated_scaling(federated_group_size=federated, hsdp=hsdp)
+        state.set_exec_device(
+            current_device=_get_current_device(state=state), streams=streams
+        )
     else:  # Setting non-federated techniques
         if hsdp is not None:
             state.set_hsdp(hsdp=hsdp)
@@ -204,6 +207,7 @@ def init_distributed_process_group(state: DistributedState) -> None:
             else None
         ),
         timeout=get_timeout(),
+        device_id=state.current_device
     )
 
 
@@ -217,7 +221,8 @@ def cleanup_distributed_process_group(state: DistributedState) -> None:
     """
     logger.debug(f"[Rank {state.rank}]: calling destroy_process_group")
 
-    dist.destroy_process_group(dist.GroupMember.WORLD)
+    dist.barrier(group=dist.GroupMember.WORLD, device_ids=[state.node_local_rank])
+    dist.destroy_process_group(group=dist.GroupMember.WORLD)
 
 
 def _get_current_device(
