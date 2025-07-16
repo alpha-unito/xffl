@@ -184,7 +184,7 @@ simulate_parser.add_argument(
     "--processes-per-node",
     help="Number of GPUs available on each compute node",
     type=int,
-    default=4,
+    default=1,
 )
 
 simulate_parser.add_argument(
@@ -210,4 +210,11 @@ simulate_parser.add_argument(
     help="Enable Federated scaling with the specified federated group size",
     type=str,
     default=None,
+)
+
+simulate_parser.add_argument(
+    "-on",
+    "--one-node",
+    help="Launch all processes per node on just one node as being different nodes",
+    action="store_true",
 )

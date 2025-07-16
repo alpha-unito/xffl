@@ -136,9 +136,7 @@ def setup_distributed_process_group(
     )
 
     # Setting execution device
-    state.set_exec_device(
-        current_device=_get_current_device(state=state)
-    )
+    state.set_exec_device(current_device=_get_current_device(state=state))
 
     # Basic PyTorch distributed setup
     init_distributed_process_group(state=state)
@@ -207,7 +205,7 @@ def init_distributed_process_group(state: DistributedState) -> None:
             else None
         ),
         timeout=get_timeout(),
-        device_id=state.current_device
+        device_id=state.current_device,
     )
 
 

@@ -69,6 +69,8 @@ def simulate(
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
     args.world_size = args.num_nodes * args.processes_per_node
+    if args.one_node:
+        args.nodelist = [args.nodelist[0] for _ in args.processes_per_node]
 
     # Environment creation
     try:

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 from torch import nn
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
@@ -36,6 +37,7 @@ def distributed_training(
     output_model_name: Optional[str] = None,
     lr_scheduler: Optional[LRScheduler] = None,
     wandb_run: Optional[Run] = None,
+    criterion=None,
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
 
@@ -107,13 +109,23 @@ def distributed_training(
                 torch.cuda.synchronize()
             start_time = time.perf_counter()
 
-            for key in batch.keys():
-                batch[key] = batch[key].to(
+            if isinstance(batch, dict):
+                for key in batch.keys():
+                    batch[key] = batch[key].to(
+                        device=state.current_device,
+                        non_blocking=True,
+                    )
+                loss: torch.Tensor = model(**batch).loss
+            else:
+                data, target = batch
+                data, target = data.to(
+                    device=state.current_device,
+                    non_blocking=True,
+                ), target.to(
                     device=state.current_device,
                     non_blocking=True,
                 )
-
-            loss: torch.Tensor = model(**batch).loss
+                loss: torch.Tensor = criterion(model(data), target)
 
             # logger.warning(f"[RANK {state.rank}]2")
             if torch.cuda.is_available():
@@ -146,7 +158,7 @@ def distributed_training(
                         strategy=layer_by_layer_optimized(
                             model=model,
                             state=state,
-                            use_multiple_cuda_streams=True,
+                            use_multiple_cuda_streams=False,
                             use_contiguous_memory=True,
                         )
                     )
@@ -205,12 +217,13 @@ def distributed_training(
             lr_scheduler.step()
 
         if validate:
-            eval_ppl, eval_epoch_loss, temp_val_loss, temp_step_perplexity = (
+            eval_ppl, eval_epoch_loss, temp_val_loss, temp_step_perplexity, eval_acc = (
                 fsdp_evaluation(
                     model=model,
                     eval_dataloader=eval_dataloader,
                     state=state,
                     wandb_run=wandb_run,
+                    criterion=criterion,
                 )
             )
 
@@ -231,15 +244,20 @@ def distributed_training(
 
             if eval_epoch_loss < best_val_loss:
                 best_val_loss: torch.Tensor = eval_epoch_loss
-                if state.rank == 0:
-                    logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
+                # if state.rank == 0:
+                #    logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(best_val_loss))
             val_perp.append(float(eval_ppl))
 
         if state.rank == 0:
-            logger.info(
-                f"Epoch {epoch+1}: train_perplexity={train_perplexity:.4f}, train_epoch_loss={train_epoch_loss:.4f}, epoch time {epoch_times[-1]}s"
-            )
+            if validate:
+                logger.info(
+                    f"Epoch {epoch+1}:\n\ttrain_perplexity={train_perplexity:.4f},\n\ttrain_epoch_loss={train_epoch_loss:.4f},\n\tepoch time {epoch_times[-1]:.2f}s,\n\taccuracy={eval_acc:.2f}%"
+                )
+            else:
+                logger.info(
+                    f"Epoch {epoch+1}:\n\ttrain_perplexity={train_perplexity:.4f},\n\ttrain_epoch_loss={train_epoch_loss:.4f},\n\tepoch time {epoch_times[-1]:.2f}s"
+                )
 
     results["avg_epoch_time"] = sum(epoch_times) / len(epoch_times)
     results["avg_train_perp"] = sum(train_perp) / len(train_perp)
@@ -247,6 +265,7 @@ def distributed_training(
     if validate:
         results["avg_eval_perp"] = sum(val_perp) / len(val_perp)
         results["avg_eval_loss"] = sum(val_loss) / len(val_loss)
+        results["val_acc"] = eval_acc
 
     return results
 
@@ -256,6 +275,7 @@ def fsdp_evaluation(
     eval_dataloader: DataLoader,
     state: DistributedState,
     wandb_run: Optional[Run] = None,
+    criterion=None,
 ) -> Tuple[torch.Tensor, torch.Tensor, List[float], List[float]]:
     """Generic evaluation cycle for FSDP models
 
@@ -275,47 +295,71 @@ def fsdp_evaluation(
     val_step_loss: List[float] = []
     val_step_perplexity: List[float] = []
     eval_loss: float = 0.0
+    correct: int = 0
 
-    batch: Dict[str, Any]
-    for _, batch in enumerate(
-        tqdm(
-            eval_dataloader,
-            colour="green",
-            desc="evaluating Epoch",
-            dynamic_ncols=True,
-        )
-    ):
-        for key in batch.keys():
-            batch[key] = batch[key].to(
-                device=torch.cuda.current_device(), non_blocking=True
+    with torch.no_grad():
+        batch: Dict[str, Any]
+        for _, batch in enumerate(
+            tqdm(
+                eval_dataloader,
+                colour="green",
+                desc="evaluating Epoch",
+                dynamic_ncols=True,
+                disable=state.rank != 0,
             )
+        ):
+            if isinstance(batch, dict):
+                for key in batch.keys():
+                    batch[key] = batch[key].to(
+                        device=torch.cuda.current_device(), non_blocking=True
+                    )
 
-        with torch.no_grad():
-            outputs = model(**batch)
-            loss: torch.Tensor = outputs.loss
+                outputs = model(**batch)
+                loss: torch.Tensor = outputs.loss
 
-            eval_loss += loss.detach().float()
-            val_step_loss.append(loss.detach().float().item())
-            val_step_perplexity.append(float(torch.exp(loss.detach().float())))
+                eval_loss += loss.detach().float()
+                val_step_loss.append(loss.detach().float().item())
+                val_step_perplexity.append(float(torch.exp(loss.detach().float())))
+            else:
+                data, target = batch
+                data, target = data.to(
+                    device=state.current_device,
+                    non_blocking=True,
+                ), target.to(
+                    device=state.current_device,
+                    non_blocking=True,
+                )
 
-    if torch.cuda.device_count() > 1:
-        dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
+                output: torch.Tensor = model(data)
+                loss: float = criterion(output, target)
+                eval_loss += loss
+                pred: int = output.argmax(
+                    dim=1, keepdim=True
+                )  # get the index of the max log-probability
+                correct += pred.eq(target.view_as(pred)).sum().item()
+
+        if torch.cuda.device_count() > 1:
+            dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
 
     eval_epoch_loss: torch.Tensor = (
         eval_loss / len(eval_dataloader)
     ) / state.world_size
     eval_ppl: torch.Tensor = torch.exp(eval_epoch_loss)
+    eval_acc: float = (100.0 * correct) / (
+        len(eval_dataloader) * eval_dataloader.batch_size
+    )
 
-    if state.node_local_rank == 0:
-        logger.info(f" {eval_ppl=} {eval_epoch_loss=}")
+    # if state.node_local_rank == 0:
+    #    logger.info(f" {eval_ppl=} {eval_epoch_loss=}")
 
     if wandb_run:
         wandb_run.log(
             {
                 "eval/perplexity": eval_ppl,
                 "eval/loss": eval_epoch_loss,
+                "eval/accuracy": eval_acc,
             },
             commit=False,
         )
 
-    return eval_ppl, eval_epoch_loss, val_step_loss, val_step_perplexity
+    return eval_ppl, eval_epoch_loss, val_step_loss, val_step_perplexity, eval_acc
