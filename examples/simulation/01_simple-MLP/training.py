@@ -93,10 +93,16 @@ def training(args: argparse.Namespace) -> None:
     )
     xffl_datasets: Dict[str, Dataset] = {
         "train": datasets.MNIST(
-            "./data", train=True, download=True, transform=transform
+            "/leonardo/pub/userexternal/gmittone/data",
+            train=True,
+            download=True,
+            transform=transform,
         ),
         "test": datasets.MNIST(
-            "./data", train=False, download=True, transform=transform
+            "/leonardo/pub/userexternal/gmittone/data",
+            train=False,
+            download=True,
+            transform=transform,
         ),
     }
 
