@@ -186,10 +186,14 @@ def pretraining(
     # TODO: not convinced about this
     if state.is_federated_scaling_setup():
         args.learning_rate = (
-            state.federated_local_size[state.federated_rank] * args.learning_rate / state.node_local_size
+            state.federated_local_size[state.federated_rank]
+            * args.learning_rate
+            * args.train_batch_size
         )
     else:
-        args.learning_rate = state.world_size * args.learning_rate / state.node_local_size
+        args.learning_rate = (
+            state.world_size * args.learning_rate * args.train_batch_size
+        )
 
     if state.rank == 0:
         logger.debug(f"Learning rate adjusted to: {args.learning_rate}")

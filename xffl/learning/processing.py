@@ -188,7 +188,10 @@ def distributed_training(
         epoch_times.append(time.perf_counter() - epoch_start_time)
 
         if dist.is_initialized():
-            dist.all_reduce(total_loss, op=dist.ReduceOp.SUM, group=state.federation)
+            dist.all_reduce(
+                total_loss,  # .to(state.current_device),
+                op=dist.ReduceOp.SUM,
+            )
 
         train_epoch_loss: torch.Tensor = (
             (total_loss / total_length)

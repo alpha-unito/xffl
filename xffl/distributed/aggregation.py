@@ -88,16 +88,17 @@ def benchmark_aggregation_strategies(
                 use_contiguous_memory=use_contiguous_memory,
             )
 
-            # if state.rank == 0:
-            #    logger.debug(strategy)
-
-            start_time = time.perf_counter()
-            for _ in range(iterations):
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                _all_reduce_and_broadcast(strategy=strategy, state=state)
+            # Warmup
+            _all_reduce_and_broadcast(strategy=strategy, state=state)
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
+
+            # Measurement
+            start_time = time.perf_counter()
+            for _ in range(iterations):
+                _all_reduce_and_broadcast(strategy=strategy, state=state)
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
             comm_time = (time.perf_counter() - start_time) / iterations
 
             if state.rank == 0:
@@ -143,11 +144,13 @@ def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> No
         with stream_context:
             dist.all_reduce(
                 tensor=(
-                    tensor.contiguous() if strategy.use_contiguous_memory else tensor
+                    tensor.contiguous()
+                    if strategy.use_contiguous_memory
+                    else tensor  # Questo non deve stare qua
                 ),
                 op=strategy.reduce_op,
                 group=state.federated_group[stream_index],
-            )
+            )  # allreduce_coalesced
 
             if strategy.reduce_op == dist.ReduceOp.SUM:
                 torch.Tensor.div_(tensor, state.federated_world_size)
@@ -163,7 +166,7 @@ def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> No
                     group=state.replica_group[stream_index],
                 )
 
-            if strategy.requires_copy:
+            if strategy.requires_copy:  # Questo neanche
                 for aggregated_index, local_index in enumerate(layer_index):
                     strategy.param_list[local_index].copy_(
                         tensor[aggregated_index], non_blocking=True
@@ -299,7 +302,7 @@ def layer_by_layer_optimized(
     )
 
 
-def stacked(
+def stacked(  # Flatten/unflatten
     model: nn.Module,
     state: DistributedState,
     use_multiple_cuda_streams: bool = False,

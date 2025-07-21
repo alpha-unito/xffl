@@ -137,7 +137,8 @@ def setup_distributed_process_group(
 
     # Setting execution device
     state.set_exec_device(
-        current_device=_get_current_device(state=state)
+        current_device=_get_current_device(state=state),
+        streams=streams,  # TODO: streams could be created just in case of FederatedScaling
     )
 
     # Basic PyTorch distributed setup
@@ -172,9 +173,6 @@ def setup_distributed_process_group(
                 f"The world size {state.world_size} is not divisible by the specified federated group size {federated} - falling back to standard FSDP/HSDP"
             )
         state.set_federated_scaling(federated_group_size=federated, hsdp=hsdp)
-        state.set_exec_device(
-            current_device=_get_current_device(state=state), streams=streams
-        )
     else:  # Setting non-federated techniques
         if hsdp is not None:
             state.set_hsdp(hsdp=hsdp)
@@ -207,7 +205,7 @@ def init_distributed_process_group(state: DistributedState) -> None:
             else None
         ),
         timeout=get_timeout(),
-        device_id=state.current_device
+        # device_id=state.current_device, #TODO: according to the documentation this should speed up NCCL initialization, but it does not seems to be working correctly
     )
 
 
@@ -221,8 +219,9 @@ def cleanup_distributed_process_group(state: DistributedState) -> None:
     """
     logger.debug(f"[Rank {state.rank}]: calling destroy_process_group")
 
-    dist.barrier(group=dist.GroupMember.WORLD, device_ids=[state.node_local_rank])
-    dist.destroy_process_group(group=dist.GroupMember.WORLD)
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    dist.destroy_process_group()
 
 
 def _get_current_device(
