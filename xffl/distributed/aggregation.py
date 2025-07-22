@@ -69,8 +69,8 @@ def benchmark_aggregation_strategies(
     aggregation_strategies: Tuple[callable, ...] = (
         layer_by_layer,
         layer_by_layer_optimized,
-        stacked,
-        stacked_optimized,
+        bucket,
+        bucket_optimized,
     )
 
     for aggregation_strategy in aggregation_strategies:
@@ -89,33 +89,31 @@ def benchmark_aggregation_strategies(
             )
 
             # Warmup
-            _all_reduce_and_broadcast(strategy=strategy, state=state)
+            _all_reduce(strategy=strategy, state=state)
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
 
             # Measurement
             start_time = time.perf_counter()
             for _ in range(iterations):
-                _all_reduce_and_broadcast(strategy=strategy, state=state)
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
+                _all_reduce(strategy=strategy, state=state)
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
             comm_time = (time.perf_counter() - start_time) / iterations
 
             if state.rank == 0:
-                logger.debug(
-                    f"{aggregation_strategy.__name__} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}: {comm_time:.2f}"
+                throughput: float = (
+                    (get_model_size_in_bits(model=model) / comm_time)
+                    * (
+                        2
+                        * (state.federated_world_size - 1)
+                        / state.federated_world_size
+                    )
+                    / 10**9
+                )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
+                logger.info(
+                    f"{aggregation_strategy.__name__} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}:\n Average communication time over {iterations} iterations: {comm_time:.2f} (adjusted throughput: {throughput:.2f} Gb/s)"
                 )
-                if not is_broadcast_necessary(state=state):
-                    throughput: float = (
-                        (get_model_size_in_bits(model=model) / comm_time)
-                        * (
-                            2
-                            * (state.federated_world_size - 1)
-                            / state.federated_world_size
-                        )
-                        / 10**9
-                    )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
-                    logger.debug(f"AllReduce throughput: {throughput:.2f} Gb/s")
 
     if state.rank == 0:
         print("\n")
@@ -130,6 +128,27 @@ def aggregate(strategy: Strategy) -> None:
     _all_reduce_and_broadcast(strategy=strategy, state=strategy.state)
 
 
+def _all_reduce(
+    strategy: Strategy, state: DistributedState
+) -> None:  # TODO: torch profiler?
+    """AllReduce part of the aggregation - benchmark purpose only
+
+    Executes an all-reduce operation to average the model's weights according to the specified strategy and current distributed state configuration
+
+    :param strategy: Aggregation strategy
+    :type strategy: Strategy
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    """
+    for _, tensor, stream_context, stream_index in strategy.mapping:
+        with stream_context:
+            dist.all_reduce(
+                tensor=tensor,
+                op=strategy.reduce_op,
+                group=state.federated_group[stream_index],
+            )  # E' possible usare allreduce_coalesced per liste di tensori, ma sarà deprecato
+
+
 def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> None:
     """Communication part of the aggregation - complementary to the selected strategy
 
@@ -140,37 +159,38 @@ def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> No
     :param state: xFFL distributed state
     :type state: DistributedState
     """
-    for layer_index, tensor, stream_context, stream_index in strategy.mapping:
+    index: int = 0
+    for _, tensor, stream_context, stream_index in strategy.mapping:
         with stream_context:
             dist.all_reduce(
-                tensor=(
-                    tensor.contiguous()
-                    if strategy.use_contiguous_memory
-                    else tensor  # Questo non deve stare qua
-                ),
+                tensor=tensor,
                 op=strategy.reduce_op,
                 group=state.federated_group[stream_index],
-            )  # allreduce_coalesced
+            )
 
             if strategy.reduce_op == dist.ReduceOp.SUM:
                 torch.Tensor.div_(tensor, state.federated_world_size)
 
             if strategy.broadcast:
                 dist.broadcast(
-                    tensor=(
-                        tensor.contiguous()
-                        if strategy.use_contiguous_memory
-                        else tensor
-                    ),
+                    tensor=tensor,
                     src=strategy.src,
                     group=state.replica_group[stream_index],
                 )
 
-            if strategy.requires_copy:  # Questo neanche
-                for aggregated_index, local_index in enumerate(layer_index):
-                    strategy.param_list[local_index].copy_(
-                        tensor[aggregated_index], non_blocking=True
-                    )
+            if strategy.requires_copy:  # TODO: Da testeare
+                for original, updated in zip(
+                    strategy.param_list[index],
+                    torch._utils._unflatten_dense_tensors(
+                        tensor, strategy.param_list[index]
+                    ),
+                ):
+                    original.copy_(updated)
+                index = index + 1
+                # for aggregated_index, local_index in enumerate(layer_index):
+                #    strategy.param_list[local_index].copy_(
+                #        tensor[aggregated_index], non_blocking=True
+                #    )
 
 
 def layer_by_layer(
@@ -216,7 +236,7 @@ def layer_by_layer(
         mapping.append(
             (
                 (layer_index,),
-                param,
+                param.contiguous() if use_contiguous_memory else param,
                 stream_context,
                 stream_index,
             )
@@ -282,7 +302,7 @@ def layer_by_layer_optimized(
         mapping.append(
             (
                 (layer_index,),
-                layer,
+                layer.contiguous() if use_contiguous_memory else layer,
                 stream_context,
                 stream_index,
             )
@@ -302,7 +322,7 @@ def layer_by_layer_optimized(
     )
 
 
-def stacked(  # Flatten/unflatten
+def bucket(  # Flatten/unflatten
     model: nn.Module,
     state: DistributedState,
     use_multiple_cuda_streams: bool = False,
@@ -344,14 +364,18 @@ def stacked(  # Flatten/unflatten
         size_map[layer.numel()].append(layer_index)
 
     mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
+    original_tensors: List[List[torch.Tensor]] = []
     for index, (_, layer_list) in enumerate(size_map.items()):
         if use_multiple_cuda_streams:
             stream_index = index % len(state.streams)
             stream_context = torch.cuda.StreamContext(state.streams[stream_index])
+
+        original_tensors.append([param_list[index] for index in layer_list])
+        bucket: torch.Tensor = torch._utils._flatten_dense_tensors(original_tensors[-1])
         mapping.append(
             (
                 tuple(layer_list),
-                torch.stack([param_list[index] for index in layer_list]),
+                bucket.contiguous() if use_contiguous_memory else bucket,
                 stream_context,
                 stream_index,
             )
@@ -364,12 +388,12 @@ def stacked(  # Flatten/unflatten
         src=state.rank if state.is_sender else state.receive_from,
         broadcast=is_broadcast_necessary(state=state),
         requires_copy=True,
-        param_list=param_list,
+        param_list=original_tensors,
         state=state,
     )
 
 
-def stacked_optimized(
+def bucket_optimized(
     model: nn.Module,
     state: DistributedState,
     use_multiple_cuda_streams: bool = False,
@@ -417,6 +441,7 @@ def stacked_optimized(
     parameter_counter: int = 0
     layers_in_current_stack: List[int] = []
     mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
+    original_tensors: List[List[torch.Tensor]] = []
     for layer_size, layer_list in size_map.items():
         for i, layer in enumerate(layer_list):
             if use_multiple_cuda_streams:
@@ -425,12 +450,16 @@ def stacked_optimized(
             parameter_counter += layer_size
             layers_in_current_stack.append(layer)
             if i == len(layer_list) - 1 or parameter_counter >= bucket_size:
+                original_tensors.append(
+                    [param_list[index] for index in layers_in_current_stack]
+                )
+                bucket: torch.Tensor = torch._utils._flatten_dense_tensors(
+                    original_tensors[-1]
+                )
                 mapping.append(
                     (
                         tuple(layers_in_current_stack),
-                        torch.stack(
-                            [param_list[index] for index in layers_in_current_stack]
-                        ),
+                        bucket.contiguous() if use_contiguous_memory else bucket,
                         stream_context,
                         stream_index,
                     )
@@ -447,6 +476,6 @@ def stacked_optimized(
         src=state.rank if state.is_sender else state.receive_from,
         broadcast=is_broadcast_necessary(state=state),
         requires_copy=True,
-        param_list=param_list,
+        param_list=original_tensors,
         state=state,
     )

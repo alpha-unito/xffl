@@ -135,15 +135,6 @@ def setup_distributed_process_group(
         ),
     )
 
-    # Setting execution device
-    state.set_exec_device(
-        current_device=_get_current_device(state=state),
-        streams=streams,  # TODO: streams could be created just in case of FederatedScaling
-    )
-
-    # Basic PyTorch distributed setup
-    init_distributed_process_group(state=state)
-
     # Check if Federated Scaling is required
     if federated is None:
         if "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
@@ -166,6 +157,15 @@ def setup_distributed_process_group(
             federated = tuple(
                 federated[0] for _ in range(state.world_size // federated[0])
             )
+
+    # Setting execution device
+    state.set_exec_device(
+        current_device=_get_current_device(state=state),
+        streams=(streams if federated is not None else None),
+    )
+
+    # Basic PyTorch distributed setup
+    init_distributed_process_group(state=state)
 
     if federated is not None:
         if sum(federated) != state.world_size:
@@ -205,7 +205,7 @@ def init_distributed_process_group(state: DistributedState) -> None:
             else None
         ),
         timeout=get_timeout(),
-        # device_id=state.current_device, #TODO: according to the documentation this should speed up NCCL initialization, but it does not seems to be working correctly
+        # device_id=state.current_device, # TODO: this does not seems to work properly with device meshes
     )
 
 
@@ -217,11 +217,8 @@ def cleanup_distributed_process_group(state: DistributedState) -> None:
     :param state: Instantiated distributed state
     :type state: DistributedState
     """
-    logger.debug(f"[Rank {state.rank}]: calling destroy_process_group")
-
-    if torch.cuda.is_available():
-        torch.cuda.synchronize()
-    dist.destroy_process_group()
+    if dist.is_initialized():
+        dist.destroy_process_group()
 
 
 def _get_current_device(

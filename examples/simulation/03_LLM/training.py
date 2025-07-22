@@ -13,13 +13,13 @@ from typing import Dict, Optional
 
 import torch
 import wandb
-from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
+from datasets import Dataset, DatasetDict
 from xffl.custom import DATASETS, MODELS, DatasetInfo, ModelInfo
 from xffl.distributed import distributed
 from xffl.learning import data, modelling, processing, utils
@@ -62,6 +62,10 @@ def pretraining(
         logger.debug(
             f"Rendez-vous time: {(time.perf_counter() - start_time):.2f} seconds"
         )
+
+    # Large data preloading in background
+    if state.node_local_rank == 0:
+        utils.preload(files=[model_info.path])
 
     # WandB setup
     wandb_run: wandb.wandb_run.Run = wandb.init(  # Default entity
@@ -211,27 +215,38 @@ def pretraining(
             f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds"
         )
 
-    # Main training function
-    results = processing.distributed_training(
-        model=model,
-        state=state,
-        optimizer=optimizer,
-        train_dataloader=dataloaders["train"],
-        validate=False,
-        eval_dataloader=dataloaders["val"],
-        lr_scheduler=scheduler,
-        wandb_run=wandb_run,
-        save_path=args.output,
-        output_model_name=args.output_model,
-        epochs=args.epochs,
-        federated_batches=args.federated_batches,
-    )
+    if args.benchmark:
+        with torch.no_grad():
+            if state.is_federated_scaling_setup():
+                from xffl.distributed.aggregation import (
+                    benchmark_aggregation_strategies,
+                )
 
-    if state.rank == 0:
-        [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
-        if args.wandb:
-            for k, v in results.items():
-                wandb_run.summary[k] = v
+                benchmark_aggregation_strategies(
+                    model=model, state=state, iterations=args.benchmark
+                )
+    else:
+        # Main training function
+        results = processing.distributed_training(
+            model=model,
+            state=state,
+            optimizer=optimizer,
+            train_dataloader=dataloaders["train"],
+            validate=False,
+            eval_dataloader=dataloaders["val"],
+            lr_scheduler=scheduler,
+            wandb_run=wandb_run,
+            save_path=args.output,
+            output_model_name=args.output_model,
+            epochs=args.epochs,
+            federated_batches=args.federated_batches,
+        )
+
+        if state.rank == 0:
+            [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
+            if args.wandb:
+                for k, v in results.items():
+                    wandb_run.summary[k] = v
 
     # PyTorch's distributed backend cleanup
     wandb.finish()

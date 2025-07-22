@@ -1,5 +1,6 @@
 """DNN training utility methods"""
 
+import logging
 import time
 from logging import Logger, getLogger
 from typing import Any, Dict, List, Optional, Tuple
@@ -173,11 +174,6 @@ def distributed_training(
             train_step_perplexity.append(float(torch.exp(loss.detach().float())))
             train_step_loss.append(loss.detach().float().item())
 
-            pbar.update(1)
-            pbar.set_description(
-                f"Training Epoch: {epoch + 1}/{epochs}, step {step}/{total_length} completed (loss: {train_step_loss[-1]:.4f})"
-            )
-
             if wandb_run:
                 wandb_run.log(
                     {
@@ -191,9 +187,20 @@ def distributed_training(
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
 
-            if state.rank == 0:
-                logger.debug(
-                    f"[RANK {state.rank}]: Forward: {batch_time:.2f}, Backward: {back_time:.2f}, Optimizer: {optimizer_time:.2f}, Averaging: {comm_time:.2f}, Metrics update: {(time.perf_counter() - start_time):.2f}"
+            pbar.update(1)
+            pbar.set_description(
+                f"Training Epoch: {epoch + 1}/{epochs}, step {step}/{total_length} completed (loss: {train_step_loss[-1]:.4f})"
+            )
+            if logging.root.level == logging.DEBUG:
+                pbar.set_postfix(
+                    ordered_dict={
+                        "Forward": f"{batch_time:.2f}",
+                        "Backward": f"{back_time:.2f}",
+                        "Optimizer": f"{optimizer_time:.2f}",
+                        "Averaging": f"{comm_time:.2f}",
+                        "Other": f"{(time.perf_counter() - start_time):.2f}",
+                    },
+                    refresh=False,
                 )
 
         pbar.close()
