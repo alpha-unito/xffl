@@ -41,7 +41,7 @@ def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
             "XFFL_VENV": "venv",
         } | base_env_mapping
     elif args.image:
-        logger.debug(f"Using container image: {args.venv}")
+        logger.debug(f"Using container image: {args.image}")
         env_mapping: Dict[str, str] = {
             "CODE_FOLDER": "workdir",
             "XFFL_MODEL_FOLDER": "model",
@@ -49,7 +49,17 @@ def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
             "XFFL_IMAGE": "image",
         } | base_env_mapping
     else:
-        raise ValueError("No execution environment specified [container/virtual env]")
+        if sys.prefix != sys.base_prefix:  # Check if running in a virtual environment
+            # If the script is running in a virtual environment, and no other is specified, use it
+            args.venv = sys.prefix
+            logger.debug(f"Using current virtual environment: {args.venv}")
+            env_mapping: Dict[str, str] = {
+                "XFFL_VENV": "venv",
+            } | base_env_mapping
+        else:
+            raise ValueError(
+                "No execution environment specified [container/virtual env]"
+            )
 
     # Creating new environment variables based on the provided mapping
     env = setup_env(args=vars(args), mapping=env_mapping)
