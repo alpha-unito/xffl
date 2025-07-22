@@ -194,10 +194,10 @@ def distributed_training(
             if logging.root.level == logging.DEBUG:
                 pbar.set_postfix(
                     ordered_dict={
-                        "Forward": f"{batch_time:.2f}",
-                        "Backward": f"{back_time:.2f}",
-                        "Optimizer": f"{optimizer_time:.2f}",
-                        "Averaging": f"{comm_time:.2f}",
+                        "F": f"{batch_time:.2f}",
+                        "B": f"{back_time:.2f}",
+                        "O": f"{optimizer_time:.2f}",
+                        "A": f"{comm_time:.2f}",
                         "Other": f"{(time.perf_counter() - start_time):.2f}",
                     },
                     refresh=False,
