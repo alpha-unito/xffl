@@ -211,10 +211,3 @@ simulate_parser.add_argument(
     type=str,
     default=None,
 )
-
-simulate_parser.add_argument(
-    "-on",
-    "--one-node",
-    help="Launch all processes per node on just one node as being different nodes",
-    action="store_true",
-)
