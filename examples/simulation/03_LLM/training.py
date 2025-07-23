@@ -210,19 +210,40 @@ def pretraining(
         optimizer=optimizer, step_size=args.step_size, gamma=args.gamma
     )
 
+    # Clear GPU cache and reset peak memory stats
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
+
     if state.rank == 0:
         logger.debug(
             f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds"
+        )
+        logger.debug(
+            f"GPU RAM allocated before training: {torch.cuda.max_memory_allocated() / 10**9:.2f} GB"
         )
 
     if args.benchmark:
         with torch.no_grad():
             if state.is_federated_scaling_setup():
                 from xffl.distributed.aggregation import (
-                    benchmark_aggregation_strategies,
+                    benchmark_aggregation_throughput,
+                    benchmark_aggregation_time,
                 )
 
-                benchmark_aggregation_strategies(
+                if state.rank == 0:
+                    logger.info(
+                        f"------------------> Benchmarking aggregation time for {args.benchmark} iterations"
+                    )
+                benchmark_aggregation_time(
+                    model=model, state=state, iterations=args.benchmark
+                )
+
+                if state.rank == 0:
+                    logger.info(
+                        f"------------------> Benchmarking aggregation throughput for {args.benchmark} iterations"
+                    )
+                benchmark_aggregation_throughput(
                     model=model, state=state, iterations=args.benchmark
                 )
     else:

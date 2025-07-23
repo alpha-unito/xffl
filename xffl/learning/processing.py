@@ -17,7 +17,7 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.distributed.aggregation import aggregate, layer_by_layer_optimized
+from xffl.distributed.aggregation import layer_by_layer_optimized_
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_fsdp_model
 
@@ -155,13 +155,11 @@ def distributed_training(
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    aggregate(
-                        strategy=layer_by_layer_optimized(
-                            model=model,
-                            state=state,
-                            use_multiple_cuda_streams=False,
-                            use_contiguous_memory=True,
-                        )
+                    layer_by_layer_optimized_(
+                        model=model,
+                        state=state,
+                        use_multiple_cuda_streams=True,
+                        use_contiguous_memory=True,
                     )
 
             # logger.warning(f"[RANK {state.rank}]:6")
