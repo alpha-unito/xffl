@@ -105,10 +105,10 @@ def distributed_training(
         step: int
         batch: Dict[str, Any]
         for step, batch in enumerate(train_dataloader):
-            # logger.warning(f"[RANK {state.rank}]:1")
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            start_time = time.perf_counter()
+            if logging.root.level == logging.DEBUG:
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                start_time = time.perf_counter()
 
             if isinstance(batch, dict):
                 for key in batch.keys():
@@ -128,28 +128,28 @@ def distributed_training(
                 )
                 loss: torch.Tensor = criterion(model(data), target)
 
-            # logger.warning(f"[RANK {state.rank}]2")
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            batch_time = time.perf_counter() - start_time
-            start_time = time.perf_counter()
+            if logging.root.level == logging.DEBUG:
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                batch_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
 
             loss.backward()
 
-            # logger.warning(f"[RANK {state.rank}]:3")
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            back_time = time.perf_counter() - start_time
-            start_time = time.perf_counter()
+            if logging.root.level == logging.DEBUG:
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                back_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
 
             optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
 
-            # logger.warning(f"[RANK {state.rank}]:4")
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            optimizer_time = time.perf_counter() - start_time
-            start_time = time.perf_counter()
+            if logging.root.level == logging.DEBUG:
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                optimizer_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
 
             with torch.no_grad():
                 if state.is_federated_scaling_setup() and (
@@ -162,11 +162,11 @@ def distributed_training(
                         use_contiguous_memory=True,
                     )
 
-            # logger.warning(f"[RANK {state.rank}]:6")
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            comm_time = time.perf_counter() - start_time
-            start_time = time.perf_counter()
+            if logging.root.level == logging.DEBUG:
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                comm_time = time.perf_counter() - start_time
+                start_time = time.perf_counter()
 
             total_loss += loss.detach().float()
             train_step_perplexity.append(float(torch.exp(loss.detach().float())))
@@ -182,8 +182,9 @@ def distributed_training(
                     }
                 )
 
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
+            if logging.root.level == logging.DEBUG:
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
 
             pbar.update(1)
             pbar.set_description(
