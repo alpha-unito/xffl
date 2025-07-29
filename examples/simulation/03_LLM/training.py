@@ -226,26 +226,17 @@ def pretraining(
     if args.benchmark:
         with torch.no_grad():
             if state.is_federated_scaling_setup():
-                from xffl.distributed.aggregation import (
-                    benchmark_aggregation_throughput,
-                    benchmark_aggregation_time,
-                )
+                from xffl.distributed.aggregation import benchmark_aggregation
 
-                if state.rank == 0:
-                    logger.info(
-                        f"------------------> Benchmarking aggregation time for {args.benchmark} iterations"
-                    )
-                benchmark_aggregation_time(
-                    model=model, state=state, iterations=args.benchmark
+                benchmark_aggregation(
+                    model=model,
+                    state=state,
+                    iterations=args.benchmark,
+                    dump=f"{args.workspace}/{args.model}_{state.world_size}_{args.federated_scaling[0]}.json",
                 )
-
-                if state.rank == 0:
-                    logger.info(
-                        f"------------------> Benchmarking aggregation throughput for {args.benchmark} iterations"
-                    )
-                benchmark_aggregation_throughput(
-                    model=model, state=state, iterations=args.benchmark
-                )
+            else:
+                logger.critical("Federated scaling is required for benchmarking")
+                quit()
     else:
         # Main training function
         results = processing.distributed_training(
