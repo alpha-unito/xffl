@@ -1,6 +1,7 @@
 """Aggregation strategies for local xFFL"""
 
 import itertools
+import os
 import time
 from logging import Logger, getLogger
 from typing import ContextManager, Dict, List, Optional, Tuple
@@ -697,7 +698,7 @@ def benchmark_aggregation(
         (bucket_optimized_coalesced, bucket_optimized_coalesced_),
     )
 
-    results: Dict[str, Dict[str, Dict[str, Tuple[str, ...]]]] = {}
+    results: Dict[str, Dict[str, Dict[str, Dict[str, Dict[str, Tuple[str, ...]]]]]] = {}
 
     for (
         aggregation_strategy_throughput,
@@ -706,101 +707,135 @@ def benchmark_aggregation(
 
         if state.rank == 0:
             results[f"{aggregation_strategy_throughput.__name__}"] = {}
-            print("\n")
 
-        for use_multiple_cuda_streams, use_contiguous_memory in itertools.product(
-            [False, True], repeat=2
-        ):
+        for nccl_algo in [
+            "ring",
+            "tree",
+            "collnet",
+            "collnetchain",
+            "collnetdirect",
+            "nvls",
+            "nvlstree",
+            "pat",
+        ]:
+
+            os.environ["NCCL_ALGO"] = f"{nccl_algo}"
             if state.rank == 0:
                 results[f"{aggregation_strategy_throughput.__name__}"][
-                    f"{use_multiple_cuda_streams}"
-                ] = {f"{use_contiguous_memory}": None}
+                    f"{nccl_algo}"
+                ] = {}
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()  # Fundamental to avoid memory fragmentation (really reduces memory consumption here)
+            for nccl_proto in [
+                "SIMPLE",
+                "LL",
+                "LL128",
+            ]:
 
-            ### Maximum theoretical throughput measurement ###
-            strategy: Strategy = aggregation_strategy_throughput(
-                model=model,
-                state=state,
-                use_multiple_cuda_streams=use_multiple_cuda_streams,
-                use_contiguous_memory=use_contiguous_memory,
-            )
+                os.environ["NCCL_PROTO"] = f"{nccl_proto}"
+                if state.rank == 0:
+                    results[f"{aggregation_strategy_throughput.__name__}"][
+                        f"{nccl_algo}"
+                    ][f"{nccl_proto}"] = {}
+                    print("\n")
 
-            # Warmup
-            _all_reduce(strategy=strategy, state=state)
+                for (
+                    use_multiple_cuda_streams,
+                    use_contiguous_memory,
+                ) in itertools.product([False, True], repeat=2):
+                    if state.rank == 0:
+                        results[f"{aggregation_strategy_throughput.__name__}"][
+                            f"{nccl_algo}"
+                        ][f"{nccl_proto}"][f"{use_multiple_cuda_streams}"] = {}
+                        #    f"{use_contiguous_memory}": None
+                        # }
 
-            # Measurement
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            start_time = time.perf_counter()
-            for _ in range(iterations):
-                _all_reduce(strategy=strategy, state=state)
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-            comm_time = (time.perf_counter() - start_time) / iterations
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()  # Fundamental to avoid memory fragmentation (really reduces memory consumption here)
 
-            ### Real aggregation time measurement ###
-            if torch.cuda.is_available():
-                torch.cuda.reset_peak_memory_stats()
-                torch.cuda.empty_cache()  # Fundamental to avoid memory fragmentation (really reduces memory consumption here)
-
-            # Warmup
-            aggregation_strategy_time(
-                model=model,
-                state=state,
-                use_multiple_cuda_streams=use_multiple_cuda_streams,
-                use_contiguous_memory=use_contiguous_memory,
-            )
-
-            # Measurement
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            start_time = time.perf_counter()
-            for _ in range(iterations):
-                aggregation_strategy_time(
-                    model=model,
-                    state=state,
-                    use_multiple_cuda_streams=use_multiple_cuda_streams,
-                    use_contiguous_memory=use_contiguous_memory,
-                )
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-            agg_time = (time.perf_counter() - start_time) / iterations
-
-            if state.rank == 0:
-                theoretical_throughput: float = (
-                    (get_model_size_in_bits(model=model) / comm_time)
-                    * (
-                        2
-                        * (state.federated_world_size - 1)
-                        / state.federated_world_size
+                    ### Maximum theoretical throughput measurement ###
+                    strategy: Strategy = aggregation_strategy_throughput(
+                        model=model,
+                        state=state,
+                        use_multiple_cuda_streams=use_multiple_cuda_streams,
+                        use_contiguous_memory=use_contiguous_memory,
                     )
-                    / 10**9
-                )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
 
-                real_throughput: float = (
-                    (get_model_size_in_bits(model=model) / agg_time)
-                    * (
-                        2
-                        * (state.federated_world_size - 1)
-                        / state.federated_world_size
+                    # Warmup
+                    _all_reduce(strategy=strategy, state=state)
+
+                    # Measurement
+                    if torch.cuda.is_available():
+                        torch.cuda.synchronize()
+                    start_time = time.perf_counter()
+                    for _ in range(iterations):
+                        _all_reduce(strategy=strategy, state=state)
+                        if torch.cuda.is_available():
+                            torch.cuda.synchronize()
+                    comm_time = (time.perf_counter() - start_time) / iterations
+
+                    ### Real aggregation time measurement ###
+                    if torch.cuda.is_available():
+                        torch.cuda.reset_peak_memory_stats()
+                        torch.cuda.empty_cache()  # Fundamental to avoid memory fragmentation (really reduces memory consumption here)
+
+                    # Warmup
+                    aggregation_strategy_time(
+                        model=model,
+                        state=state,
+                        use_multiple_cuda_streams=use_multiple_cuda_streams,
+                        use_contiguous_memory=use_contiguous_memory,
                     )
-                    / 10**9
-                )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
 
-                logger.info(
-                    f"{aggregation_strategy_throughput.__name__} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}:\n Average communication time over {iterations} iterations: {agg_time:.2f} (max/real adjusted throughput: {theoretical_throughput:.2f}/{real_throughput:.2f} Gb/s - Max GPU RAM allocated: {torch.cuda.max_memory_allocated() / 10**9:.2f} GB)"
-                )
+                    # Measurement
+                    if torch.cuda.is_available():
+                        torch.cuda.synchronize()
+                    start_time = time.perf_counter()
+                    for _ in range(iterations):
+                        aggregation_strategy_time(
+                            model=model,
+                            state=state,
+                            use_multiple_cuda_streams=use_multiple_cuda_streams,
+                            use_contiguous_memory=use_contiguous_memory,
+                        )
+                        if torch.cuda.is_available():
+                            torch.cuda.synchronize()
+                    agg_time = (time.perf_counter() - start_time) / iterations
 
-                results[f"{aggregation_strategy_throughput.__name__}"][
-                    f"{use_multiple_cuda_streams}"
-                ][f"{use_contiguous_memory}"] = (
-                    f"{agg_time:.2f}",
-                    f"{theoretical_throughput:.2f}",
-                    f"{real_throughput:.2f}",
-                    f"{torch.cuda.max_memory_allocated() / 10**9:.2f}",
-                )
+                    if state.rank == 0:
+                        theoretical_throughput: float = (
+                            (get_model_size_in_bits(model=model) / comm_time)
+                            * (
+                                2
+                                * (state.federated_world_size - 1)
+                                / state.federated_world_size
+                            )
+                            / 10**9
+                        )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
+
+                        real_throughput: float = (
+                            (get_model_size_in_bits(model=model) / agg_time)
+                            * (
+                                2
+                                * (state.federated_world_size - 1)
+                                / state.federated_world_size
+                            )
+                            / 10**9
+                        )  # Based on https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
+
+                        logger.info(
+                            f"{aggregation_strategy_throughput.__name__} - NCCL_ALGO={nccl_algo} - NCCL_PROTO={nccl_proto} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}:\n Average communication time over {iterations} iterations: {agg_time:.2f} (max/real adjusted throughput: {theoretical_throughput:.2f}/{real_throughput:.2f} Gb/s - Max GPU RAM allocated: {torch.cuda.max_memory_allocated() / 10**9:.2f} GB)"
+                        )
+
+                        results[f"{aggregation_strategy_throughput.__name__}"][
+                            f"{nccl_algo}"
+                        ][f"{nccl_proto}"][f"{use_multiple_cuda_streams}"][
+                            f"{use_contiguous_memory}"
+                        ] = (
+                            f"{agg_time:.2f}",
+                            f"{theoretical_throughput:.2f}",
+                            f"{real_throughput:.2f}",
+                            f"{torch.cuda.max_memory_allocated() / 10**9:.2f}",
+                        )
 
     if state.rank == 0:
         if dump is not None:
