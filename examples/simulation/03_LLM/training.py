@@ -232,7 +232,7 @@ def pretraining(
                     model=model,
                     state=state,
                     iterations=args.benchmark,
-                    dump=f"{args.workspace}/{args.model}_{state.world_size}_{args.federated_scaling[0]}.json",
+                    dump=f"{args.workspace}/{args.csv}",
                 )
             else:
                 logger.critical("Federated scaling is required for benchmarking")

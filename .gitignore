@@ -143,3 +143,4 @@ logs
 datasets/*
 models/*
 images/*
+*.csv

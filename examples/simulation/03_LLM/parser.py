@@ -174,7 +174,15 @@ parser.add_argument(
 parser.add_argument(
     "-c",
     "--cuda-streams",
-    help=" Number of CUDA streams to instantiate",
+    help="Number of CUDA streams to instantiate",
     type=int,
     default=4,
+)
+
+parser.add_argument(
+    "-csv",
+    "--csv",
+    help="Dump the benchmark results to the provided csv file",
+    type=str,
+    default="output.csv",
 )

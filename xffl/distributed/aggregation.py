@@ -1,8 +1,5 @@
 """Aggregation strategies for local xFFL"""
 
-import itertools
-import os
-import time
 from logging import Logger, getLogger
 from typing import ContextManager, Dict, List, Optional, Tuple
 
@@ -687,7 +684,11 @@ def benchmark_aggregation(
     :param iterations: Number of iterations to run each aggreagtion strategy, defaults to 10
     :type iterations: int, optional
     """
+    import csv
+    import itertools
     import json
+    import os
+    import time
 
     aggregation_strategies: Tuple[Tuple[callable, callable], ...] = (
         (layer_by_layer, layer_by_layer_),
@@ -698,15 +699,12 @@ def benchmark_aggregation(
         (bucket_optimized_coalesced, bucket_optimized_coalesced_),
     )
 
-    results: Dict[str, Dict[str, Dict[str, Dict[str, Dict[str, Tuple[str, ...]]]]]] = {}
+    results: List[Tuple[str, str, str, str, str, float, float, float, float]] = []
 
     for (
         aggregation_strategy_throughput,
         aggregation_strategy_time,
     ) in aggregation_strategies:
-
-        if state.rank == 0:
-            results[f"{aggregation_strategy_throughput.__name__}"] = {}
 
         for nccl_algo in [
             "ring",
@@ -720,10 +718,6 @@ def benchmark_aggregation(
         ]:
 
             os.environ["NCCL_ALGO"] = f"{nccl_algo}"
-            if state.rank == 0:
-                results[f"{aggregation_strategy_throughput.__name__}"][
-                    f"{nccl_algo}"
-                ] = {}
 
             for nccl_proto in [
                 "SIMPLE",
@@ -733,21 +727,12 @@ def benchmark_aggregation(
 
                 os.environ["NCCL_PROTO"] = f"{nccl_proto}"
                 if state.rank == 0:
-                    results[f"{aggregation_strategy_throughput.__name__}"][
-                        f"{nccl_algo}"
-                    ][f"{nccl_proto}"] = {}
                     print("\n")
 
                 for (
                     use_multiple_cuda_streams,
                     use_contiguous_memory,
                 ) in itertools.product([False, True], repeat=2):
-                    if state.rank == 0:
-                        results[f"{aggregation_strategy_throughput.__name__}"][
-                            f"{nccl_algo}"
-                        ][f"{nccl_proto}"][f"{use_multiple_cuda_streams}"] = {}
-                        #    f"{use_contiguous_memory}": None
-                        # }
 
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()  # Fundamental to avoid memory fragmentation (really reduces memory consumption here)
@@ -826,17 +811,36 @@ def benchmark_aggregation(
                             f"{aggregation_strategy_throughput.__name__} - NCCL_ALGO={nccl_algo} - NCCL_PROTO={nccl_proto} - Multiple CUDA streams {use_multiple_cuda_streams}, Contiguous memory {use_contiguous_memory}:\n Average communication time over {iterations} iterations: {agg_time:.2f} (max/real adjusted throughput: {theoretical_throughput:.2f}/{real_throughput:.2f} Gb/s - Max GPU RAM allocated: {torch.cuda.max_memory_allocated() / 10**9:.2f} GB)"
                         )
 
-                        results[f"{aggregation_strategy_throughput.__name__}"][
-                            f"{nccl_algo}"
-                        ][f"{nccl_proto}"][f"{use_multiple_cuda_streams}"][
-                            f"{use_contiguous_memory}"
-                        ] = (
-                            f"{agg_time:.2f}",
-                            f"{theoretical_throughput:.2f}",
-                            f"{real_throughput:.2f}",
-                            f"{torch.cuda.max_memory_allocated() / 10**9:.2f}",
+                        results.append(
+                            (
+                                f"{aggregation_strategy_throughput.__name__}",
+                                f"{nccl_algo}",
+                                f"{nccl_proto}",
+                                f"{use_multiple_cuda_streams}",
+                                f"{use_contiguous_memory}",
+                                agg_time,
+                                theoretical_throughput,
+                                real_throughput,
+                                torch.cuda.max_memory_allocated() / 10**9,
+                            )
                         )
 
     if state.rank == 0:
         if dump is not None:
-            json.dump(obj=results, fp=open(dump, "w"))
+            logger.info(f"Dumping benchmarking results to {dump}")
+            with open(dump, "w") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        "Aggregation Strategy",
+                        "NCCL Algo",
+                        "NCLL Proto",
+                        "Multiple CUDA Streams",
+                        "Contiguous Memory",
+                        "Average Time (s)",
+                        "Theoretical Throughput (Gb/s)",
+                        "Real Throughput (Gb/s)",
+                        "Max GPU RAM Allocated (GB)",
+                    ]
+                )
+                writer.writerows(results)
