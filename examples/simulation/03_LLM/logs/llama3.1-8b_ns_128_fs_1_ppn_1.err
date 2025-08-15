@@ -1,0 +1,1698 @@
++ NAME=llama3.1-8b_ns_128_fs_1_ppn_1
++ PROCESSES_PER_NODE=1
++ FS=1
++ MODEL=llama3.1-8b
++ DATASET=clean_mc4_it
++ SEED=42
++ ITERATIONS=3
++ source /leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate
+++ deactivate nondestructive
+++ '[' -n '' ']'
+++ '[' -n '' ']'
+++ '[' -n /bin/bash -o -n '' ']'
+++ hash -r
+++ '[' -n '' ']'
+++ unset VIRTUAL_ENV
+++ unset VIRTUAL_ENV_PROMPT
+++ '[' '!' nondestructive = nondestructive ']'
+++ VIRTUAL_ENV=/leonardo_scratch/fast/uToID_bench/xffl/.venv
+++ export VIRTUAL_ENV
+++ _OLD_VIRTUAL_PATH=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin:/leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/anaconda3-2023.09-0-zcre7pfofz45c3btxpdk5zvcicdq5evx/condabin:/leonardo/home/userexternal/gmittone/.local/bin:/leonardo/home/userexternal/gmittone/bin:/cineca/bin:/leonardo/prod/opt/tools/cintools/1.0/none/bin:/leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/environment-modules-5.2.0-rz47odw4phlhzhhbz7b65nv5s5othgmi/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
+++ PATH=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin:/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin:/leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/anaconda3-2023.09-0-zcre7pfofz45c3btxpdk5zvcicdq5evx/condabin:/leonardo/home/userexternal/gmittone/.local/bin:/leonardo/home/userexternal/gmittone/bin:/cineca/bin:/leonardo/prod/opt/tools/cintools/1.0/none/bin:/leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/environment-modules-5.2.0-rz47odw4phlhzhhbz7b65nv5s5othgmi/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
+++ export PATH
+++ '[' -n '' ']'
+++ '[' -z '' ']'
+++ _OLD_VIRTUAL_PS1=
+++ PS1='(.venv) '
+++ export PS1
+++ VIRTUAL_ENV_PROMPT='(.venv) '
+++ export VIRTUAL_ENV_PROMPT
+++ '[' -n /bin/bash -o -n '' ']'
+++ hash -r
+++ scontrol show hostnames 'lrdn[0329,0368,0373,0380,0398,0417-0418,0420,0427-0428,0463,0475-0476,0479,0523,0534,0554,0566-0567,0578,0588,0605,0617-0618,0627,0642,0655,0657,0665,0672,0675,0677,0683,0693,0701,0708,0712,0714,0732,0735,0744,0749,0752,0755,0766,0776,0779,0799,0806-0807,0813-0814,0829,0832,0836,0847,0859-0860,0866-0867,0874,0878,0881,0892-0893,0904-0905,0911,0917,0938,0944,0959-0960,0966,0978,0983,1003,1009-1010,1017,1023,1026,1044-1045,1058,1073,1076,1080,1093,1133,1138,1189,1199,1206-1207,1209,1218,1226,1238,1244,1264,1278,1284,1287,1296,1300,1313,1317,1319,1323,1330,1332,1334,1344,1347,1351,1357,1361,1370,1375,1382,1386,1395,1400,1407,1411,1427,1435]'
+++ tr -s '\n' ' '
++ xffl --debug simulate training.py --processes-per-node 1 --nodelist lrdn0329 lrdn0368 lrdn0373 lrdn0380 lrdn0398 lrdn0417 lrdn0418 lrdn0420 lrdn0427 lrdn0428 lrdn0463 lrdn0475 lrdn0476 lrdn0479 lrdn0523 lrdn0534 lrdn0554 lrdn0566 lrdn0567 lrdn0578 lrdn0588 lrdn0605 lrdn0617 lrdn0618 lrdn0627 lrdn0642 lrdn0655 lrdn0657 lrdn0665 lrdn0672 lrdn0675 lrdn0677 lrdn0683 lrdn0693 lrdn0701 lrdn0708 lrdn0712 lrdn0714 lrdn0732 lrdn0735 lrdn0744 lrdn0749 lrdn0752 lrdn0755 lrdn0766 lrdn0776 lrdn0779 lrdn0799 lrdn0806 lrdn0807 lrdn0813 lrdn0814 lrdn0829 lrdn0832 lrdn0836 lrdn0847 lrdn0859 lrdn0860 lrdn0866 lrdn0867 lrdn0874 lrdn0878 lrdn0881 lrdn0892 lrdn0893 lrdn0904 lrdn0905 lrdn0911 lrdn0917 lrdn0938 lrdn0944 lrdn0959 lrdn0960 lrdn0966 lrdn0978 lrdn0983 lrdn1003 lrdn1009 lrdn1010 lrdn1017 lrdn1023 lrdn1026 lrdn1044 lrdn1045 lrdn1058 lrdn1073 lrdn1076 lrdn1080 lrdn1093 lrdn1133 lrdn1138 lrdn1189 lrdn1199 lrdn1206 lrdn1207 lrdn1209 lrdn1218 lrdn1226 lrdn1238 lrdn1244 lrdn1264 lrdn1278 lrdn1284 lrdn1287 lrdn1296 lrdn1300 lrdn1313 lrdn1317 lrdn1319 lrdn1323 lrdn1330 lrdn1332 lrdn1334 lrdn1344 lrdn1347 lrdn1351 lrdn1357 lrdn1361 lrdn1370 lrdn1375 lrdn1382 lrdn1386 lrdn1395 lrdn1400 lrdn1407 lrdn1411 lrdn1427 lrdn1435 --arguments --debug --model llama3.1-8b --dataset clean_mc4_it --seed 42 --federated-scaling 1 --benchmark 3 --workspace /leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/logs --csv llama3.1-8b_ns_128_fs_1_ppn_1.csv
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading cuda/12.2
+  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
+    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
+
+Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
+    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 2/4 [00:23<00:23, 11.60s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:23<00:00,  5.81s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:23<00:23, 11.95s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:23<00:00,  5.99s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.30s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.37s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:24<00:00,  6.17s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:24<00:00,  6.20s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.28s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.33s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:24<00:00,  6.17s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.34s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:24<00:07,  7.25s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:24<00:00,  6.20s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.79s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:25<00:00,  6.41s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.49s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.49s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.60s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.43s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.57s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.59s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.63s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.80s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.70s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.84s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:25<00:07,  7.45s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:25<00:00,  6.37s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.99s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.51s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.56s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.04s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.08s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:26<00:07,  7.62s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.54s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:26<00:00,  6.52s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.46s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.85s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.72s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.93s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.70s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.09s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.91s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.84s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.90s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.89s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.44s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.04s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.45s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.68s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.62s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.91s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.65s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.78s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.75s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.88s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.45s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.77s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.67s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.67s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.11s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.70s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.90s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.02s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.39s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.88s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.78s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.11s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.93s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.99s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.55s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.93s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.44s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.98s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 13.00s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.89s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.86s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.75s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.51s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.52s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.94s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.50s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.94s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.55s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.02s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:24<00:24, 12.47s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.64s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.80s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.82s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.97s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.00s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.06s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.20s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.89s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.86s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.53s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.08s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.86s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.75s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.90s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.11s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.85s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.96s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.31s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.02s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.10s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.94s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.86s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.91s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.03s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.11s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.43s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.06s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.96s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.14s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.02s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.89s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.00s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.96s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.96s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.10s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.01s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.97s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.20s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.17s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.29s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.97s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.17s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.15s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.95s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.02s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.92s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.11s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.28s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:27<00:27, 13.52s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.33s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.16s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.02s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:26<00:26, 13.24s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:25<00:25, 12.92s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:36<00:12, 12.27s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:36<00:00,  9.21s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:46<00:16, 16.43s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:46<00:00, 11.73s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:47<00:16, 16.74s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:47<00:00, 11.92s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:48<00:16, 16.87s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:48<00:00, 12.01s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:47<00:16, 16.78s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:47<00:00, 11.94s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:48<00:17, 17.08s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:48<00:00, 12.13s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:48<00:17, 17.11s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:48<00:00, 12.16s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:49<00:17, 17.28s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:49<00:00, 12.29s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:48<00:17, 17.20s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:48<00:00, 12.22s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.68s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.57s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.61s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.51s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:49<00:17, 17.46s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:49<00:00, 12.36s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:49<00:17, 17.64s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.95s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:49<00:00, 12.46s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.74s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.94s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.72s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.78s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.57s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:49<00:17, 17.64s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:49<00:00, 12.45s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.77s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.87s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.57s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.65s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.90s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.68s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.87s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.65s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:49<00:17, 17.64s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:49<00:00, 12.45s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.92s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.69s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.79s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.56s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.94s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.02s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.70s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.77s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:49<00:17, 17.68s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:49<00:00, 12.47s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.82s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.59s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.82s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.59s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.89s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.65s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:18, 18.00s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.74s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.90s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.66s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:49<00:17, 17.72s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.50s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.93s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.67s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.99s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.72s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.14s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.85s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.89s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.64s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.91s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.65s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.90s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.64s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.96s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.69s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.74s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.51s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.08s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.05s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.80s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.76s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.13s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.83s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.07s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.77s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.09s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.80s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.11s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.80s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.82s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.57s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.84s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.83s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.57s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.58s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.17s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.26s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.85s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.92s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.83s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.58s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.11s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.81s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.20s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.90s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.08s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.89s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.75s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.14s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.62s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.84s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:18, 18.02s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.74s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:18, 18.03s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.75s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.18s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.84s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.15s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.87s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.59s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.22s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.82s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.87s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.21s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.88s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.14s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.83s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:18, 18.02s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.70s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.30s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.98s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:50<00:17, 17.90s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.13s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:50<00:00, 12.62s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.22s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.81s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.88s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.33s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.03s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.07s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.78s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.15s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.45s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.85s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.99s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.17s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.85s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.24s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.14s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.83s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.91s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.21s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.90s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.23s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.85s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.43s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.07s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.24s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.90s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.22s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.90s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.23s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.86s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.33s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.99s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.13s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.82s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.35s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.96s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.21s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.86s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.28s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.91s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.19s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.81s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.19s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.38s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.86s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.99s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.23s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.89s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.39s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.03s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.40s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.01s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.29s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.90s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.23s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.27s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.85s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.91s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.25s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.89s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.23s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.88s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.41s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.04s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.39s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.02s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.39s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.01s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.36s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.99s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.28s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.90s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.36s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.30s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.95s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.93s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.32s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.94s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.43s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.03s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.29s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.92s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.43s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.04s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.26s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.89s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.37s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.36s/it]/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.99s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.97s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.39s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.24s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.89s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.01s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.31s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.94s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:52<00:18, 18.43s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:51<00:18, 18.32s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:52<00:00, 13.03s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:51<00:00, 12.94s/it]
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/fsdp/_init_utils.py:430: UserWarning: FSDP is switching to use `NO_SHARD` instead of ShardingStrategy.FULL_SHARD since the world size is 1.
+  warnings.warn(
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+/leonardo_scratch/fast/uToID_bench/xffl/.venv/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:81: FutureWarning: `torch.distributed.all_reduce_coalesced` will be deprecated. If you must use it, please revisit our documentation later at https://pytorch.org/docs/main/distributed.html#collective-functions
+  return func(*args, **kwargs)
+[W801 18:58:12.437479141 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:12.919474778 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:12.461108623 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:12.951094281 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.782874098 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.059568278 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.087738608 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.059769708 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.169799120 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.063410749 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.722154598 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.247273721 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.797916486 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.940169597 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.012423054 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.928471949 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.761005128 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.772040864 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.561738033 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.675915031 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.659457609 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.627695137 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.771211946 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.769955687 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.829879160 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.921753858 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.076341385 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.344356295 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:13.976961148 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:14.063453125 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:14.757647895 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:14.518115337 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.792133750 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.103298821 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.682306994 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.757311865 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.268922484 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.642155778 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.695456330 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.826919245 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.829553783 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.602623430 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.506665513 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.928448012 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.931925181 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.788376945 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.992488035 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.799654653 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.979944223 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:18.033273034 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.145180607 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.039821687 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.041938070 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.772653957 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.426547956 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.088051871 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.053857727 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.533163813 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.586535117 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.134508994 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.005658148 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.713480068 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.137536483 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.844368476 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.415684150 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.241105218 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.720805959 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.231760665 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.308639437 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.260196206 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.249126819 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.275705120 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.287866544 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.243766594 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.578286913 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.757871165 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.886130020 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.372718923 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.383337060 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.380979281 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.405462436 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.664368218 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.862952407 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.415470305 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.839040510 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.152814423 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.242474059 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.131939235 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.156268566 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.943198317 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.699362729 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.520170022 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.637112071 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.779691657 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.554467168 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.392327941 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.973606162 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.627973992 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.657417422 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.691444035 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.435462525 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.991897337 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.719741442 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.086379602 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.707381941 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.767228884 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.732885884 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.824726620 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.801014704 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.817662014 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.820905673 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.490965896 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.781705345 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.860427555 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.787155032 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.799631499 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.833794411 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.532476406 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.400075847 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.783965321 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.754241858 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.729068993 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.829351448 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.749970714 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.869682248 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.596627155 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.887459151 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[W801 18:58:19.399579065 ProcessGroupNCCL.cpp:1479] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
