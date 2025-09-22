@@ -148,11 +148,11 @@ ax[0][0].set_title("With optimizations (multiple streams + contiguous memory)")
 ax[0][1].set_title("Without optimizations")
 
 ax[0][0].set_ylabel("Layer")
-ax[1][0].set_ylabel("Layer opt.")
+ax[1][0].set_ylabel("Layer bal.")
 ax[2][0].set_ylabel("Bucket")
-ax[3][0].set_ylabel("Bucket opt.")
+ax[3][0].set_ylabel("Bucket bal.")
 ax[4][0].set_ylabel("Coalesced")
-ax[5][0].set_ylabel("Coalesced opt.")
+ax[5][0].set_ylabel("Coalesced bal.")
 
 hue_order = [
     "ring",
@@ -377,5 +377,5 @@ fig1.legend(
 
 plt.subplots_adjust(hspace=0.3, wspace=0.05, bottom=0.1, top=0.8, right=1.4)
 fig.figure.savefig("out.png", bbox_inches="tight", dpi=300, format="png")
-fig.figure.savefig("multiple-node.pdf", bbox_inches="tight", dpi=300, format="pdf")
+fig.figure.savefig("nccl_tests.pdf", bbox_inches="tight", dpi=300, format="pdf")
 quit()

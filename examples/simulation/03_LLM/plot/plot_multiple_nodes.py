@@ -67,11 +67,11 @@ order = [
 ]
 labels = [
     "Layer",
-    "Layer\noptimized",
+    "Layer\nbalanced",
     "Bucket",
-    "Bucket\noptimized",
+    "Bucket\nbalanced",
     "Coalesced",
-    "Coalesced\noptimized",
+    "Coalesced\nbalanced",
 ]
 
 palette = {
