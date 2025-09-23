@@ -17,7 +17,7 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.distributed.aggregation import layer_by_layer_optimized_
+from xffl.distributed.aggregation import bucket_optimized_coalesced_
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_fsdp_model
 
@@ -155,7 +155,7 @@ def distributed_training(
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    layer_by_layer_optimized_(
+                    bucket_optimized_coalesced_(
                         model=model,
                         state=state,
                         use_multiple_cuda_streams=True,

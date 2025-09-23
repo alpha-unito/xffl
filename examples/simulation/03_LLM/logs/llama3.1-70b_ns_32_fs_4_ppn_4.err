@@ -1,402 +1,0 @@
-+ NAME=llama3.1-70b_ns_32_fs_4_ppn_4
-+ PROCESSES_PER_NODE=4
-+ FS=4
-+ MODEL=llama3.1-70b
-+ DATASET=clean_mc4_it
-+ SEED=42
-+ ITERATIONS=3
-+ source /leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate
-++ deactivate nondestructive
-++ '[' -n '' ']'
-++ '[' -n '' ']'
-++ '[' -n /bin/bash -o -n '' ']'
-++ hash -r
-++ '[' -n '' ']'
-++ unset VIRTUAL_ENV
-++ unset VIRTUAL_ENV_PROMPT
-++ '[' '!' nondestructive = nondestructive ']'
-++ VIRTUAL_ENV=/leonardo_scratch/fast/uToID_bench/xffl/.venv
-++ export VIRTUAL_ENV
-++ _OLD_VIRTUAL_PATH=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin:/leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/anaconda3-2023.09-0-zcre7pfofz45c3btxpdk5zvcicdq5evx/condabin:/leonardo/home/userexternal/gmittone/.local/bin:/leonardo/home/userexternal/gmittone/bin:/cineca/bin:/leonardo/prod/opt/tools/cintools/1.0/none/bin:/leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/environment-modules-5.2.0-rz47odw4phlhzhhbz7b65nv5s5othgmi/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
-++ PATH=/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin:/leonardo_scratch/fast/uToID_bench/xffl/.venv/bin:/leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/anaconda3-2023.09-0-zcre7pfofz45c3btxpdk5zvcicdq5evx/condabin:/leonardo/home/userexternal/gmittone/.local/bin:/leonardo/home/userexternal/gmittone/bin:/cineca/bin:/leonardo/prod/opt/tools/cintools/1.0/none/bin:/leonardo/prod/spack/03/install/0.19/linux-rhel8-icelake/gcc-8.5.0/environment-modules-5.2.0-rz47odw4phlhzhhbz7b65nv5s5othgmi/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
-++ export PATH
-++ '[' -n '' ']'
-++ '[' -z '' ']'
-++ _OLD_VIRTUAL_PS1=
-++ PS1='(.venv) '
-++ export PS1
-++ VIRTUAL_ENV_PROMPT='(.venv) '
-++ export VIRTUAL_ENV_PROMPT
-++ '[' -n /bin/bash -o -n '' ']'
-++ hash -r
-++ tr -s '\n' ' '
-++ scontrol show hostnames 'lrdn[0025,0127,0137,0396,0433,0536,0587,0598,0625,0630,1016,1040,1051,1059,1065,1114,1122,1142,1149,1155,1174,1181,1201,1221,1235,1239,1246,1317,1327,1330,1347,1364]'
-+ xffl --debug simulate training.py --processes-per-node 4 --nodelist lrdn0025 lrdn0127 lrdn0137 lrdn0396 lrdn0433 lrdn0536 lrdn0587 lrdn0598 lrdn0625 lrdn0630 lrdn1016 lrdn1040 lrdn1051 lrdn1059 lrdn1065 lrdn1114 lrdn1122 lrdn1142 lrdn1149 lrdn1155 lrdn1174 lrdn1181 lrdn1201 lrdn1221 lrdn1235 lrdn1239 lrdn1246 lrdn1317 lrdn1327 lrdn1330 lrdn1347 lrdn1364 --arguments --debug --model llama3.1-70b --dataset clean_mc4_it --seed 42 --federated-scaling 4 --benchmark 3 --workspace /leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/logs --csv llama3.1-70b_ns_32_fs_4_ppn_4.csv
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-Loading cuda/12.2
-  Loading requirement: libiconv/1.17-nhc3mhm xz/5.4.6-xxxg42c
-    zlib-ng/2.1.6-jkgunjc libxml2/2.10.3-zbbe7lm
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-
-Loading nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-  Loading requirement: glibc/2.28--gcc--12.2.0-gi6mmti
-    gcc-runtime/12.2.0--gcc--12.2.0-dqfwf7y
-Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:  20%|██        | 6/30 [00:00<00:00, 57.83it/s]Loading checkpoint shards:  20%|██        | 6/30 [00:00<00:00, 57.81it/s]Loading checkpoint shards:  20%|██        | 6/30 [00:00<00:00, 57.80it/s]Loading checkpoint shards:  20%|██        | 6/30 [00:00<00:00, 57.80it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/30 [00:00<?, ?it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.13it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.13it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.13it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.13it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.10it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.10it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.10it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:20,  1.10it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.07it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.07it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.07it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.07it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.05it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.05it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.05it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.05it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.06it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.06it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.06it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:21,  1.06it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:23,  1.04s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:23,  1.04s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:23,  1.04s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:23,  1.04s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:22,  1.01it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:22,  1.01it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:22,  1.01it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:06<00:22,  1.01it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.06s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.06s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.06s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.06s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.07s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:24,  1.05s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.10s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.13s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.13s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.13s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.13s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.11s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.11s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.11s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:07<00:25,  1.11s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.19s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.19s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.19s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.19s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  40%|████      | 12/30 [00:08<00:14,  1.25it/s]Loading checkpoint shards:  40%|████      | 12/30 [00:08<00:14,  1.25it/s]Loading checkpoint shards:  40%|████      | 12/30 [00:08<00:14,  1.25it/s]Loading checkpoint shards:  40%|████      | 12/30 [00:08<00:14,  1.25it/s]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:26,  1.17s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.20s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.24s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.24s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.24s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.24s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.18s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.18s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.18s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.18s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.21s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.21s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.21s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:27,  1.21s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.25s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.25s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.25s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:28,  1.25s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:08<00:29,  1.28s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:09<00:29,  1.30s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:09<00:29,  1.30s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:09<00:29,  1.30s/it]Loading checkpoint shards:  23%|██▎       | 7/30 [00:09<00:29,  1.30s/it]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.67it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.67it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.67it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.67it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.33it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.33it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.33it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.33it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.91it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.91it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.91it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.91it/s]
-
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.60it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.60it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.60it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.60it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.19it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.19it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.19it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:10<00:01,  3.19it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.57it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.57it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.57it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.57it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.77it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.77it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.77it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.77it/s]
-
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.58it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.58it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.58it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:10<00:08,  1.58it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  2.98it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  2.98it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  2.98it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  2.98it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  3.00it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  3.00it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  3.00it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:10<00:01,  3.00it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:10<00:00,  2.75it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:08,  1.56it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:08,  1.56it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:08,  1.56it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:08,  1.56it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.11it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.11it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.11it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.11it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.67it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.67it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.67it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.67it/s]
-
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.52it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.52it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.52it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.52it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.54it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.54it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.54it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.54it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.02it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.02it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.02it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.02it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.60it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.60it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.60it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.60it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.45it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.45it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.45it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.45it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.06it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.06it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.06it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  3.06it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.49it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.98it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.98it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.98it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.98it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.66it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.66it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.66it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.66it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.90it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.90it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.90it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.90it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.57it/s]
-Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.97it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.97it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.97it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.97it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.43it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.43it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.43it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.43it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.55it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.55it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.55it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.55it/s]
-
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:11<00:09,  1.48it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.86it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.86it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.86it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.86it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.48it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.48it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.48it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.48it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.56it/s]
-
-Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:11<00:01,  2.95it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.53it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.53it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.53it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:11<00:00,  2.53it/s]
-
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.43it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.43it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.43it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.43it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.85it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.85it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.85it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.85it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.43it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.43it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.43it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.43it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.46it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.46it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.46it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.46it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.38it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.38it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.38it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.38it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.79it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.42it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.42it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.42it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.42it/s]
-
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.34it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.34it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.34it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.34it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.77it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.77it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.77it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.77it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-
-Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.69it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.69it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.69it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.69it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.36it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.36it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.36it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.36it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.39it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:12,  1.11it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:12,  1.11it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:12,  1.11it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:12,  1.11it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.71it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.71it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.71it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.71it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.78it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.33it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.33it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.33it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.33it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.37it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.37it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.37it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.37it/s]
-Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:02,  2.35it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:02,  2.35it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:02,  2.35it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:02,  2.35it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.36it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.40it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:09,  1.40it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.66it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.66it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.66it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.66it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.39it/s]
-
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.31it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.31it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.31it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.31it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.63it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.63it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.63it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.63it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.62it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.62it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.62it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.62it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.60it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.60it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.60it/s]Loading checkpoint shards:  83%|████████▎ | 25/30 [00:12<00:01,  2.60it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.32it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.32it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.32it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.32it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:12<00:10,  1.37it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.32it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.74it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.74it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.74it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:12<00:01,  2.74it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.31it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.31it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.31it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:12<00:00,  2.31it/s]
-Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.64it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.64it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.64it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.64it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.27it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.28it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.28it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.28it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.28it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.55it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.55it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.55it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.55it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]
-Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.30it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.30it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.30it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.30it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.29it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.29it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.29it/s]Loading checkpoint shards:  53%|█████▎    | 16/30 [00:13<00:10,  1.29it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.21it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.21it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.21it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.21it/s]
-
-Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards:  87%|████████▋ | 26/30 [00:13<00:01,  2.59it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]
-
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]
-Loading checkpoint shards: 100%|██████████| 30/30 [00:13<00:00,  2.20it/s]
-slurmstepd: error: *** JOB 18570721 ON lrdn0025 CANCELLED AT 2025-08-06T17:09:17 ***
-Connection to lrdn1155.leonardo.local closed by remote host.
-Connection to lrdn1142.leonardo.local closed by remote host.
-Connection to lrdn1235.leonardo.local closed by remote host.
-Connection to lrdn1149.leonardo.local closed by remote host.
-Connection to lrdn1114.leonardo.local closed by remote host.
-Connection to lrdn1330.leonardo.local closed by remote host.
-Connection to lrdn1174.leonardo.local closed by remote host.
-Connection to lrdn1221.leonardo.local closed by remote host.
-Connection to lrdn1181.leonardo.local closed by remote host.
-Connection to lrdn1201.leonardo.local closed by remote host.
-Connection to lrdn1317.leonardo.local closed by remote host.
-Connection to lrdn1327.leonardo.local closed by remote host.
-Connection to lrdn1246.leonardo.local closed by remote host.
-Connection to lrdn1347.leonardo.local closed by remote host.
-Connection to lrdn1364.leonardo.local closed by remote host.
