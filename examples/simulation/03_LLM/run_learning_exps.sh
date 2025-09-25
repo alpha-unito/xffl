@@ -8,21 +8,38 @@ DATASET="clean_mc4_it"
 SEED=42
 
 # Simulations
-NODES=$1
-
-echo "--- FSDP multi-node simulations ---"
-
-# Multiple-GPU multiple-node simulations
-PROCESSES_PER_NODE=4
+NODES=128
+PROCESSES_PER_NODE=1
 FS=1
-
-echo "Running simulation with $NODES nodes and $PROCESSES_PER_NODE processes per node and $FS shards"
-NAME="${MODEL}"_ns_"${NODES}"_fs_"${FS}"_ppn_"${PROCESSES_PER_NODE}"
+FB=8
 
 QOS=normal
 if [ "$NODES" -gt 64 ]; then
 	QOS=boost_qos_bprod
 fi
 
-echo "sbatch --nodes $NODES --qos $QOS --job-name ${NAME} --output ${WORKDIR}/logs/${NAME}.out --error ${WORKDIR}/logs/${NAME}.err leonardo.slurm $NAME $PROCESSES_PER_NODE $FS $MODEL $DATASET $SEED"
-sbatch --nodes $NODES --qos $QOS --job-name "${NAME}" --output "${WORKDIR}"/learning_logs/"${NAME}".out --error "${WORKDIR}"/learning_logs/"${NAME}".err learning.slurm "$NAME" "$PROCESSES_PER_NODE" $FS $MODEL $DATASET $SEED
+PREFIX="PAP"
+
+# ----- FSDP ----
+
+echo "Running FSDP with $NODES nodes and $PROCESSES_PER_NODE processes per node and $FS shards"
+NAME="${PREFIX}"_FSDP_"${MODEL}"_"${DATASET}"_ns_"${NODES}"_ppn_"${PROCESSES_PER_NODE}"
+
+echo "sbatch --nodes $NODES --qos $QOS --job-name ${NAME} --output ${WORKDIR}/learning_logs/${NAME}.out --error ${WORKDIR}/learning_logs/${NAME}.err learning_fsdp.slurm $NAME $PROCESSES_PER_NODE $FS $MODEL $DATASET $SEED $FB"
+sbatch --nodes $NODES --qos $QOS --job-name "${NAME}" --output "${WORKDIR}"/learning_logs/"${NAME}".out --error "${WORKDIR}"/learning_logs/"${NAME}".err learning_fsdp.slurm "$NAME" "$PROCESSES_PER_NODE" "$FS" "$MODEL" "$DATASET" "$SEED" "$FB"
+
+# ----- HSDP ----
+
+echo "Running HSDP with $NODES nodes and $PROCESSES_PER_NODE processes per node and $FS shards"
+NAME="${PREFIX}"_HSDP_"${MODEL}"_"${DATASET}"_ns_"${NODES}"_ppn_"${PROCESSES_PER_NODE}"
+
+echo "sbatch --nodes $NODES --qos $QOS --job-name ${NAME} --output ${WORKDIR}/learning_logs/${NAME}.out --error ${WORKDIR}/learning_logs/${NAME}.err learning_hsdp.slurm $NAME $PROCESSES_PER_NODE $FS $MODEL $DATASET $SEED $FB"
+sbatch --nodes $NODES --qos $QOS --job-name "${NAME}" --output "${WORKDIR}"/learning_logs/"${NAME}".out --error "${WORKDIR}"/learning_logs/"${NAME}".err learning_hsdp.slurm "$NAME" "$PROCESSES_PER_NODE" "$FS" "$MODEL" "$DATASET" "$SEED" "$FB"
+
+# ----- FL ----
+
+echo "Running FL with $NODES nodes and $PROCESSES_PER_NODE processes per node and $FS shards"
+NAME="${PREFIX}"_FL_"${MODEL}"_"${DATASET}"_ns_"${NODES}"_ppn_"${PROCESSES_PER_NODE}"_fs_"${FS}"_fb_"${FB}"
+
+echo "sbatch --nodes $NODES --qos $QOS --job-name ${NAME} --output ${WORKDIR}/learning_logs/${NAME}.out --error ${WORKDIR}/learning_logs/${NAME}.err learning_fl.slurm $NAME $PROCESSES_PER_NODE $FS $MODEL $DATASET $SEED $FB"
+sbatch --nodes $NODES --qos $QOS --job-name "${NAME}" --output "${WORKDIR}"/learning_logs/"${NAME}".out --error "${WORKDIR}"/learning_logs/"${NAME}".err learning_fl.slurm "$NAME" "$PROCESSES_PER_NODE" "$FS" "$MODEL" "$DATASET" "$SEED" "$FB"

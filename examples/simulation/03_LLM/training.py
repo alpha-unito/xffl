@@ -5,6 +5,7 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 """
 
 import argparse
+import math
 import sys
 import time
 from logging import Logger, getLogger
@@ -12,10 +13,12 @@ from parser import parser
 from typing import Dict, Optional
 
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import wandb
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
@@ -111,6 +114,7 @@ def pretraining(
         if isinstance(module, (nn.Linear, nn.Embedding)):
             module.reset_parameters()
 
+    # TODO: make this an option
     if state.rank == 0:
         logger.info(f"Re-initializing model's weights...")
     model.apply(reset_weights)
@@ -131,7 +135,7 @@ def pretraining(
         state=state,
         model_info=model_info,
         mixed_precision=mixed_precision,
-    )
+    )  # TODO: try with origin_params
 
     # Activation checkpointing
     utils.set_activation_checkpointing(
@@ -196,13 +200,12 @@ def pretraining(
             f"Dataloaders creation time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
-    # TODO: not convinced about this
-    if state.is_federated_scaling_setup():
-        args.learning_rate = args.learning_rate * (
-            state.federated_local_size[state.federated_rank]
-        )
-    elif state.is_hsdp_setup():
-        args.learning_rate = args.learning_rate * state.replica_world_size[0]
+    # Scale the learning rate in the number of model replicas (world size)
+    # This is needed to keep the effective learning rate per sample constant
+    # when the global batch size changes due to data parallelism
+    # TODO: Investigate this more
+    if args.scale_learning_rate:
+        args.learning_rate = args.learning_rate * state.world_size
 
     if state.rank == 0:
         logger.info(f"Learning rate adjusted to: {args.learning_rate}")
@@ -212,12 +215,34 @@ def pretraining(
         params=model.parameters(),
         lr=args.learning_rate,
         weight_decay=args.weight_decay,
+        betas=(0.9, 0.95),
         # foreach=True,  # Optimizes performances but uses more memory
         fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
-    # scheduler: lr_scheduler.StepLR = lr_scheduler.StepLR(
-    #    optimizer=optimizer, step_size=args.step_size, gamma=args.gamma
-    # )
+
+    def get_llama31_cosine_schedule(optimizer, total_steps, warmup_frac=0.1):
+        """
+        Scheduler stile LLaMA3.1 semplificato: warmup -> cosine decay.
+
+        Args:
+            optimizer: torch.optim.Optimizer
+            total_steps (int): passi totali (es. 128)
+            lr_max (float): learning rate massimo
+            warmup_frac (float): frazione di warmup (default 5%)
+        """
+        warmup_steps = int(total_steps * warmup_frac)
+        decay_steps = total_steps - warmup_steps
+
+        def lr_lambda(step):
+            if step < warmup_steps:
+                # warmup lineare
+                return step / max(1, warmup_steps)
+            else:
+                # decadimento coseno
+                progress = (step - warmup_steps) / max(1, decay_steps)
+                return 0.5 * (1 + math.cos(math.pi * progress))
+
+        return LambdaLR(optimizer, lr_lambda=lambda step: lr_lambda(step))
 
     # Clear GPU cache and reset peak memory stats
     if torch.cuda.is_available():
@@ -248,6 +273,8 @@ def pretraining(
                 quit()
     else:
         # Main training function
+
+        # dist.barrier(device_ids=[state.node_loca_rank])
         results = processing.distributed_training(
             model=model,
             state=state,
@@ -255,13 +282,17 @@ def pretraining(
             train_dataloader=dataloaders["train"],
             validate=False,
             eval_dataloader=dataloaders["val"],
-            # lr_scheduler=scheduler,
+            lr_scheduler=get_llama31_cosine_schedule(
+                optimizer,
+                total_steps=len(dataloaders["train"]),
+            ),
             wandb_run=wandb_run,
             save_path=args.output,
             output_model_name=args.output_model,
             epochs=args.epochs,
             federated_batches=args.federated_batches,
         )
+        # dist.barrier(device_ids=[state.node_loca_rank])
 
         if state.rank == 0:
             [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]

@@ -79,7 +79,7 @@ parser.add_argument(
     "--train-batch-size",
     help="Training batch size",
     type=int,
-    default=4,
+    default=2,
 )
 
 parser.add_argument(
@@ -103,7 +103,7 @@ parser.add_argument(
     "--learning-rate",
     help="Learning rate",
     type=float,
-    default=1e-4,
+    default=3e-4,
 )
 
 parser.add_argument(
@@ -111,7 +111,7 @@ parser.add_argument(
     "--weight-decay",
     help="Weight decay",
     type=float,
-    default=0,
+    default=0.1,
 )
 
 parser.add_argument(
@@ -185,4 +185,11 @@ parser.add_argument(
     help="Dump the benchmark results to the provided csv file",
     type=str,
     default="output.csv",
+)
+
+parser.add_argument(
+    "-slr",
+    "--scale-learning-rate",
+    help="Scale the learning rate in the numbers of models replicas",
+    action="store_true",
 )
