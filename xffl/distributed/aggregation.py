@@ -693,9 +693,9 @@ def benchmark_aggregation(
     aggregation_strategies: Tuple[Tuple[callable, callable], ...] = (
         (layer_by_layer, layer_by_layer_),
         (layer_by_layer_optimized, layer_by_layer_optimized_),
-        (bucket_flatten, bucket_flatten_),
+        # (bucket_flatten, bucket_flatten_),
         (bucket_coalesced, bucket_coalesced_),
-        (bucket_optimized_flatten, bucket_optimized_flatten_),
+        # (bucket_optimized_flatten, bucket_optimized_flatten_),
         (bucket_optimized_coalesced, bucket_optimized_coalesced_),
     )
 

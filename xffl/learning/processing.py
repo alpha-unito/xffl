@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 from torch import nn
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
@@ -17,7 +16,7 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.types import PathLike
-from xffl.distributed.aggregation import layer_by_layer_optimized_
+from xffl.distributed.aggregation import bucket_optimized_coalesced_
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_fsdp_model
 
@@ -86,6 +85,8 @@ def distributed_training(
     results: Dict[str, float] = {}
     best_val_loss: float = float("inf")
 
+    if torch.distributed.is_initialized():
+        dist.barrier(device_ids=[state.node_local_rank])
     for epoch in range(epochs):
         epoch_start_time: float = time.perf_counter()
         logger.info(f"Starting epoch {epoch}/{epochs}")
@@ -144,6 +145,9 @@ def distributed_training(
 
             optimizer.step()  # TODO: average optimizer?
             optimizer.zero_grad()
+            if lr_scheduler:
+                lr_scheduler.step()
+            pbar.update(1)
 
             if logging.root.level == logging.DEBUG:
                 if torch.cuda.is_available():
@@ -155,7 +159,7 @@ def distributed_training(
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
-                    layer_by_layer_optimized_(
+                    bucket_optimized_coalesced_(
                         model=model,
                         state=state,
                         use_multiple_cuda_streams=True,
@@ -182,14 +186,11 @@ def distributed_training(
                     }
                 )
 
-            if logging.root.level == logging.DEBUG:
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-
-            pbar.update(1)
             pbar.set_description(
-                f"Training Epoch: {epoch + 1}/{epochs}, step {step}/{total_length} completed (loss: {train_step_loss[-1]:.4f})"
+                f"Training Epoch: {epoch + 1}/{epochs}, step {step}/{total_length} completed (loss: {train_step_loss[-1]:.4f})",
+                refresh=False,
             )
+
             if logging.root.level == logging.DEBUG:
                 pbar.set_postfix(
                     ordered_dict={
@@ -202,14 +203,19 @@ def distributed_training(
                     refresh=False,
                 )
 
+            if logging.root.level == logging.DEBUG:
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)
 
-        if dist.is_initialized():
-            dist.all_reduce(
-                total_loss,  # .to(state.current_device),
-                op=dist.ReduceOp.SUM,
-            )
+        # TODO: fix this
+        # if dist.is_initialized():
+        #    dist.all_reduce(
+        #        tensor=total_loss,  # .to(state.current_device),
+        #        op=dist.ReduceOp.SUM,
+        #    )
 
         train_epoch_loss: torch.Tensor = (
             (total_loss / total_length)
@@ -221,9 +227,6 @@ def distributed_training(
 
         train_perp.append(float(train_perplexity))
         train_loss.append(float(train_epoch_loss))
-
-        if lr_scheduler:
-            lr_scheduler.step()
 
         if validate:
             eval_ppl, eval_epoch_loss, temp_val_loss, temp_step_perplexity, eval_acc = (

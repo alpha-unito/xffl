@@ -5,6 +5,7 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 """
 
 import argparse
+import math
 import sys
 import time
 from logging import Logger, getLogger
@@ -12,9 +13,11 @@ from parser import parser
 from typing import Dict, Optional
 
 import torch
+import torch.nn as nn
 import wandb
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
-from torch.optim import AdamW, lr_scheduler
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
@@ -56,7 +59,9 @@ def pretraining(
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
-        hsdp=args.hsdp, federated=args.federated_scaling, streams=args.cuda_streams
+        hsdp=args.hsdp,
+        federated=args.federated_scaling,
+        streams=args.cuda_streams,
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -69,7 +74,8 @@ def pretraining(
 
     # WandB setup
     wandb_run: wandb.wandb_run.Run = wandb.init(  # Default entity
-        project="xFFL",
+        entity="alpha-unito",
+        project="xFFL - convergence",
         group=args.wandb_name,
         name=f"client_{state.rank}",
         notes=f"{args.model} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
@@ -96,11 +102,21 @@ def pretraining(
             # output_loading_info=True #TODO: to add to verbose mode
             local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
             attn_implementation=args.attention,
-            torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
+            dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
             device_map=state.init_device,
             use_safetensors=True,
         )
     )
+
+    # Reset model weights
+    def reset_weights(module):
+        if isinstance(module, (nn.Linear, nn.Embedding)):
+            module.reset_parameters()
+
+    # TODO: make this an option
+    if state.rank == 0:
+        logger.info(f"Re-initializing model's weights...")
+    # model.apply(reset_weights)
 
     # Print model's weights
     if state.rank == 0:
@@ -118,7 +134,7 @@ def pretraining(
         state=state,
         model_info=model_info,
         mixed_precision=mixed_precision,
-    )
+    )  # TODO: try with origin_params
 
     # Activation checkpointing
     utils.set_activation_checkpointing(
@@ -183,32 +199,49 @@ def pretraining(
             f"Dataloaders creation time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
-    # TODO: not convinced about this
-    if state.is_federated_scaling_setup():
-        args.learning_rate = (
-            state.federated_local_size[state.federated_rank]
-            * args.learning_rate
-            / state.node_local_size
-        )
-    else:
-        args.learning_rate = (
-            state.world_size * args.learning_rate / state.node_local_size
-        )
+    # Scale the learning rate in the number of model replicas (world size)
+    # This is needed to keep the effective learning rate per sample constant
+    # when the global batch size changes due to data parallelism
+    # TODO: Investigate this more
+    if args.scale_learning_rate:
+        args.learning_rate = args.learning_rate * state.world_size
 
     if state.rank == 0:
-        logger.debug(f"Learning rate adjusted to: {args.learning_rate}")
+        logger.info(f"Learning rate adjusted to: {args.learning_rate}")
 
     # Optimizer and lr scheduler creation
     optimizer: AdamW = AdamW(
         params=model.parameters(),
         lr=args.learning_rate,
         weight_decay=args.weight_decay,
+        betas=(0.9, 0.95),
         # foreach=True,  # Optimizes performances but uses more memory
         fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
-    scheduler: lr_scheduler.StepLR = lr_scheduler.StepLR(
-        optimizer=optimizer, step_size=args.step_size, gamma=args.gamma
-    )
+
+    def get_llama31_cosine_schedule(optimizer, total_steps, warmup_frac=0.1):
+        """
+        Scheduler stile LLaMA3.1 semplificato: warmup -> cosine decay.
+
+        Args:
+            optimizer: torch.optim.Optimizer
+            total_steps (int): passi totali (es. 128)
+            lr_max (float): learning rate massimo
+            warmup_frac (float): frazione di warmup (default 5%)
+        """
+        warmup_steps = int(total_steps * warmup_frac)
+        decay_steps = total_steps - warmup_steps
+
+        def lr_lambda(step):
+            if step < warmup_steps:
+                # warmup lineare
+                return step / max(1, warmup_steps)
+            else:
+                # decadimento coseno
+                progress = (step - warmup_steps) / max(1, decay_steps)
+                return 0.5 * (1 + math.cos(math.pi * progress))
+
+        return LambdaLR(optimizer, lr_lambda=lambda step: lr_lambda(step))
 
     # Clear GPU cache and reset peak memory stats
     if torch.cuda.is_available():
@@ -246,7 +279,10 @@ def pretraining(
             train_dataloader=dataloaders["train"],
             validate=False,
             eval_dataloader=dataloaders["val"],
-            lr_scheduler=scheduler,
+            lr_scheduler=get_llama31_cosine_schedule(
+                optimizer,
+                total_steps=len(dataloaders["train"]),
+            ),
             wandb_run=wandb_run,
             save_path=args.output,
             output_model_name=args.output_model,
@@ -262,7 +298,9 @@ def pretraining(
 
     # PyTorch's distributed backend cleanup
     wandb.finish()
-    distributed.cleanup_distributed_process_group(state=state)
+    distributed.cleanup_distributed_process_group(
+        state=state, del_obj=[model, optimizer]
+    )
 
 
 def main():

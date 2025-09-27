@@ -2,7 +2,7 @@
 
 import os
 from logging import Logger, getLogger
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import torch
 import torch.distributed as dist
@@ -205,19 +205,29 @@ def init_distributed_process_group(state: DistributedState) -> None:
             else None
         ),
         timeout=get_timeout(),
-        # device_id=state.current_device, # TODO: this does not seems to work properly with device meshes
+        # device_id=state.current_device,  # TODO: this does not seems to work properly with device meshes
     )
 
 
-def cleanup_distributed_process_group(state: DistributedState) -> None:
+def cleanup_distributed_process_group(
+    state: DistributedState, del_obj: Tuple[Any] = ()
+) -> None:
     """Cleanup PyTorch's distributed environment
 
     To be called AFTER the various processes have completed their work and by ALL processes
 
     :param state: Instantiated distributed state
     :type state: DistributedState
+    :param del_obj: Objects to be deleted before destroying the process group, defaults to []
+    :type state: Tuple[Any]
     """
+    for obj in del_obj:
+        del obj
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
     if dist.is_initialized():
+        dist.barrier(device_ids=[state.node_local_rank])
         dist.destroy_process_group()
 
 
