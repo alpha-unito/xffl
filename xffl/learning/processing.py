@@ -85,6 +85,8 @@ def distributed_training(
     results: Dict[str, float] = {}
     best_val_loss: float = float("inf")
 
+    if torch.distributed.is_initialized():
+        dist.barrier(device_ids=[state.node_local_rank])
     for epoch in range(epochs):
         epoch_start_time: float = time.perf_counter()
         logger.info(f"Starting epoch {epoch}/{epochs}")

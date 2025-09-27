@@ -13,11 +13,10 @@ from parser import parser
 from typing import Dict, Optional
 
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 import wandb
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
-from torch.optim import AdamW, lr_scheduler
+from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
@@ -103,7 +102,7 @@ def pretraining(
             # output_loading_info=True #TODO: to add to verbose mode
             local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
             attn_implementation=args.attention,
-            torch_dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
+            dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
             device_map=state.init_device,
             use_safetensors=True,
         )
@@ -117,7 +116,7 @@ def pretraining(
     # TODO: make this an option
     if state.rank == 0:
         logger.info(f"Re-initializing model's weights...")
-    model.apply(reset_weights)
+    # model.apply(reset_weights)
 
     # Print model's weights
     if state.rank == 0:
@@ -273,8 +272,6 @@ def pretraining(
                 quit()
     else:
         # Main training function
-
-        # dist.barrier(device_ids=[state.node_loca_rank])
         results = processing.distributed_training(
             model=model,
             state=state,
@@ -292,7 +289,6 @@ def pretraining(
             epochs=args.epochs,
             federated_batches=args.federated_batches,
         )
-        # dist.barrier(device_ids=[state.node_loca_rank])
 
         if state.rank == 0:
             [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
@@ -302,7 +298,9 @@ def pretraining(
 
     # PyTorch's distributed backend cleanup
     wandb.finish()
-    distributed.cleanup_distributed_process_group(state=state)
+    distributed.cleanup_distributed_process_group(
+        state=state, del_obj=[model, optimizer]
+    )
 
 
 def main():
