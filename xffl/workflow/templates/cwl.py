@@ -37,8 +37,8 @@ class CWLConfig(YamlConfig):
         """Adds the CWL inputs to the YAML content
 
         :param facility_name: Facility's name
-        :type facility_name: str
         :param extra_inputs: Extra inputs
+        :type facility_name: str
         :type extra_inputs: MutableMapping[str, Any]
         """
         self.content |= {f"facility_{facility_name}": facility_name} | {
@@ -104,6 +104,7 @@ class AggregateStep(Workflow):
             ],
             baseCommand=["python"],
             cwlVersion="v1.2",
+            id="aggregate",
             inputs=[
                 cwl.CommandInputParameter(
                     id="script",
@@ -113,6 +114,7 @@ class AggregateStep(Workflow):
                 cwl.CommandInputParameter(
                     id="models",
                     type_=cwl.CommandInputArraySchema(
+                        name="models",
                         type_="array",
                         items="Directory",
                         inputBinding=cwl.CommandLineBinding(
@@ -172,6 +174,7 @@ class MainWorkflow(Workflow):
         )
         return cwl.Workflow(
             cwlVersion="v1.2",
+            id="main",
             inputs=[
                 cwl.WorkflowInputParameter(id="script_train", type_="Directory"),
                 cwl.WorkflowInputParameter(id="script_aggregation", type_="File"),
@@ -248,7 +251,7 @@ class MainWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
     ) -> None:
         """Add the given extra inputs to the MainWorkflow definition
 
@@ -297,6 +300,7 @@ class RoundWorkflow(Workflow):
         """
         return cwl.Workflow(
             cwlVersion="v1.2",
+            id="round",
             inputs=[
                 cwl.WorkflowInputParameter(id="script_train", type_="Directory"),
                 cwl.WorkflowInputParameter(id="script_aggregation", type_="File"),
@@ -319,11 +323,13 @@ class RoundWorkflow(Workflow):
                     in_=[],
                     out=[cwl.WorkflowStepOutput(id="models")],
                     run=cwl.ExpressionTool(
+                        id="merge",
                         inputs=[],
                         outputs=[
                             cwl.ExpressionToolOutputParameter(
                                 id="models",
                                 type_=cwl.OutputArraySchema(
+                                    name="models",
                                     type_="array",
                                     items="Directory",
                                 ),
@@ -359,13 +365,13 @@ class RoundWorkflow(Workflow):
         )
 
     @classmethod
-    def get_training_step(cls, name: str) -> MutableMapping[str, Any]:
+    def get_training_step(cls, name: str) -> cwl.Process:
         """Get the CWL file standard content for a xFFL application step
 
         :param name: Name of the facility on which the step will be executed
         :type name: str
         :return: Dict template of a CWL xFFL step
-        :rtype: MutableMapping[str, Any]
+        :rtype: cwl.Process
         """
         return cwl.WorkflowStep(
             id=f"training_on_{name}",
@@ -408,7 +414,7 @@ class RoundWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
     ) -> None:
         """Add the given extra inputs to the RoundWorkflow definition
 
@@ -499,6 +505,7 @@ class TrainingStep(Workflow):
                 ),
             ],
             cwlVersion="v1.2",
+            id="training",
             inputs=[
                 cwl.CommandInputParameter(
                     id="script",
@@ -583,7 +590,7 @@ class TrainingStep(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, str]
+        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any]
     ) -> None:
         """Add the given extra inputs to the TrainingStep definition
 

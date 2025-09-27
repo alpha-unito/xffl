@@ -56,7 +56,7 @@ def set_deterministic_execution(
 
 def set_nondeterministic_execution() -> None:
     """Deactivate deterministic execution and deterministic memory filling to improve performance"""
-    logger.debug(f"Setting PyTorch deterministic execution")
+    logger.debug("Setting PyTorch deterministic execution")
     torch.utils.deterministic.fill_uninitialized_memory = False
     torch.use_deterministic_algorithms(mode=False)
 

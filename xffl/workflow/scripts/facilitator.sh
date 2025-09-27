@@ -57,13 +57,15 @@ if [ "${XFFL_SIMULATION}" = "true" ] ; then
 		else
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
---mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
---mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets/ \
---mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
---home /code/ \
-$GPU_FLAG \
-${XFFL_IMAGE} \
-/code/xffl/workflow/scripts/run.sh"
+				--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
+				--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets/ \
+				--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
+				--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
+				--mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
+				--home /code/ \
+				$GPU_FLAG \
+				${XFFL_IMAGE} \
+				/usr/local/lib/python3.12/dist-packages/xffl/workflow/scripts/run.sh" # TODO: make this dynamic
 		fi
 
 		# Run the local simulation process

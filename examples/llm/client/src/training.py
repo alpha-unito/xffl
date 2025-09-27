@@ -15,7 +15,7 @@ import torch
 import wandb
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW, lr_scheduler
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
@@ -26,6 +26,7 @@ from xffl.learning import data, modelling, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
 """Default xFFL logger"""
 
 

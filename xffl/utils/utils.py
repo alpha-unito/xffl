@@ -1,5 +1,7 @@
 """Utility methods exploitable in many different situations"""
 
+"""Utility methods exploitable in many different situations"""
+
 import os
 from collections.abc import Callable
 from datetime import timedelta
@@ -50,7 +52,7 @@ def resolve_path(path: str, is_local_path: bool = True) -> str:
     :rtype: str
     """
     return str(
-        Path(os.path.expanduser(os.path.expandvars(path))).absolute()
+        Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
         if is_local_path
         else PurePath(path)
     )
@@ -68,7 +70,9 @@ def check_input(
     :param text: Question to be asked to the user
     :type text: str
     :param warning_msg: Error message in case the inserted value does not satisfy the control condition
+    :param warning_msg: Error message in case the inserted value does not satisfy the control condition
     :type warning_msg: str
+    :param control: Control function to be checked on the inserted value
     :param control: Control function to be checked on the inserted value
     :type control: Callable
     :param is_path: Flag signaling if the expected input is a path, defaults to False

@@ -50,46 +50,46 @@ def from_args_to_cwl(
     # Parse the command line arguments and convert the namespace to a dictionary
     try:
         namespace = vars(parser.parse_args(arguments))
-        print(namespace)
-    except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
+        logger.debug(f"Script namespace: {namespace}")
+    except (SystemExit, argparse.ArgumentError, argparse.ArgumentTypeError) as e:
         raise e
 
     # Iterate over the parser's declared arguments and compile the three dictionaries
     for action in parser._actions:
         if not isinstance(action, _HelpAction):
             # Convert the action attributes into useful parameter information
-            _input = get_param_name(action.option_strings, parser.prefix_chars)
+            input_ = get_param_name(action.option_strings, parser.prefix_chars)
             cwl_type = CWL_TYPE_MAPPING[action.type]
             required = action.required
 
             # Model does not need to be added to the configurations, it is handled separately
-            if _input not in ("model", "dataset"):
+            if input_ not in ("model", "dataset"):
                 # Argument name to CWL input bidding format
-                arg_to_bidding[_input] = {
+                arg_to_bidding[input_] = {
                     "type": cwl_type + ("" if required else "?"),
                 } | (
                     {
                         "prefix": get_param_flag(action.option_strings),
                     }
-                    if _input != "workspace"
+                    if input_ != "workspace"
                     else {}
                 )
 
                 if add_default_value := isinstance(
                     action.default, bool
                 ) or not isinstance(action, _StoreConstAction):
-                    arg_to_bidding[_input]["default"] = action.default
+                    arg_to_bidding[input_]["default"] = action.default
                 else:
                     logger.warning(
-                        f"Default value {action.default} NOT assigned to {_input}"
+                        f"Default value {action.default} NOT assigned to {input_}"
                     )
                 # Argument name to CWL type
-                arg_to_type[_input] = cwl_type + ("" if required else "?")
+                arg_to_type[input_] = cwl_type + ("" if required else "?")
 
                 # Argument name to value (Directory and folder require different format)
                 namespace_input = (
-                    _input
-                    if _input in namespace
+                    input_
+                    if input_ in namespace
                     else action.dest  # Arguments can be stored in a variable with a name different from their flag, namely dest
                 )
                 if add_default_value:
@@ -97,7 +97,7 @@ def from_args_to_cwl(
                         in_value = namespace[namespace_input].replace(" ", "_")
                     else:
                         in_value = namespace[namespace_input]
-                    arg_to_value[_input] = (
+                    arg_to_value[input_] = (
                         in_value
                         if action.type not in [FolderLike, FileLike]
                         else (

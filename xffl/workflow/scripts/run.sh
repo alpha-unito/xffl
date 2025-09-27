@@ -16,7 +16,8 @@ if [ "${XFFL_SIMULATION}" = "true" ] ; then
     fi
 		eval "$COMMAND"
 	else
-		COMMAND="time python ${EXECUTABLE} --model /model/ --dataset /datasets/"
+		COMMAND="time python ${EXECUTABLE} --model-path /model/ --dataset-path /datasets/ $*"
+		echo "$COMMAND"
 		eval "$COMMAND"
 	fi
 else

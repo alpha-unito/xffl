@@ -4,7 +4,7 @@ import logging
 
 from xffl.custom.parser import ArgumentParser
 
-### Argument parser
+# Argument parser
 parser = ArgumentParser(
     prog="Cross-Facility Federated Learning (xFFL) - LLM example",
     description="This xFFL example pre-trains an LLM on multiple HPC infrastructures.",
@@ -54,7 +54,7 @@ parser.add_argument(
     "--wandb-name",
     help="WandB group name",
     type=str,
-    default="LLaMA-3.1 8B",
+    default="LLM",
 )
 
 parser.add_argument(

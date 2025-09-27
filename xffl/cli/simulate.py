@@ -64,6 +64,9 @@ def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
     # Creating new environment variables based on the provided mapping
     env = setup_env(args=vars(args), mapping=env_mapping)
     env["XFFL_SIMULATION"] = "true"
+    if args.image:
+        env["XFFL_CODE_FOLDER"] = os.path.dirname(args.executable)
+        args.executable = os.path.basename(args.executable)
 
     # New environment created - return it as a string
     logger.debug(f"New local simulation xFFL environment variables: {env}")
@@ -113,7 +116,7 @@ def simulate(
         env_str += f"{key}={env[key]} "
 
     # Launch facilitator
-    logger.info(f"Running local simulation...")
+    logger.info("Running local simulation...")
     start_time = time.perf_counter()
     try:
         processes = []

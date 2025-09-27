@@ -51,7 +51,7 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    from xffl.cli.parser import run_parser
+    from xffl.cli.parser import run_parser  # noqa: F811
 
     try:
         main(run_parser.parse_args())

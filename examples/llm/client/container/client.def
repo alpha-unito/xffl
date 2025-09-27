@@ -4,32 +4,28 @@ From: {{ BASE_IMAGE }}
 %arguments
 	WORKDIR=$(pwd)
 	XFFL_FOLDER=xffl
-    #REQUIREMENTS_FILE=requirements.txt
-	#REQUIREMENTS_FOLDER=requirements
-	#LIBRARIES=libraries
-	#LLAMA_RECIPES=llama-recipes
 
 	# NVIDIA
-	BASE_IMAGE=nvcr.io/nvidia/pytorch:24.12-py3
+	#BASE_IMAGE=nvcr.io/nvidia/pytorch:25.02-py3
 	# ROCM
-	#BASE_IMAGE=rocm/pytorch:rocm5.7_ubuntu22.04_py3.10_pytorch_2.0.1
+	BASE_IMAGE=rocm/pytorch:rocm6.3.3_ubuntu24.04_py3.12_pytorch_release_2.4.0
 	VERSION=v0.1.0
 
 %setup
     mkdir ${APPTAINER_ROOTFS}/{{ XFFL_FOLDER }}
 
-%files
-	#{{ WORKDIR }}/{{ REQUIREMENTS_FILE }} /{{ REQUIREMENTS_FOLDER }}/
-	#{{ WORKDIR }}/../{{ LIBRARIES }}/{{ LLAMA_RECIPES }} /{{ REQUIREMENTS_FOLDER }}/
-
 %post
 	# xFFL installation
-	cd /{{ XFFL_FOLDER }}/
-	git clone -b develop https://github.com/alpha-unito/xffl.git
-	python3 -m pip install --no-cache-dir --upgrade pip
-	python3 -m pip install --no-cache-dir .
-	#python3 -m pip install --no-cache-dir -r /{{ REQUIREMENTS_FOLDER }}/{{ REQUIREMENTS_FILE }} && \
-	cd .. && rm -rf /{{ XFFL_FOLDER }}
+	cd /{{ XFFL_FOLDER }}/ \
+	&& git clone --depth 1 --branch main https://github.com/alpha-unito/xffl.git \
+	&& cd xffl \
+	&& python3 -m pip install --no-cache-dir --upgrade pip \
+	&& python3 -m pip install --no-cache-dir .
+	#&& python3 -m pip install --no-cache-dir flash-attn --no-build-isolation # Not supported on ROCm
+
+	# Cleanup
+	cd / \
+	&& rm -rf /{{ XFFL_FOLDER }}
 
 %labels
     Author gianluca.mittone@unito.it

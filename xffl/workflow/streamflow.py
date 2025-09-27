@@ -32,7 +32,7 @@ async def run_streamflow(args: argparse.Namespace) -> None:
     # Mapping between xFFL and StreamFlow CLI arguments
     args.name = args.project
     args.outdir = args.outdir or os.path.join(args.workdir, args.project)
-    streamflow_file = os.path.join(args.workdir, args.project, "streamflow.yml")
+    streamflow_file = str(os.path.join(args.workdir, args.project, "streamflow.yml"))
 
     # Logger
     set_external_loggers()
