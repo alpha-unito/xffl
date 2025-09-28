@@ -8,7 +8,7 @@ import argparse
 import logging
 import os
 
-from xffl.custom.types import FolderLike, PathLike
+from xffl.custom.types import PathLike
 
 # Base parser
 parser = argparse.ArgumentParser(
