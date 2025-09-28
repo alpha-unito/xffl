@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-### Argument parser
+# Argument parser
 parser = argparse.ArgumentParser(
     prog="Cross-Facility Federated Learning (xFFL) - ResNet example",
     description="This xFFL example trains a ResNet model on multiple HPC compute nodes.",

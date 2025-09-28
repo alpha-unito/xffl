@@ -1,7 +1,7 @@
 """Aggregation strategies for local xFFL"""
 
 from logging import Logger, getLogger
-from typing import ContextManager, Dict, List, Optional, Tuple
+from typing import ContextManager, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
@@ -686,7 +686,6 @@ def benchmark_aggregation(
     """
     import csv
     import itertools
-    import json
     import os
     import time
 
@@ -737,7 +736,7 @@ def benchmark_aggregation(
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()  # Fundamental to avoid memory fragmentation (really reduces memory consumption here)
 
-                    ### Maximum theoretical throughput measurement ###
+                    # Maximum theoretical throughput measurement #
                     strategy: Strategy = aggregation_strategy_throughput(
                         model=model,
                         state=state,
@@ -758,7 +757,7 @@ def benchmark_aggregation(
                             torch.cuda.synchronize()
                     comm_time = (time.perf_counter() - start_time) / iterations
 
-                    ### Real aggregation time measurement ###
+                    # Real aggregation time measurement #
                     if torch.cuda.is_available():
                         torch.cuda.reset_peak_memory_stats()
                         torch.cuda.empty_cache()  # Fundamental to avoid memory fragmentation (really reduces memory consumption here)

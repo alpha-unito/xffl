@@ -42,74 +42,74 @@ data = pd.concat([dataframe for _, dataframe in data.items()])
 
 data_layer = data[
     (data["Aggregation Strategy"] == "layer_by_layer")
-    & (data["Multiple CUDA Streams"] == True)
-    & (data["Contiguous Memory"] == True)
+    & (data["Multiple CUDA Streams"] is True)
+    & (data["Contiguous Memory"] is True)
 ]
 
 data_bucket = data[
     (data["Aggregation Strategy"] == "bucket_flatten")
-    & (data["Multiple CUDA Streams"] == True)
-    & (data["Contiguous Memory"] == True)
+    & (data["Multiple CUDA Streams"] is True)
+    & (data["Contiguous Memory"] is True)
 ]
 
 data_coalesced = data[
     (data["Aggregation Strategy"] == "bucket_coalesced")
-    & (data["Multiple CUDA Streams"] == True)
-    & (data["Contiguous Memory"] == True)
+    & (data["Multiple CUDA Streams"] is True)
+    & (data["Contiguous Memory"] is True)
 ]
 
 data_layer_optimized = data[
     (data["Aggregation Strategy"] == "layer_by_layer_optimized")
-    & (data["Multiple CUDA Streams"] == True)
-    & (data["Contiguous Memory"] == True)
+    & (data["Multiple CUDA Streams"] is True)
+    & (data["Contiguous Memory"] is True)
 ]
 
 data_bucket_optimized = data[
     (data["Aggregation Strategy"] == "bucket_optimized_flatten")
-    & (data["Multiple CUDA Streams"] == True)
-    & (data["Contiguous Memory"] == True)
+    & (data["Multiple CUDA Streams"] is True)
+    & (data["Contiguous Memory"] is True)
 ]
 
 data_coalesced_optimized = data[
     (data["Aggregation Strategy"] == "bucket_optimized_coalesced")
-    & (data["Multiple CUDA Streams"] == True)
-    & (data["Contiguous Memory"] == True)
+    & (data["Multiple CUDA Streams"] is True)
+    & (data["Contiguous Memory"] is True)
 ]
 
 data_layer_ = data[
     (data["Aggregation Strategy"] == "layer_by_layer")
-    & (data["Multiple CUDA Streams"] == False)
-    & (data["Contiguous Memory"] == False)
+    & (data["Multiple CUDA Streams"] is False)
+    & (data["Contiguous Memory"] is False)
 ]
 
 data_bucket_ = data[
     (data["Aggregation Strategy"] == "bucket_flatten")
-    & (data["Multiple CUDA Streams"] == False)
-    & (data["Contiguous Memory"] == False)
+    & (data["Multiple CUDA Streams"] is False)
+    & (data["Contiguous Memory"] is False)
 ]
 
 data_coalesced_ = data[
     (data["Aggregation Strategy"] == "bucket_coalesced")
-    & (data["Multiple CUDA Streams"] == False)
-    & (data["Contiguous Memory"] == False)
+    & (data["Multiple CUDA Streams"] is False)
+    & (data["Contiguous Memory"] is False)
 ]
 
 data_layer_optimized_ = data[
     (data["Aggregation Strategy"] == "layer_by_layer_optimized")
-    & (data["Multiple CUDA Streams"] == False)
-    & (data["Contiguous Memory"] == False)
+    & (data["Multiple CUDA Streams"] is False)
+    & (data["Contiguous Memory"] is False)
 ]
 
 data_bucket_optimized_ = data[
     (data["Aggregation Strategy"] == "bucket_optimized_flatten")
-    & (data["Multiple CUDA Streams"] == False)
-    & (data["Contiguous Memory"] == False)
+    & (data["Multiple CUDA Streams"] is False)
+    & (data["Contiguous Memory"] is False)
 ]
 
 data_coalesced_optimized_ = data[
     (data["Aggregation Strategy"] == "bucket_optimized_coalesced")
-    & (data["Multiple CUDA Streams"] == False)
-    & (data["Contiguous Memory"] == False)
+    & (data["Multiple CUDA Streams"] is False)
+    & (data["Contiguous Memory"] is False)
 ]
 
 # -- Subplot ---

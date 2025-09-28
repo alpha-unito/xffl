@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-### Argument parser
+# Argument parser
 parser = argparse.ArgumentParser(
     prog="Cross-Facility Federated Learning (xFFL) - simple MLP example",
     description="This xFFL example trains an MLP on multiple HPC compute nodes.",

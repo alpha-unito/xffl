@@ -46,7 +46,7 @@ def main(args: argparse.Namespace) -> int:
         logger.exception(exception)
         raise exception
 
-    logger.info("\*** Cross-Facility Federated Learning (xFFL) - Project run ***")
+    logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
     return result
 
 

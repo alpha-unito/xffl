@@ -22,9 +22,6 @@ from xffl.utils.logging import setup_logging
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
-import torch.nn as nn
-import torch.nn.functional as F
-
 
 class Net(nn.Module):
     def __init__(self):
@@ -69,7 +66,7 @@ def training(args: argparse.Namespace) -> None:
         project="xFFL",
         group=args.wandb_name,
         name=f"client_{state.rank}",
-        notes=f"Simple MLP training on the MNIST",
+        notes="Simple MLP training on the MNIST",
         tags=["xFFL", "MLP", "MNIST"],
         mode=args.wandb_mode,  # Set to "disable" to execute without wandb
         config=vars(args),

@@ -4,6 +4,7 @@ This script wraps StreamFlow with a simple Python CLI, offering a homogeneous in
 """
 
 import argparse
+import os
 import subprocess
 import sys
 import time

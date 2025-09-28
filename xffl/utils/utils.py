@@ -1,7 +1,5 @@
 """Utility methods exploitable in many different situations"""
 
-"""Utility methods exploitable in many different situations"""
-
 import os
 from collections.abc import Callable
 from datetime import timedelta

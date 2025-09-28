@@ -18,7 +18,7 @@ import wandb
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
@@ -115,7 +115,7 @@ def pretraining(
 
     # TODO: make this an option
     if state.rank == 0:
-        logger.info(f"Re-initializing model's weights...")
+        logger.info("Re-initializing model's weights...")
     # model.apply(reset_weights)
 
     # Print model's weights

@@ -153,7 +153,7 @@ class DistributedState:
                     Streams={self.streams}
                 """
 
-    ### Methods ###
+    # Methods #
 
     def set_global(
         self,
@@ -347,7 +347,7 @@ class DistributedState:
             )
         else:
             logger.error(
-                f"Impossible setting up FSDP: the distributed environment is not initialized"
+                "Impossible setting up FSDP: the distributed environment is not initialized"
             )
 
         return mesh
@@ -387,7 +387,7 @@ class DistributedState:
             )
         else:
             logger.error(
-                f"Impossible setting up HSDP: the distributed environment is not initialized"
+                "Impossible setting up HSDP: the distributed environment is not initialized"
             )
 
     def set_hsdp(self, hsdp: int) -> None:
@@ -466,7 +466,7 @@ class DistributedState:
                 self.replica_world_size = replica_world_size
         else:
             logger.error(
-                f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
+                "Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
             )
 
     def is_hsdp_setup(self) -> bool:
@@ -733,7 +733,7 @@ class DistributedState:
             )
         else:
             logger.error(
-                f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
+                "Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
             )
 
     def _set_asymmetric_federated_scaling(
@@ -931,7 +931,7 @@ class DistributedState:
                     )
         else:
             logger.error(
-                f"Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
+                "Impossible setting up local distributed environment configuration: the distributed environment is not initialized"
             )
 
     def unset_federated_scaling(self) -> None:

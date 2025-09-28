@@ -39,9 +39,9 @@ for nodes in [1, 2, 4, 8, 16, 32, 64, 128]:
                 )
                 print(
                     f"{data[data['Aggregation Strategy'] == strategy][f'Average Time (s)'].mean():.2f}"
-                    + "{\\tiny$\pm$"
+                    # + "{\\tiny$\pm$"
                     + f"{data[data['Aggregation Strategy'] == strategy][f'Average Time (s)'].std():.2f}"
-                    + "}"
+                    # + "}"
                 )
                 print("\n")
 
@@ -78,9 +78,9 @@ for nodes in [1, 2, 4, 8, 16, 32, 64, 128]:
             )
             print(
                 f"{data[data['Aggregation Strategy'] == strategy][f'Average Time (s)'].mean():.2f}"
-                + "{\\tiny$\pm$"
+                # + "{\\tiny$\pm$"
                 + f"{data[data['Aggregation Strategy'] == strategy][f'Average Time (s)'].std():.2f}"
-                + "}"
+                # + "}"
             )
             print("\n")
 

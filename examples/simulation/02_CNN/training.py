@@ -8,7 +8,6 @@ from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import wandb
 from torch.optim import SGD
 from torch.utils.data import DataLoader, Dataset, Subset
@@ -21,9 +20,6 @@ from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
-
-import torch.nn as nn
-import torch.nn.functional as F
 
 
 def training(args: argparse.Namespace) -> None:
@@ -54,7 +50,7 @@ def training(args: argparse.Namespace) -> None:
         project="xFFL",
         group=args.wandb_name,
         name=f"client_{state.rank}",
-        notes=f"Simple MLP training on the MNIST",
+        notes="Simple MLP training on the MNIST",
         tags=["xFFL", "MLP", "MNIST"],
         mode=args.wandb_mode,  # Set to "disable" to execute without wandb
         config=vars(args),

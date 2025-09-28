@@ -128,7 +128,6 @@ def _all_reduce_and_broadcast(strategy: Strategy, state: DistributedState) -> No
     :param state: xFFL distributed state
     :type state: DistributedState
     """
-    index: int = 0
     for _, tensor, stream_context, stream_index in strategy.mapping:
         with stream_context:
             dist.all_reduce(
