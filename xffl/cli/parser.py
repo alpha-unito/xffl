@@ -200,22 +200,6 @@ simulate_parser.add_argument(
 )
 
 simulate_parser.add_argument(
-    "-m",
-    "--model",
-    help="Path to the model's folder",
-    type=FolderLike,
-    default=None,
-)
-
-simulate_parser.add_argument(
-    "-d",
-    "--dataset",
-    help="Path to the dataset's folder",
-    type=FolderLike,
-    default=None,
-)
-
-simulate_parser.add_argument(
     "-args",
     "--arguments",
     help="Command line arguments to be passed to the executable",

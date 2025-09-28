@@ -21,11 +21,11 @@ class Strategy:
 
     Each strategy is described as a mapping in which each element corresponds to a single communication
 
-    :param mapping: Mapping between original layers index, layer parameter, appropriate context manager for communcation, and CUDA stream index
+    :param mapping: Mapping between original layers index, layer parameter, appropriate context manager for communication, and CUDA stream index
     :type mapping: Tuple[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int], ...]
     :param reduce_op: All reduce operation
     :type reduce_op: dist.ReduceOp.RedOpType
-    :param use_contiguous_memory: Convert tensors to contiguous memroy before communication
+    :param use_contiguous_memory: Convert tensors to contiguous memory before communication
     :type use_contiguous_memory: bool
     :param src: Source rank for broadcast communications
     :type src: int

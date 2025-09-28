@@ -96,7 +96,7 @@ for strategy in [
     "bucket_coalesced",
     "bucket_optimized_coalesced",
 ]:
-    print(f"---------------- {strategy} - Maximum memoty occupancy --------------")
+    print(f"---------------- {strategy} - Maximum memory occupancy --------------")
     print(
         f"{data[data['Aggregation Strategy'] == strategy]['Max GPU RAM Allocated (GB)'].max():.2f}"
     )
