@@ -26,7 +26,7 @@ MODELS: Final[Mapping[str, ModelInfo]] = {
 
 DATASETS: Final[Mapping[str, DatasetInfo]] = {
     "clean_mc4_it": CleanMc4It(
-        path="/leonardo_scratch/fast/uToID_bench/xffl/datasets/clean_mc4_it"
+        path="/leonardo_scratch/fast/uToID_bench/xffl/data/clean_mc4_it"
     ),
 }
 """ Supported datasets dictionary """

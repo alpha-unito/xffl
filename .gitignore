@@ -140,7 +140,7 @@ dmypy.json
 *.out
 *.err
 logs
-datasets/*
+data/*
 models/*
 images/*
 *.csv
