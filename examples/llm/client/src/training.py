@@ -27,7 +27,6 @@ from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
-"""Default xFFL logger"""
 
 
 def pretraining(
