@@ -169,7 +169,7 @@ class MainWorkflow(Workflow):
         :rtype: cwl.Process
         """
 
-        loadingOptions = cwl.LoadingOptions(
+        loading_options = cwl.LoadingOptions(
             namespaces={"cwltool": "http://commonwl.org/cwltool#"}
         )
         return cwl.Workflow(
@@ -183,7 +183,7 @@ class MainWorkflow(Workflow):
                 cwl.WorkflowInputParameter(id="model_basename", type_="string"),
                 cwl.WorkflowInputParameter(id="max_rounds", type_="int"),
             ],
-            loadingOptions=loadingOptions,
+            loadingOptions=loading_options,
             outputs=[
                 cwl.WorkflowOutputParameter(
                     id="new_model",
@@ -227,7 +227,7 @@ class MainWorkflow(Workflow):
                     out=[cwl.WorkflowStepOutput(id="new_model")],
                     requirements=[
                         cwl.Loop(
-                            loadingOptions=loadingOptions,
+                            loadingOptions=loading_options,
                             loop=[
                                 cwl.LoopInput(id="model", loopSource="new_model"),
                                 cwl.LoopInput(

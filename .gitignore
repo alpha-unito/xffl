@@ -99,6 +99,7 @@ celerybeat-schedule
 # Environments
 .env
 .venv
+.venv_new
 env/
 venv/
 ENV/
@@ -139,5 +140,7 @@ dmypy.json
 *.out
 *.err
 logs
-datasets
-models
+data/*
+models/*
+images/*
+*.csv

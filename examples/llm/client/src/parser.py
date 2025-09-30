@@ -15,7 +15,7 @@ parser.add_argument(
     "--attention",
     help="Type of attention implementation to use",
     type=str,
-    default="flash_attention_2",
+    default="sdpa",
     choices=["sdpa", "eager", "flash_attention_2"],
 )
 
@@ -62,7 +62,7 @@ parser.add_argument(
     "--wandb-mode",
     help="WandB mode",
     type=str,
-    default="online",
+    default="disabled",
     choices=["online", "offline", "disabled"],
 )
 
@@ -144,4 +144,37 @@ parser.add_argument(
     help="Enable Hybrid Sharding Data Parallel (HSDP) with the specified replica group size",
     type=int,
     default=None,
+)
+
+parser.add_argument(
+    "-fs",
+    "--federated-scaling",
+    help="Enable Federated scaling with the specified federated group size(s)",
+    type=int,
+    nargs="+",
+    default=None,
+)
+
+parser.add_argument(
+    "-fb",
+    "--federated-batches",
+    help="Number of training batches to process between two federated averaging",
+    type=int,
+    default=1,
+)
+
+parser.add_argument(
+    "-b",
+    "--benchmark",
+    help="Benchmark the aggregation strategies",
+    type=int,
+    default=None,
+)
+
+parser.add_argument(
+    "-c",
+    "--cuda-streams",
+    help=" Number of CUDA streams to instantiate",
+    type=int,
+    default=4,
 )

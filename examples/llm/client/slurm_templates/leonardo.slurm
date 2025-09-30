@@ -1,29 +1,20 @@
-#!/bin/bash
+#!/bin/bash -ex
 
-#SBATCH --job-name=llama
-#SBATCH --error=llama.err
-#SBATCH --output=llama.out
-#SBATCH --nodes=1
-#SBATCH --ntasks=4					# Nodes x GPUs x 1 node
-#SBATCH --time=00:08:00
-#SBATCH --account=EUHPC_B18_066
+#SBATCH --job-name=FederatedScaling
+#SBATCH --output=FederatedScaling.out
+#SBATCH --error=FederatedScaling.err
+#SBATCH --nodes=2
+#SBATCH --time=00:15:00
+#SBATCH --account=uToID_bench
 #SBATCH --partition=boost_usr_prod
+#SBATCH --qos=boost_qos_dbg
 #SBATCH --ntasks-per-node=4			# GPUs x 1 node
 #SBATCH --cpus-per-task=8			# cores x 1 node / GPUs x 1 node
 #SBATCH --gpus-per-node=4
 #SBATCH --exclusive
-#SBATCH --qos=boost_qos_dbg
+#SBATCH --exclude=lrdn[0181-4974]
 
-# Parameters
-# export CODE_FOLDER=""
-# export MODEL_FOLDER=""
-# export DATASET_FOLDER=""
-# export IMAGE=""
-# export FACILITY="leonardo"
-
-# Load modules
-echo "Loading modules..."
-
-# Execute
-echo "Running xFFL on ${FACILITY} with srun..."
-srun bash -c "{{ streamflow_command }}" 2>&1
+cd /leonardo_scratch/fast/uToID_bench/xffl/ && \
+source .venv/bin/activate && \
+xffl -dbg simulate ./examples/llm/client/src/training.py -f leonardo -p "${SLURM_GPUS_PER_NODE}" -n $(scontrol show hostnames "${SLURM_JOB_NODELIST}" | tr -s \\n " ")  -v .venv \
+    -args -m llama3.1-8b -d clean_mc4_it --seed 42 --subsampling 128 -t 1 -dbg -fs 4 -b 5

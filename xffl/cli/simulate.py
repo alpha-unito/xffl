@@ -9,16 +9,18 @@ import subprocess
 import sys
 import time
 from logging import Logger, getLogger
+from types import SimpleNamespace
 from typing import Dict
 
 from xffl.cli.parser import simulate_parser
 from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
+from xffl.distributed.networking import get_cells_ids
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
+def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
     """Sets up the simulation environment variables
 
     :param args: CLI arguments
@@ -28,30 +30,37 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
     :rtype: Dict[str, str]
     """
     # Creating the environment mapping with the virtualization technology specified
+    base_env_mapping: Dict[str, str] = {
+        "XFFL_WORLD_SIZE": "world_size",
+        "XFFL_NUM_NODES": "num_nodes",
+        "MASTER_ADDR": "masteraddr",
+        "XFFL_FACILITY": "facility",
+    }
     if args.venv:
         logger.debug(f"Using virtual environment: {args.venv}")
-        env_mapping = {
-            "XFFL_WORLD_SIZE": "world_size",
-            "XFFL_NUM_NODES": "num_nodes",
-            "MASTER_ADDR": "masteraddr",
-            "XFFL_FACILITY": "facility",
-            #
-            "VENV": "venv",
-        }
-    elif args.image:  # TODO: tmpdir setting not working?
-        logger.debug(f"Using container image: {args.venv}")
-        env_mapping = {
-            "XFFL_WORLD_SIZE": "world_size",
-            "XFFL_NUM_NODES": "num_nodes",
-            "MASTER_ADDR": "masteraddr",
-            "XFFL_FACILITY": "facility",
-            #
-            "XFFL_IMAGE": "image",
+        env_mapping: Dict[str, str] = {
+            "XFFL_VENV": "venv",
+        } | base_env_mapping
+    elif args.image:
+        logger.debug(f"Using container image: {args.image}")
+        env_mapping: Dict[str, str] = {
+            "CODE_FOLDER": "workdir",
             "XFFL_MODEL_FOLDER": "model",
             "XFFL_DATASET_FOLDER": "dataset",
-        }
+            "XFFL_IMAGE": "image",
+        } | base_env_mapping
     else:
-        raise ValueError("No execution environment specified [container/virtual env]")
+        if sys.prefix != sys.base_prefix:  # Check if running in a virtual environment
+            # If the script is running in a virtual environment, and no other is specified, use it
+            args.venv = sys.prefix
+            logger.debug(f"Using current virtual environment: {args.venv}")
+            env_mapping: Dict[str, str] = {
+                "XFFL_VENV": "venv",
+            } | base_env_mapping
+        else:
+            raise ValueError(
+                "No execution environment specified [container/virtual env]"
+            )
 
     # Creating new environment variables based on the provided mapping
     env = setup_env(args=vars(args), mapping=env_mapping)
@@ -60,18 +69,10 @@ def setup_simulation_env(args: argparse.Namespace) -> Dict[str, str]:
         env["XFFL_CODE_FOLDER"] = os.path.dirname(args.executable)
         args.executable = os.path.basename(args.executable)
 
-    # New environment created - debug logging
+    # New environment created - return it as a string
     logger.debug(f"New local simulation xFFL environment variables: {env}")
 
-    # Returning the old environment updated
-    # xffl_env = os.environ.copy()
-    # xffl_env.update(env)
-
-    env_str = ""
-    for key in env:
-        env_str += f"{key}={env[key]} "
-
-    return env_str
+    return env
 
 
 def simulate(
@@ -79,8 +80,13 @@ def simulate(
 ) -> int:
     # Check the CLI arguments
     args = check_cli_arguments(args=args, parser=simulate_parser)
+    if args.nodelist == ["localhost"]:
+        import socket
+
+        args.nodelist = [socket.gethostname()]
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
+    args.world_size = args.num_nodes * args.processes_per_node
 
     # Environment creation
     try:
@@ -91,6 +97,24 @@ def simulate(
 
     # Simulation command creation
     facilitator_script = get_facilitator_path()
+
+    # Nodes cell IDs calculation for the FederatedScaling feature
+    if args.federated_scaling is not None:
+        if args.federated_scaling == "auto":
+            federated_local_size = get_cells_ids(nodes=args.nodelist, cell_size=180)
+            if federated_local_size:
+                env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = (
+                    str(federated_local_size)
+                    .replace("]", "")
+                    .replace("[", "")
+                    .replace(" ", "")
+                )
+        else:
+            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = args.federated_scaling
+
+    env_str = ""
+    for key in env:
+        env_str += f"{key}={env[key]} "
 
     # Launch facilitator
     logger.info("Running local simulation...")
@@ -106,7 +130,7 @@ def simulate(
                     "-oStrictHostKeyChecking=no",
                     node,
                     '"',
-                    env,
+                    env_str,
                     f"XFFL_NODEID={index}",
                     facilitator_script,
                     args.executable,
@@ -130,8 +154,8 @@ def simulate(
         for process in processes:
             return_code += process.wait()
 
-    except (OSError, ValueError) as err:
-        logger.exception(err)
+    except (OSError, ValueError) as exception:
+        logger.exception(exception)
         return 1
     else:
         logger.info(
@@ -152,11 +176,11 @@ def main(args: argparse.Namespace) -> int:
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
     try:
         simulate(args=args)
-    except Exception as err:
-        logger.exception(err)
-        raise err
-    finally:
-        logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
+    except Exception as exception:
+        logger.exception(exception)
+        raise exception
+
+    logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
     return 0
 
 

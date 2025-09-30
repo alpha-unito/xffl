@@ -8,7 +8,7 @@ import argparse
 import logging
 import os
 
-from xffl.custom.types import FolderLike, PathLike
+from xffl.custom.types import PathLike
 
 # Base parser
 parser = argparse.ArgumentParser(
@@ -142,16 +142,32 @@ simulate_parser.add_argument(
 # )
 
 simulate_parser.add_argument(
+    "-m",
+    "--model",
+    help="Model directory path",
+    type=PathLike,
+    default=os.getcwd(),
+)
+
+simulate_parser.add_argument(
+    "-d",
+    "--dataset",
+    help="Dataset directory path",
+    type=PathLike,
+    default=os.getcwd(),
+)
+
+simulate_parser.add_argument(
     "-f",
     "--facility",
     help="Facility's name",
     type=str,
-    default=None,
+    default="leonardo",
 )
 
-virtualisation_group = simulate_parser.add_mutually_exclusive_group()
+virtualization_group = simulate_parser.add_mutually_exclusive_group()
 
-virtualisation_group.add_argument(
+virtualization_group.add_argument(
     "-v",
     "--venv",
     help="Virtual environment to use for the experiment",
@@ -159,7 +175,7 @@ virtualisation_group.add_argument(
     default=None,
 )
 
-virtualisation_group.add_argument(
+virtualization_group.add_argument(
     "-i",
     "--image",
     help="Path to the Docker/Singularity/Apptainer image",
@@ -168,9 +184,9 @@ virtualisation_group.add_argument(
 )
 
 simulate_parser.add_argument(
-    "-ws",
-    "--world-size",
-    help="Number of process to spawn (max. number of available GPUs)",
+    "-p",
+    "--processes-per-node",
+    help="Number of GPUs available on each compute node",
     type=int,
     default=1,
 )
@@ -184,26 +200,18 @@ simulate_parser.add_argument(
 )
 
 simulate_parser.add_argument(
-    "-m",
-    "--model",
-    help="Path to the model's folder",
-    type=FolderLike,
-    default=None,
-)
-
-simulate_parser.add_argument(
-    "-d",
-    "--dataset",
-    help="Path to the dataset's folder",
-    type=FolderLike,
-    default=None,
-)
-
-simulate_parser.add_argument(
     "-args",
     "--arguments",
     help="Command line arguments to be passed to the executable",
     type=str,
     nargs="+",
     default=[],
+)
+
+simulate_parser.add_argument(
+    "-fs",
+    "--federated-scaling",
+    help="Enable Federated scaling with the specified federated group size",
+    type=str,
+    default=None,
 )

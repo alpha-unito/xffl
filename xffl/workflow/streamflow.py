@@ -43,7 +43,7 @@ async def run_streamflow(args: argparse.Namespace) -> None:
 
     # StreamFlow run
     load_extensions()  # Load 2FA extension
-    streamflow_config = SfValidator().validate_file(streamflow_file)
+    streamflow_config = SfValidator().validate_file(str(streamflow_file))
     streamflow_config["path"] = streamflow_file
     context = build_context(streamflow_config)
     try:

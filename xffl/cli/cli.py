@@ -1,18 +1,14 @@
 """Command line interface (CLI) for xFFL
 
 This is the main entrypoint of the xFFL CLI
-Here argument parsing takes place, also the various xFFL subcommands are interpreted
+Here argument parsing takes place and the various xFFL subcommands are interpreted
 """
 
 import sys
 from logging import Logger, getLogger
 from typing import List
 
-from xffl.cli.config import main as xffl_config
 from xffl.cli.parser import config_parser, parser, run_parser, simulate_parser
-from xffl.cli.run import main as xffl_run
-from xffl.cli.simulate import main as xffl_simulate
-from xffl.utils.constants import VERSION
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -52,18 +48,24 @@ def main(arguments: List[str]) -> int:
                 logger.info(f"\n{config_parser.format_help()}")
                 return 0
             else:
+                from xffl.cli.config import main as xffl_config
+
                 return xffl_config(args)
         elif args.command == "run":
             if args.help:
                 logger.info(f"\n{run_parser.format_help()}")
                 return 0
             else:
+                from xffl.cli.run import main as xffl_run
+
                 return xffl_run(args)
         elif args.command == "simulate":
             if args.help:
                 logger.info(f"\n{simulate_parser.format_help()}")
                 return 0
             else:
+                from xffl.cli.simulate import main as xffl_simulate
+
                 return xffl_simulate(args=args)
 
         # xFFL arguments handling
@@ -71,6 +73,8 @@ def main(arguments: List[str]) -> int:
             logger.info(f"\n{parser.format_help()}")
             return 0
         elif args.version:
+            from xffl.utils.constants import VERSION
+
             logger.info(f"xFFL version: {VERSION}")
             return 0
         else:

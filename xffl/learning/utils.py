@@ -6,7 +6,7 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List, Optional
+from typing import List
 
 import numpy
 import torch
@@ -16,7 +16,7 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     apply_activation_checkpointing,
     checkpoint_wrapper,
 )
-from transformers import PreTrainedModel
+from transformers import AutoModel, PreTrainedModel
 
 from xffl.custom.types import PathLike
 
@@ -24,7 +24,9 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def set_deterministic_execution(seed: int) -> torch.Generator:
+def set_deterministic_execution(
+    seed: int,
+) -> torch.Generator:  # TODO: Flash_attention is stochastic
     """Set all the necessary RNGs to obtain reproducible executions
 
     This method sets random, numpy, torch and CUDA RNGs with the same seed.
@@ -59,34 +61,7 @@ def set_nondeterministic_execution() -> None:
     torch.use_deterministic_algorithms(mode=False)
 
 
-def setup_devices(rank: Optional[int] = None, local_rank: Optional[int] = None) -> None:
-    """PyTorch GPU setup
-
-    Sets the GPU for the current process and empties its cache
-    If None defaults to "cuda"
-
-    :param rank: Global rank of the current process (local rank for multi-node trainings), defaults to None
-    :type rank: Optional[int], optional
-    :param local_rank: Logal ank of the current process (local rank for multi-node trainings), defaults to None
-    :type local_rank: Optional[int], optional
-    """
-    torch.cuda.set_device(local_rank if local_rank is not None else "cuda")
-    torch.cuda.empty_cache()
-
-    init_device: torch.DeviceObjType = torch.device(
-        "cpu"
-        if local_rank == 0
-        else "meta"  # TODO: in case of multi-node HSDP replica group, should this be local_group_rank==0?
-    )
-
-    logger.debug(
-        f"Rank {rank} assigned to local GPU {local_rank} and initialisation device set to {init_device}"
-    )
-
-    return torch.cuda.current_device(), init_device
-
-
-def get_model_size(model: nn.Module) -> int:
+def get_model_size(model: nn.Module | AutoModel) -> int:
     """Returns the model's trainable parameters number
 
     :param model: PyTorch model
@@ -95,6 +70,26 @@ def get_model_size(model: nn.Module) -> int:
     :rtype: int
     """
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def get_model_size_in_bits(model: nn.Module | AutoModel) -> int:
+    """Returns the model's trainable parameters size in bits
+
+    :param model: PyTorch model
+    :type model: nn.Module
+    :return: Size of trainable parameters in bits
+    :rtype: int
+    """
+    return sum(
+        p.numel()
+        * (
+            torch.finfo(p.data.dtype).bits
+            if p.data.is_floating_point()
+            else torch.iinfo(p.data.dtype).bits
+        )
+        for p in model.parameters()
+        if p.requires_grad
+    )
 
 
 def seed_dataloader_worker(worker_id: int) -> None:
@@ -113,7 +108,7 @@ def seed_dataloader_worker(worker_id: int) -> None:
 
 
 def set_activation_checkpointing(
-    model: nn.Module | PreTrainedModel, layer: Optional[nn.Module] = None
+    model: nn.Module | PreTrainedModel, layer: type = None
 ) -> None:
     """Sets up activation (gradient) checkpointing
 
@@ -126,7 +121,7 @@ def set_activation_checkpointing(
     """
     if isinstance(model, PreTrainedModel):
         # Specific for HuggingFace models
-        # model.enable_input_require_grads()  # TODO: Solo per finetuning?
+        # model.enable_input_require_grads()  # TODO: fine-tuning specific?
         try:
             model.gradient_checkpointing_enable()
         except ValueError as e:

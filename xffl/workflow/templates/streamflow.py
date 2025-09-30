@@ -151,8 +151,8 @@ class StreamFlowFile(YamlConfig):
         )
         self.content["deployments"] |= self.deployments["local"]
 
+    @staticmethod
     def create_binding(
-        self,
         name: str,
         values: MutableMapping[str, Any],
         location: Optional[str] = None,
@@ -162,11 +162,13 @@ class StreamFlowFile(YamlConfig):
 
         :param name: Name of the StreamFlow binding
         :type name: str
-        :param value: Value of the StreamFlow binding
-        :type value: FolderLike
+        :param values: Value of the StreamFlow binding
+        :type values: FolderLike
         :param location: Facility's name, defaults to None
-        :type facility: Optional[str], optional
-        :return: A well-formattted StreamFlow binding
+        :type location: Optional[str], optional
+        :param _type: Type of StreamFlow binding, defaults to "step"
+        :type _type: str
+        :return: A well-formatted StreamFlow binding
         :rtype: MutableMapping[str, Any]
         """
         return {

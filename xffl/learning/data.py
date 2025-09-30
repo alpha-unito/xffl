@@ -2,7 +2,7 @@
 
 import os
 from logging import Logger, getLogger
-from typing import Dict, Optional, Union
+from typing import Dict, Mapping
 
 from datasets import Dataset, DatasetDict, load_from_disk
 
@@ -13,16 +13,16 @@ logger: Logger = getLogger(__name__)
 
 
 def load_datasets_from_disk(
-    splits: Dict[str, PathLike], base_path: Optional[FolderLike] = ""
-) -> Dict[str, Union[Dataset, DatasetDict]]:
+    splits: Mapping[str, PathLike], base_path: FolderLike = ""
+) -> Dict[str, Dataset | DatasetDict]:
     """Load multiple datasets from disk
 
     Useful when train, test, and validation sets are different files/folders
 
     :param splits: Dictionary of "split_name": path_to_the_dataset_split
     :type splits: Dict[str, PathLike]
-    :param base_path: Base path
-    :type base_path: PathLike, optional
+    :param base_path: Base path for the dataset folder
+    :type base_path: FolderLike
     :return: Dictionary of "split_name": HuggingFace_dataset object
     :rtype: Dict[str, Union[Dataset, DatasetDict]]
     """

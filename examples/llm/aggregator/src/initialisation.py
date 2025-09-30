@@ -12,7 +12,7 @@ def get_weight_norms(model: nn.Module, verbose: bool = False) -> float:
 
     :param model: PyTorch model whose weight norms are to be printed
     :type model: nn.Module
-    :param verbose: Activate vebose output, defaults to False
+    :param verbose: Activate verbose output, defaults to False
     :type verbose: bool, optional
     :return: Total model's weights norm
     :rtype: float
@@ -113,8 +113,8 @@ if __name__ == "__main__":
             action="store_true",
             default=False,
         )
-        args = parser.parse_args()
-        main(args)
+        arguments: argparse.Namespace = parser.parse_args()
+        main(args=arguments)
     except KeyboardInterrupt:
         print("Interrupted!")
     pass

@@ -31,7 +31,7 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def config(args: argparse.Namespace) -> None:
+def config(args: argparse.Namespace) -> int:
     """Gathers from the user all the necessary parameters to generate a valid StreamFlow file for xFFL
 
     :param args: Command line arguments
@@ -51,8 +51,8 @@ def config(args: argparse.Namespace) -> None:
         workdir = check_and_create_workdir(
             workdir_path=args.workdir, project_name=args.project
         )
-    except (FileExistsError, FileNotFoundError) as err:
-        raise err
+    except (FileExistsError, FileNotFoundError) as exception:
+        raise exception
 
     # Guided StreamFlow configuration
     logger.debug("Creating the StreamFlow and CWL templates")
@@ -240,6 +240,25 @@ def config(args: argparse.Namespace) -> None:
             is_local_path=False,
         )
 
+        # Command line arguments extraction from user's parser arguments
+        logger.debug(
+            f"Dynamically loading ArgumentParser '{parser_name}' from file '{parser_path}'"
+        )
+        try:
+            executable_parser_module = import_from_path(
+                module_name=parser_name, file_path=parser_path
+            )
+            logger.info(
+                f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
+            )
+
+            arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
+                parser=executable_parser_module.parser,
+                arguments=args.arguments,
+            )
+        except Exception as exception:
+            raise exception
+
         # Creating CWL configuration
         logger.debug("CWL configuration population...")
         main_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
@@ -347,16 +366,17 @@ def main(args: argparse.Namespace) -> int:
     logger.info(
         "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
     )
+    result: int = 0
     try:
-        config(args=args)
-    except Exception as err:
-        logger.exception(err)
-        raise err
-    finally:
-        logger.info(
-            "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
-        )
-    return 0
+        result = config(args=args)
+    except Exception as exception:
+        logger.exception(exception)
+        raise exception
+
+    logger.info(
+        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+    )
+    return result
 
 
 if __name__ == "__main__":

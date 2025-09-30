@@ -1,4 +1,4 @@
-""" Mixtral modelling """
+"""Mixtral modelling"""
 
 import functools
 from dataclasses import dataclass
@@ -10,9 +10,11 @@ from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 
 from xffl.custom.types import FolderLike
 
+from .model_info import ModelInfo
+
 
 @dataclass
-class mixtral:
+class Mixtral(ModelInfo):
     """Mixtral essential information"""
 
     model_type: Type = MixtralForCausalLM

@@ -31,7 +31,7 @@ jobs:
         run: python -m pip install .
       - name: "Create an xffl project using the config option in the CLI."
         env:
-          CHECKSUM: "3e9e4dd59343b8e25a1eb78ace2b8df1b01c40f1ef0605dac20272064a870614"
+          CHECKSUM: "01b83a89c037e8ba9eb82ee3f0e5fb820ff1f0f2334c2b32aa6d4a6803e1c345"
         run: |
           cd tests/cli
           HASH="$(make checksum-config | tail -n 1)"
@@ -61,7 +61,7 @@ jobs:
             lint-requirements.txt
       - name: "Install Python Dependencies and xFFL"
         run: |
-          python -m pip install -r requirements.txt
+          python -m pip install .
           python -m pip install -r lint-requirements.txt
       - name: "Run xFFL static analysis"
         run: make format-check codespell-check flake8

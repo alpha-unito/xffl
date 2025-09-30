@@ -8,7 +8,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List
 
-import xffl
 from xffl.custom.types import FileLike, FolderLike, PathLike
 from xffl.utils.utils import get_param_name, resolve_path
 
@@ -22,6 +21,8 @@ def get_facilitator_path() -> FileLike:
     :return: Facilitator absolute file path
     :rtype: FileLike
     """
+    import xffl.workflow
+
     return os.path.join(
         os.path.dirname(inspect.getfile(xffl.workflow)), "scripts", "facilitator.sh"
     )
@@ -39,7 +40,8 @@ def check_default_value(
     :param parser: Parser from which the argument originated
     :type parser: argparse.ArgumentParser
     """
-    if argument_value == (default_value := parser.get_default(dest=argument_name)):
+    default_value = parser.get_default(dest=argument_name)
+    if argument_value == default_value:
         logger.warning(
             f'CLI argument "{argument_name}" has got default value "{default_value}"'
         )
@@ -55,8 +57,8 @@ def check_cli_arguments(
     :param parser: Command line argument parser
     :type parser: argparse.ArgumentParser
     """
-    for key, value in vars(args).items():
-        check_default_value(argument_name=key, argument_value=value, parser=parser)
+    # for key, value in vars(args).items():
+    #    check_default_value(argument_name=key, argument_value=value, parser=parser)
 
     namespace = vars(args)
     for action in parser._actions:
