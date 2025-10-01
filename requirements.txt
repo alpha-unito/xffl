@@ -2,7 +2,7 @@ accelerate>=0.26.0
 datasets
 numpy
 PyYAML==6.0.2
-streamflow==0.2.0.dev12
+streamflow==0.2.0.dev13
 torch>=2.2
 transformers
 tqdm
