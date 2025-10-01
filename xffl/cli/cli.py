@@ -1,98 +1,83 @@
-"""Command line interface (CLI) for xFFL
+"""Command line interface (CLI) for xFFL.
 
-This is the main entrypoint of the xFFL CLI
-Here argument parsing takes place and the various xFFL subcommands are interpreted
+This is the main entrypoint of the xFFL CLI.
+Argument parsing takes place here and the various xFFL subcommands are dispatched.
 """
 
+import argparse
 import sys
 from logging import Logger, getLogger
-from typing import List
+from typing import Callable, Dict, List
 
-from xffl.cli.parser import config_parser, parser, run_parser, simulate_parser
+from xffl.cli.parser import parser
 from xffl.utils.logging import setup_logging
 
-logger: Logger = getLogger(__name__)
+logger: Logger = getLogger("xFFL CLI")
 """Default xFFL logger"""
+
+# Mappa subcomandi → modulo main
+COMMANDS: Dict[str, str] = {
+    "config": "xffl.cli.config",
+    "run": "xffl.cli.run",
+    "exec": "xffl.cli.exec",
+}
+
+
+def dispatch_command(command: str, args: argparse.Namespace) -> int:
+    """Dispatch a subcommand safely, logging errors.
+
+    :param command: Subcommand name
+    :param args: Parsed argparse.Namespace
+    :return: Exit code
+    """
+    module_path = COMMANDS.get(command)
+    if not module_path:
+        parser.print_help()
+        return 1
+
+    try:
+        module: Callable = __import__(module_path, fromlist=["main"])
+        return module.main(args)
+    except Exception as e:
+        logger.exception("Unhandled exception in %s: %s", command, e)
+        return 1
 
 
 def main(arguments: List[str]) -> int:
-    """xFFL command line interface (CLI)
+    """xFFL command line interface.
 
     :param arguments: Command line arguments
-    :type arguments: argparse.Namespace
     :return: Exit code
-    :rtype: int
     """
 
-    # Logging facilities setup
-    setup_logging()
-
-    # Check if there are arguments to be passed to the `executable` script
-    args_index = len(arguments)
+    # Split args vs passthrough args
+    args_index: int = len(arguments)
     if "-args" in arguments:
         args_index = arguments.index("-args")
     elif "--arguments" in arguments:
         args_index = arguments.index("--arguments")
 
-    try:
-        # Parse CLI arguments and isolate script arguments
-        args = parser.parse_args(arguments[:args_index])
-        args.arguments = arguments[args_index + 1 :]
+    args: argparse.Namespace = parser.parse_args(arguments[:args_index])
+    args.arguments = arguments[args_index + 1 :]
 
-        # Logging facilities setup
-        setup_logging(args.loglevel)
+    # Setup logging
+    setup_logging(args.loglevel)
 
-        # xFFL subcommands handling
-        if args.command == "config":
-            if args.help:
-                logger.info(f"\n{config_parser.format_help()}")
-                return 0
-            else:
-                from xffl.cli.config import main as xffl_config
+    # Handle version
+    if getattr(args, "version", False):
+        from xffl.utils.constants import VERSION
 
-                return xffl_config(args)
-        elif args.command == "run":
-            if args.help:
-                logger.info(f"\n{run_parser.format_help()}")
-                return 0
-            else:
-                from xffl.cli.run import main as xffl_run
+        logger.info("xFFL version: %s", VERSION)
+        return 0
 
-                return xffl_run(args)
-        elif args.command == "simulate":
-            if args.help:
-                logger.info(f"\n{simulate_parser.format_help()}")
-                return 0
-            else:
-                from xffl.cli.simulate import main as xffl_simulate
-
-                return xffl_simulate(args=args)
-
-        # xFFL arguments handling
-        if args.help:
-            logger.info(f"\n{parser.format_help()}")
-            return 0
-        elif args.version:
-            from xffl.utils.constants import VERSION
-
-            logger.info(f"xFFL version: {VERSION}")
-            return 0
-        else:
-            logger.critical(f"\n{parser.format_help()}")
-            return 1
-    except Exception as e:
-        logger.exception(e)
-        return 1
+    # Dispatch to subcommand
+    return dispatch_command(args.command, args)
 
 
-def run() -> int:
-    """Main CLI entrypoint
-
-    :return: Exit code
-    :rtype: int
-    """
-    return main(sys.argv[1:])
+def run() -> None:
+    """Main CLI entrypoint"""
+    sys.exit(main(sys.argv[1:]))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    run()

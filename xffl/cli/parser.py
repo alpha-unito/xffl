@@ -14,11 +14,6 @@ from xffl.custom.types import PathLike
 parser = argparse.ArgumentParser(
     prog="xffl",
     description="Cross-Facility Federated Learning (xFFL) is a federated learning (FL) framework based on the StreamFlow workflow management system (WMS) developed in the Parallel Computing [Alpha] research group at the University of Turin, Italy.",
-    add_help=False,
-)
-
-parser.add_argument(
-    "-h", "--help", help="Show this help message and exit", action="store_true"
 )
 
 parser.add_argument("-v", "--version", help="Display xFFL version", action="store_true")
@@ -41,12 +36,12 @@ config_parser = subparsers.add_parser(
     name="config",
     description="Guided xFFL experiment configuration",
     help="Guided xFFL experiment configuration",
-    add_help=False,
+    add_help=True,
 )
 
-config_parser.add_argument(
-    "-h", "--help", help="Show this help message and exit", action="store_true"
-)
+# config_parser.add_argument(
+#     "-h", "--help", help="Show this help message and exit", action="store_true"
+# )
 
 config_parser.add_argument(
     "-p", "--project", help="Project name", type=str, default="project"
@@ -65,12 +60,12 @@ run_parser = subparsers.add_parser(
     name="run",
     description="Run an xFFL experiment",
     help="Run an xFFL experiment",
-    add_help=False,
+    add_help=True,
 )
 
-run_parser.add_argument(
-    "-h", "--help", help="Show this help message and exit", action="store_true"
-)
+# run_parser.add_argument(
+#     "-h", "--help", help="Show this help message and exit", action="store_true"
+# )
 
 run_parser.add_argument(
     "-w",
@@ -114,26 +109,26 @@ run_parser.add_argument(
 )
 
 
-# Subcommand: simulate
-simulate_parser = subparsers.add_parser(
-    name="simulate",
+# Subcommand: exec
+exec_parser = subparsers.add_parser(
+    name="exec",
     description="Run a script locally through xFFL",
     help="Run a script through xFFL",
-    add_help=False,
+    add_help=True,
 )
 
-simulate_parser.add_argument(
-    "-h", "--help", help="Show this help message and exit", action="store_true"
-)
+# exec_parser.add_argument(
+#     "-h", "--help", help="Show this help message and exit", action="store_true"
+# )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "executable",
     help="Name of the Python executable file",
     type=PathLike,
     default=None,
 )
 
-# simulate_parser.add_argument(
+# exec_parser.add_argument(
 #    "-w",
 #    "--workdir",
 #    help="Working directory path",
@@ -141,7 +136,7 @@ simulate_parser.add_argument(
 #    default=os.getcwd(),
 # )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "-m",
     "--model",
     help="Model directory path",
@@ -149,7 +144,7 @@ simulate_parser.add_argument(
     default=os.getcwd(),
 )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "-d",
     "--dataset",
     help="Dataset directory path",
@@ -157,7 +152,7 @@ simulate_parser.add_argument(
     default=os.getcwd(),
 )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "-f",
     "--facility",
     help="Facility's name",
@@ -165,7 +160,7 @@ simulate_parser.add_argument(
     default="leonardo",
 )
 
-virtualization_group = simulate_parser.add_mutually_exclusive_group()
+virtualization_group = exec_parser.add_mutually_exclusive_group()
 
 virtualization_group.add_argument(
     "-v",
@@ -183,7 +178,7 @@ virtualization_group.add_argument(
     default=None,
 )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "-p",
     "--processes-per-node",
     help="Number of GPUs available on each compute node",
@@ -191,7 +186,7 @@ simulate_parser.add_argument(
     default=1,
 )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "-n",
     "--nodelist",
     help="List of available computing nodes",
@@ -199,7 +194,7 @@ simulate_parser.add_argument(
     default=["localhost"],
 )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "-args",
     "--arguments",
     help="Command line arguments to be passed to the executable",
@@ -208,7 +203,7 @@ simulate_parser.add_argument(
     default=[],
 )
 
-simulate_parser.add_argument(
+exec_parser.add_argument(
     "-fs",
     "--federated-scaling",
     help="Enable Federated scaling with the specified federated group size",

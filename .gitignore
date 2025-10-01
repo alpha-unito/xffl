@@ -99,7 +99,7 @@ celerybeat-schedule
 # Environments
 .env
 .venv
-.venv_new
+.test
 env/
 venv/
 ENV/
