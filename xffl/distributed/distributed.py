@@ -223,12 +223,14 @@ def cleanup_distributed_process_group(
     """
     for obj in del_obj:
         del obj
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()
+
     if dist.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
         dist.destroy_process_group()
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
 
 
 def _get_current_device(
