@@ -20,12 +20,17 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
     :type subparser: argparse.ArgumentParser
     """
     subparser.add_argument(
-        "-p", "--project", help="Project name", type=str, default="project"
+        "-p",
+        "--project",
+        help="Name of the project or experiment. Default is 'project'.",
+        type=str,
+        default="project",
     )
     subparser.add_argument(
         "-w",
         "--workdir",
-        help="Working directory path",
+        help="Working directory where the experiment files are stored. "
+        "Defaults to the current working directory.",
         type=PathLike,
         default=os.getcwd(),
     )
@@ -40,7 +45,8 @@ def _add_arguments_option(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument(
         "-args",
         "--arguments",
-        help="Command line arguments to be passed to the executable",
+        help="Additional command line arguments to pass directly to the "
+        "executable script or experiment runner.",
         type=str,
         nargs="+",
         default=[],
@@ -57,20 +63,24 @@ def build_parser() -> argparse.ArgumentParser:
         prog="xffl",
         description=(
             "Cross-Facility Federated Learning (xFFL) is a federated learning (FL) "
-            "framework based on the StreamFlow workflow management system (WMS) "
-            "developed in the Parallel Computing [Alpha] research group at the "
+            "framework based on the StreamFlow workflow management system (WMS), "
+            "developed by the Parallel Computing [Alpha] research group at the "
             "University of Turin, Italy."
         ),
     )
 
     # Global options
     parser.add_argument(
-        "-v", "--version", help="Display xFFL version", action="store_true"
+        "-v",
+        "--version",
+        help="Display the current version of xFFL and exit.",
+        action="store_true",
     )
     parser.add_argument(
         "-dbg",
         "--debug",
-        help="Enable debugging statements",
+        help="Enable debug logging to show detailed messages for troubleshooting. "
+        "By default, logging is set to INFO level.",
         action="store_const",
         dest="loglevel",
         const=logging.DEBUG,
@@ -79,70 +89,93 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Subparsers
     subparsers = parser.add_subparsers(
-        dest="command", help="Available xFFL subcommands"
+        dest="command", help="Choose one of the available xFFL subcommands to execute."
     )
 
     # Subcommand: config
     config_parser = subparsers.add_parser(
         "config",
-        description="Guided xFFL experiment configuration",
-        help="Configure an experiment",
+        description="Interactively configure a new xFFL experiment.",
+        help="Create or edit a federated learning experiment configuration.",
     )
     _add_common_project_options(config_parser)
 
     # Subcommand: run
     run_parser = subparsers.add_parser(
-        "run", description="Run an xFFL experiment", help="Run an experiment"
+        "run",
+        description="Run a previously configured xFFL experiment.",
+        help="Execute an experiment using xFFL.",
     )
     _add_common_project_options(run_parser)
     _add_arguments_option(run_parser)
 
     run_parser.add_argument(
-        "-o", "--outdir", help="Output directory", type=str, default=None
+        "-o",
+        "--outdir",
+        help="Directory where experiment results will be stored. "
+        "If not specified, a default location within the working directory is used.",
+        type=str,
+        default=None,
     )
     run_parser.add_argument(
-        "--quiet", help="Only print results, warnings and errors", action="store_true"
+        "--quiet",
+        help="Suppress detailed logs and show only warnings, errors, and final results.",
+        action="store_true",
     )
     run_parser.add_argument(
-        "--validate", help="Validate StreamFlow documents", action="store_true"
+        "--validate",
+        help="Check the validity of StreamFlow workflow documents before running.",
+        action="store_true",
     )
 
     # Subcommand: exec
     exec_parser = subparsers.add_parser(
-        "exec", description="Run a script locally through xFFL", help="Execute a script"
+        "exec",
+        description="Execute a Python script or experiment locally through xFFL.",
+        help="Run a local script with xFFL execution framework.",
     )
     _add_arguments_option(exec_parser)
 
     exec_parser.add_argument(
-        "executable", help="Python executable file to run", type=PathLike
+        "executable",
+        help="Path to the Python script or executable to run.",
+        type=PathLike,
     )
     exec_parser.add_argument(
-        "-f", "--facility", help="Facility name", type=str, default="leonardo"
+        "-f",
+        "--facility",
+        help="Name of the computational facility to use. Default is 'leonardo'.",
+        type=str,
+        default="leonardo",
     )
     exec_parser.add_argument(
         "-n",
         "--nodelist",
-        help="List of available compute nodes",
+        help="List of compute nodes available for the execution. Default is ['localhost'].",
         nargs="+",
         default=["localhost"],
     )
     exec_parser.add_argument(
         "-fs",
         "--federated-scaling",
-        help="Enable Federated Scaling with the specified group size",
+        help="Enable federated scaling and specify the size of the federated group.",
         type=str,
         default=None,
     )
 
-    # Mutually exclusive group for virtualization
+    # Mutually exclusive group for virtualization options
     virtualization_group = exec_parser.add_mutually_exclusive_group()
     virtualization_group.add_argument(
-        "-v", "--venv", help="Virtual environment path", type=PathLike, default=None
+        "-v",
+        "--venv",
+        help="Use the specified Python virtual environment for the experiment.",
+        type=PathLike,
+        default=None,
     )
     virtualization_group.add_argument(
         "-i",
         "--image",
-        help="Docker/Singularity/Apptainer image path",
+        help="Use a Docker, Singularity, or Apptainer image for the execution.",
         type=PathLike,
         default=None,
     )
@@ -150,7 +183,7 @@ def build_parser() -> argparse.ArgumentParser:
     exec_parser.add_argument(
         "-p",
         "--processes-per-node",
-        help="Number of GPUs available per compute node",
+        help="Number of GPUs or processes available per compute node. Default is 1.",
         type=int,
         default=1,
     )
@@ -160,3 +193,4 @@ def build_parser() -> argparse.ArgumentParser:
 
 # Export the parser instance
 parser: argparse.ArgumentParser = build_parser()
+"""The main xFFL argument parser instance."""
