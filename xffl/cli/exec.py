@@ -1,16 +1,19 @@
-"""xFFL-handled experiment launching
+"""xFFL-handled experiment launching.
 
-This script wraps StreamFlow with a simple Python CLI, offering a homogeneous interface with xFFL
+This script wraps StreamFlow with a simple Python CLI,
+offering a homogeneous interface with xFFL.
 """
 
 import argparse
-import os
+import shlex
+import socket
 import subprocess
 import sys
 import time
 from logging import Logger, getLogger
+from pathlib import Path
 from types import SimpleNamespace
-from typing import Dict
+from typing import Dict, List
 
 from xffl.cli.parser import subparsers
 from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
@@ -20,130 +23,130 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def setup_simulation_env(args: SimpleNamespace) -> Dict[str, str]:
-    """Sets up the simulation environment variables
+# --------------------------------------------------------------------------- #
+#                             Environment Setup                               #
+# --------------------------------------------------------------------------- #
+
+
+def setup_execution_env(args: SimpleNamespace) -> Dict[str, str]:
+    """Setup the environment variables for the execution.
 
     :param args: CLI arguments
     :type args: argparse.Namespace
-    :raises ValueError: If not virtualization environment is provided # TODO: make possible to run bare-metal (useful for module)
-    :return: Updated environment
+    :raises ValueError: If no execution environment (venv or image) is provided
+    :return: Mapping of environment variables
     :rtype: Dict[str, str]
     """
-    # Creating the environment mapping with the virtualization technology specified
     base_env_mapping: Dict[str, str] = {
         "XFFL_WORLD_SIZE": "world_size",
         "XFFL_NUM_NODES": "num_nodes",
         "MASTER_ADDR": "masteraddr",
         "XFFL_FACILITY": "facility",
     }
+
     if args.venv:
-        logger.debug(f"Using virtual environment: {args.venv}")
-        env_mapping: Dict[str, str] = {
-            "XFFL_VENV": "venv",
-        } | base_env_mapping
+        logger.debug("Using virtual environment: %s", args.venv)
+        env_mapping = {"XFFL_VENV": "venv"} | base_env_mapping
     elif args.image:
-        logger.debug(f"Using container image: {args.image}")
-        env_mapping: Dict[str, str] = {
+        logger.debug("Using container image: %s", args.image)
+        env_mapping = {
             "CODE_FOLDER": "workdir",
             "XFFL_MODEL_FOLDER": "model",
             "XFFL_DATASET_FOLDER": "dataset",
             "XFFL_IMAGE": "image",
         } | base_env_mapping
+    elif sys.prefix != sys.base_prefix:
+        # Already in a venv, use it
+        args.venv = sys.prefix
+        logger.debug("Using current virtual environment: %s", args.venv)
+        env_mapping = {"XFFL_VENV": "venv"} | base_env_mapping
     else:
-        if sys.prefix != sys.base_prefix:  # Check if running in a virtual environment
-            # If the script is running in a virtual environment, and no other is specified, use it
-            args.venv = sys.prefix
-            logger.debug(f"Using current virtual environment: {args.venv}")
-            env_mapping: Dict[str, str] = {
-                "XFFL_VENV": "venv",
-            } | base_env_mapping
-        else:
-            raise ValueError(
-                "No execution environment specified [container/virtual env]"
-            )
+        raise ValueError("No execution environment specified [container/virtual env]")
 
-    # Creating new environment variables based on the provided mapping
     env = setup_env(args=vars(args), mapping=env_mapping)
-    env["XFFL_SIMULATION"] = "true"
+    env["XFFL_EXECUTION"] = "true"
+
     if args.image:
-        env["XFFL_CODE_FOLDER"] = os.path.dirname(args.executable)
-        args.executable = os.path.basename(args.executable)
+        exe_path = Path(args.executable)
+        env["XFFL_CODE_FOLDER"] = str(exe_path.parent)
+        args.executable = exe_path.name
 
-    # New environment created - return it as a string
-    logger.debug(f"New local simulation xFFL environment variables: {env}")
-
+    logger.debug("New local execution xFFL environment variables: %s", env)
     return env
 
 
-def exec(
-    args: argparse.Namespace,
-) -> int:
-    # Check the CLI arguments
-    args = check_cli_arguments(args=args, parser=subparsers.choices["exec"])
-    if args.nodelist == ["localhost"]:
-        import socket
+# --------------------------------------------------------------------------- #
+#                             Main Execution                                  #
+# --------------------------------------------------------------------------- #
 
+
+def exec(args: argparse.Namespace) -> int:
+    """Execute the xFFL execution.
+
+    :param args: CLI arguments
+    :type args: argparse.Namespace
+    :return: Exit code (0 if success, 1 otherwise)
+    :rtype: int
+    """
+    args = check_cli_arguments(args=args, parser=subparsers.choices["exec"])
+
+    # Replace localhost with actual hostname
+    if args.nodelist == ["localhost"]:
         args.nodelist = [socket.gethostname()]
+
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
     args.world_size = args.num_nodes * args.processes_per_node
 
-    # Environment creation
     try:
-        env = setup_simulation_env(args=args)
+        env = setup_execution_env(args=args)
     except ValueError as err:
-        raise err
-    logger.debug(f"Updated xFFL environment: {env}")
+        logger.error("Failed to setup execution environment: %s", err)
+        raise
 
-    # Simulation command creation
     facilitator_script = get_facilitator_path()
 
-    # Nodes cell IDs calculation for the FederatedScaling feature
+    # Federated scaling
     if args.federated_scaling is not None:
         if args.federated_scaling == "auto":
             federated_local_size = get_cells_ids(nodes=args.nodelist, cell_size=180)
             if federated_local_size:
-                env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = (
-                    str(federated_local_size)
-                    .replace("]", "")
-                    .replace("[", "")
-                    .replace(" ", "")
-                )
+                env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = str(
+                    federated_local_size
+                ).translate(str.maketrans("", "", "[] "))
         else:
-            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = args.federated_scaling
+            env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = str(args.federated_scaling)
 
-    env_str = ""
-    for key in env:
-        env_str += f"{key}={env[key]} "
+    # Environment string (safer join)
+    env_str = " ".join(f"{k}={shlex.quote(v)}" for k, v in env.items())
 
-    # Launch facilitator
-    logger.info("Running local simulation...")
+    logger.info("Running local execution...")
     start_time = time.perf_counter()
-    try:
-        processes = []
-        return_code = 0
 
+    processes: List[subprocess.Popen] = []
+    return_code = 0
+
+    try:
         for index, node in enumerate(args.nodelist):
-            command = (
-                [
-                    "ssh",
-                    "-oStrictHostKeyChecking=no",
-                    node,
-                    '"',
-                    env_str,
-                    f"XFFL_NODEID={index}",
-                    facilitator_script,
-                    args.executable,
-                ]
-                + [arg for arg in args.arguments]
-                + ['"']
-            )
-            command_str = " ".join(command)
-            logger.debug(f"Simulation command on {node}: {command_str}")
+            ssh_command = [
+                "ssh",
+                "-oStrictHostKeyChecking=no",
+                node,
+                shlex.join(
+                    [
+                        env_str,
+                        f"XFFL_NODEID={index}",
+                        facilitator_script,
+                        args.executable,
+                    ]
+                    + list(map(str, args.arguments))
+                ),
+            ]
+            logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))
 
             processes.append(
                 subprocess.Popen(
-                    command_str,
+                    " ".join(ssh_command),
                     stdout=sys.stdout,
                     stderr=sys.stderr,
                     shell=True,
@@ -154,33 +157,34 @@ def exec(
         for process in processes:
             return_code += process.wait()
 
-    except (OSError, ValueError) as exception:
-        logger.exception(exception)
+    except (OSError, ValueError) as exc:
+        logger.exception("xFFL execution failed: %s", exc)
         return 1
     else:
-        logger.info(
-            f"Total simulation execution time: {(time.perf_counter() - start_time):.2f} seconds"
-        )
+        elapsed = time.perf_counter() - start_time
+        logger.debug("Total execution time: %.2f seconds", elapsed)
 
     return 0 if return_code == 0 else 1
 
 
 def main(args: argparse.Namespace) -> int:
-    """Local script run through xFFL
+    """Entrypoint for xFFL execution.
 
-    :param args: Command line arguments
+    :param args: CLI arguments
     :type args: argparse.Namespace
     :return: Exit code
     :rtype: int
     """
-    logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
+    logger.info("*** Cross-Facility Federated Learning (xFFL) - Execution starting ***")
     try:
         return exec(args=args)
-    except Exception as exception:
-        logger.exception(exception)
-        raise exception
+    except Exception as exc:
+        logger.exception("Configuration failed: %s", exc)
+        raise
     finally:
-        logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
+        logger.info(
+            "*** Cross-Facility Federated Learning (xFFL) - Execution finished ***"
+        )
 
 
 if __name__ == "__main__":

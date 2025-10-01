@@ -35,7 +35,7 @@ if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then
 fi
 
 # Local simulation
-if [ "${XFFL_SIMULATION}" = "true" ] ; then
+if [ "${XFFL_EXECUTION}" = "true" ] ; then
 	pids=()
 
 	if [ -n "${XFFL_VENV}" ] ; then
