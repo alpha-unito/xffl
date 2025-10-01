@@ -148,4 +148,4 @@ def check_and_create_workdir(
             f"The provided working directory path {workdir} does not exists"
         )
 
-    return workdir
+    return Path(workdir)
