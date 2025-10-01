@@ -9,6 +9,7 @@ Advanced features are provided by subcommands and their specific options.
 import argparse
 import logging
 import os
+from typing import Tuple
 
 from xffl.custom.types import PathLike
 
@@ -53,7 +54,7 @@ def _add_arguments_option(subparser: argparse.ArgumentParser) -> None:
     )
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     """Build the main xFFL argument parser.
 
     :return: Configured argparse parser
@@ -188,9 +189,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
     )
 
-    return parser
+    return parser, subparsers
 
 
 # Export the parser instance
-parser: argparse.ArgumentParser = build_parser()
+parser, subparsers = build_parser()
 """The main xFFL argument parser instance."""

@@ -12,7 +12,7 @@ from logging import Logger, getLogger
 from types import SimpleNamespace
 from typing import Dict
 
-from xffl.cli.parser import exec_parser
+from xffl.cli.parser import subparsers
 from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
 from xffl.distributed.networking import get_cells_ids
 
@@ -79,7 +79,7 @@ def exec(
     args: argparse.Namespace,
 ) -> int:
     # Check the CLI arguments
-    args = check_cli_arguments(args=args, parser=exec_parser)
+    args = check_cli_arguments(args=args, parser=subparsers.choices["exec"])
     if args.nodelist == ["localhost"]:
         import socket
 
@@ -175,17 +175,13 @@ def main(args: argparse.Namespace) -> int:
     """
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
     try:
-        exec(args=args)
+        return exec(args=args)
     except Exception as exception:
         logger.exception(exception)
         raise exception
-
-    logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
-    return 0
+    finally:
+        logger.info("*** Cross-Facility Federated Learning (xFFL) - Simulation ***")
 
 
 if __name__ == "__main__":
-    try:
-        main(exec_parser.parse_args())
-    except KeyboardInterrupt as e:
-        logger.exception(e)
+    main(subparsers.choices["exec"].parse_args())

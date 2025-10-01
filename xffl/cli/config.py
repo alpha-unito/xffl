@@ -13,7 +13,7 @@ from logging import Logger, getLogger
 
 import yaml
 
-from xffl.cli.parser import config_parser
+from xffl.cli.parser import subparsers
 from xffl.cli.utils import check_and_create_workdir, check_cli_arguments
 from xffl.utils.constants import DEFAULT_xFFL_DIR
 from xffl.utils.utils import check_input, resolve_path
@@ -41,7 +41,7 @@ def config(args: argparse.Namespace) -> int:
     """
 
     # Check the CLI arguments
-    check_cli_arguments(args=args, parser=config_parser)
+    check_cli_arguments(args=args, parser=subparsers.choices["config"])
 
     # Project folder and path checks
     logger.debug(
@@ -366,21 +366,16 @@ def main(args: argparse.Namespace) -> int:
     logger.info(
         "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
     )
-    result: int = 0
     try:
-        result = config(args=args)
+        return config(args=args)
     except Exception as exception:
         logger.exception(exception)
         raise exception
-
-    logger.info(
-        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
-    )
-    return result
+    finally:
+        logger.info(
+            "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+        )
 
 
 if __name__ == "__main__":
-    try:
-        main(args=config_parser.parse_args())
-    except KeyboardInterrupt as e:
-        logger.exception(e)
+    main(args=subparsers.choices["config"].parse_args())

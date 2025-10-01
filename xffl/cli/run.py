@@ -7,7 +7,7 @@ import argparse
 import asyncio
 from logging import Logger, getLogger
 
-from xffl.cli.parser import run_parser
+from xffl.cli.parser import subparsers
 from xffl.cli.utils import check_cli_arguments
 
 logger: Logger = getLogger(__name__)
@@ -21,7 +21,7 @@ def run(args: argparse.Namespace) -> int:
     :type args: argparse.Namespace
     """
     # Check the CLI arguments
-    check_cli_arguments(args=args, parser=run_parser)
+    check_cli_arguments(args=args, parser=subparsers.choices["run"])
 
     # import here for performance concerns
     from xffl.workflow.streamflow import run_streamflow
@@ -40,20 +40,15 @@ def main(args: argparse.Namespace) -> int:
     :rtype: int
     """
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
-    result: int = 0
     try:
-        result = run(args=args)
+        return run(args=args)
     except Exception as exception:  # TODO check which exception SF raises
         logger.exception(exception)
         raise exception
-
-    logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
-    return result
+    finally:
+        logger.info("*** Cross-Facility Federated Learning (xFFL) - Project run ***")
 
 
 if __name__ == "__main__":
 
-    try:
-        main(run_parser.parse_args())
-    except KeyboardInterrupt as e:
-        logger.exception(e)
+    main(subparsers.choices["run"].parse_args())

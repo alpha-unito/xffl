@@ -12,7 +12,7 @@ from typing import Callable, Dict, List
 from xffl.cli.parser import parser
 from xffl.utils.logging import setup_logging
 
-logger: Logger = getLogger("xFFL CLI")
+logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 # Mappa subcomandi → modulo main
