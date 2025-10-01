@@ -1,15 +1,27 @@
-"""Custom logging.Formatter for formatted and coloured logging."""
+"""Custom logging.Formatter for formatted and coloured logging with logger filtering."""
 
 import logging
 from logging import LogRecord
-from typing import Literal, Optional
+from typing import List, Literal, Optional
+
+
+class ExcludeLoggerFilter(logging.Filter):
+    """Filter to exclude logs from specified loggers."""
+
+    def __init__(self, exclude: Optional[List[str]] = None) -> None:
+        """
+        :param exclude: List of logger names or prefixes to exclude.
+        """
+        super().__init__()
+        self.exclude = set(exclude or [])
+
+    def filter(self, record: LogRecord) -> bool:
+        """Return True if the log should be emitted, False otherwise."""
+        return not any(record.name.startswith(name) for name in self.exclude)
 
 
 class CustomFormatter(logging.Formatter):
-    """Logging formatter with color support per log level.
-
-    Colors adapted from https://stackoverflow.com/a/56944256/3638629.
-    """
+    """Logging formatter with color support per log level."""
 
     # ANSI color codes
     GREY = "\x1b[38;20m"  # Info
@@ -20,7 +32,7 @@ class CustomFormatter(logging.Formatter):
     RESET = "\x1b[0m"
 
     DEFAULT_FORMAT = "%(asctime)s | %(name)16s | %(levelname)8s | %(message)s"
-    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"  # Less detailed: only hours:minutes:seconds
+    DATE_FORMAT = "%H:%M:%S"
 
     def __init__(
         self,
@@ -29,16 +41,13 @@ class CustomFormatter(logging.Formatter):
         style: Literal["%", "{", "$"] = "%",
         validate: bool = True,
     ) -> None:
-        """Initialize the CustomFormatter.
+        """
+        Initialize the CustomFormatter.
 
-        :param fmt: Format string for log messages. Defaults to a structured format.
-        :type fmt: Optional[str]
+        :param fmt: Format string for log messages.
         :param datefmt: Date format string.
-        :type datefmt: Optional[str]
         :param style: Style of the format string ("%", "{", or "$").
-        :type style: Literal["%", "{", "$"]
         :param validate: Whether to validate the format string.
-        :type validate: bool
         """
         super().__init__(
             fmt=fmt or self.DEFAULT_FORMAT,
@@ -46,10 +55,8 @@ class CustomFormatter(logging.Formatter):
             style=style,
             validate=validate,
         )
-
         self.fmt = fmt or self.DEFAULT_FORMAT
 
-        # Mapping log levels to colored formats
         self.FORMATS = {
             logging.DEBUG: self.BLUE + self.fmt + self.RESET,
             logging.INFO: self.GREY + self.fmt + self.RESET,
@@ -59,13 +66,7 @@ class CustomFormatter(logging.Formatter):
         }
 
     def format(self, record: LogRecord) -> str:
-        """Format the provided log record with level-specific color.
-
-        :param record: The log record to format.
-        :type record: LogRecord
-        :return: The formatted log message as a string.
-        :rtype: str
-        """
+        """Format the log record with level-specific color."""
         formatter = logging.Formatter(
             self.FORMATS.get(record.levelno, self.fmt), datefmt=self.DATE_FORMAT
         )

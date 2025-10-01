@@ -1,59 +1,52 @@
-"""Logging utilities"""
+"""Logging utilities for xFFL."""
 
 import logging
 import sys
 
-from xffl.custom.formatter import CustomFormatter
+from xffl.custom.formatter import CustomFormatter, ExcludeLoggerFilter
+
+# Logger names to exclude from formatting
+EXCLUDED_LOGGERS = ["asyncio", "git"]
 
 
-def setup_logging(log_level: int = logging.INFO):
-    """Logging infrastructure setup
+def setup_logging(log_level: int = logging.INFO) -> None:
+    """
+    Set up the global logging configuration and root xFFL logger.
 
-    Sets up the global basic logging configuration and the root xffl logger
+    This function configures a default StreamHandler with the CustomFormatter,
+    applies the ExcludeLoggerFilter to ignore unwanted loggers, and sets the
+    root logger level.
 
-    :param log_level: log level to be used [0-50], defaults to logging.INFO [20]
+    :param log_level: Logging level (0-50). Defaults to logging.INFO [20].
     :type log_level: int, optional
     """
-    logging.basicConfig(
-        level=log_level,
-        handlers=[get_default_handler(log_level=log_level)],
-        force=True,
-    )
+    # Clear existing handlers and configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
 
-    # set_external_loggers()
+    # Remove any pre-existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # Add default handler
+    root_logger.addHandler(get_default_handler(log_level=log_level))
 
 
 def get_default_handler(log_level: int = logging.INFO) -> logging.StreamHandler:
-    """Returns the xFFL default logging handler configuration
+    """
+    Create and return the default xFFL logging StreamHandler.
 
-    :param log_level: log level to be used [0-50], defaults to logging.INFO [20]
+    The handler uses CustomFormatter for colored output and an
+    ExcludeLoggerFilter to ignore unwanted loggers.
+
+    :param log_level: Logging level (0-50). Defaults to logging.INFO [20].
     :type log_level: int, optional
-    :return: xFFL default logging handler
+    :return: Configured StreamHandler for xFFL logging
     :rtype: logging.StreamHandler
     """
     handler = logging.StreamHandler(stream=sys.stdout)
-    handler.setLevel(level=log_level)
+    handler.setLevel(log_level)
     handler.setFormatter(CustomFormatter())
+    handler.addFilter(ExcludeLoggerFilter(exclude=EXCLUDED_LOGGERS))
+
     return handler
-
-
-def set_external_loggers():
-    """Empties the formatter list of the imported libraries loggers to obtain homogeneous output"""
-
-    if "transformers" in sys.modules:
-        import transformers
-
-        transformers.utils.logging._get_library_root_logger().handlers = []
-        transformers.utils.logging._get_library_root_logger().propagate = True
-
-    if "datasets" in sys.modules:
-        import datasets
-
-        datasets.utils.logging._get_library_root_logger().handlers = []
-        datasets.utils.logging._get_library_root_logger().propagate = True
-
-    for logger_name in logging.root.manager.loggerDict:
-        if not (logger_name.startswith("xffl") or logger_name.startswith("streamflow")):
-            curr_logger = logging.getLogger(logger_name)
-            curr_logger.handlers.clear()
-            curr_logger.propagate = False
