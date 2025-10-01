@@ -6,7 +6,6 @@ from .llama import Llama
 from .mixtral import Mixtral
 from .model_info import ModelInfo
 
-
 MODELS: Final[Mapping[str, ModelInfo]] = {
     "tiny-random-llama-3": Llama(
         path="/leonardo_scratch/fast/uToID_bench/xffl/models/tiny-random-llama-3"
