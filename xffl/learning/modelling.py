@@ -12,7 +12,7 @@ from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
 from transformers import AutoModel
 
-from xffl.custom import ModelInfo
+from xffl.custom.models import ModelInfo
 from xffl.custom.types import PathLike
 from xffl.distributed.distributed import (
     DistributedState,

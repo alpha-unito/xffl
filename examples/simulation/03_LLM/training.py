@@ -23,7 +23,9 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
-from xffl.custom import DATASETS, MODELS, DatasetInfo, ModelInfo
+from xffl.custom.datasets import DATASETS, DatasetInfo
+from xffl.custom.models import MODELS, ModelInfo
+
 from xffl.distributed import distributed
 from xffl.learning import data, modelling, processing, utils
 from xffl.utils.logging import setup_logging

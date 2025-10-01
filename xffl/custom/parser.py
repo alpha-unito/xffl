@@ -5,7 +5,8 @@ The custom xFFL argument parser is essentially a Python standard ArgumentParser,
 
 import argparse
 
-from xffl.custom import DATASETS, MODELS
+from xffl.custom.datasets import DATASETS
+from xffl.custom.models import MODELS
 from xffl.custom.types import FolderLike
 
 

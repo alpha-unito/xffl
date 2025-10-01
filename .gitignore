@@ -144,3 +144,4 @@ data/*
 models/*
 images/*
 *.csv
+*.pstats
