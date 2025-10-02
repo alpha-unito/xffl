@@ -31,7 +31,7 @@ jobs:
         run: python -m pip install .
       - name: "Create an xffl project using the config option in the CLI."
         env:
-          CHECKSUM: "01b83a89c037e8ba9eb82ee3f0e5fb820ff1f0f2334c2b32aa6d4a6803e1c345"
+          CHECKSUM: "2962309eecc0505d112d1eeb4bbdbe4d06e91f136f72a187a520dd68a5c11f03"
         run: |
           cd tests/cli
           HASH="$(make checksum-config | tail -n 1)"
