@@ -1,58 +1,58 @@
-"""Custom types for better type hints"""
+"""Custom types for better type hints in xFFL."""
 
-import os
-from os import PathLike as _PathLike
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, NewType
 
 from xffl.utils.utils import resolve_path
 
-PathLike: TypeVar = TypeVar("PathLike", str, Path, _PathLike)
-"""Path-like objects"""
+# --- Type aliases ---
+PathLike = NewType("PathLike", Path)
+"""Path-like object (file or folder)."""
+
+FolderLike = NewType("FolderLike", Path)
+"""Path to a folder."""
+
+FileLike = NewType("FileLike", Path)
+"""Path to a file."""
 
 
-def PathLike(path: Any) -> PathLike:
-    """PathLike objects constructor
+# --- Constructors ---
+def as_pathlike(path: Any) -> PathLike:
+    """Convert input into a resolved PathLike.
 
-    :param path: A file system path
+    :param path: File system path (string, Path, etc.)
     :type path: Any
-    :return: Expanded and resolved file system path
+    :return: Resolved filesystem path
     :rtype: PathLike
     """
-    return resolve_path(path=path)
+    return PathLike(resolve_path(path=path))
 
 
-FolderLike: TypeVar = TypeVar("FolderLike", str, Path, _PathLike, PathLike)
-"""Path to folder objects"""
+def as_folderlike(path: Any) -> FolderLike:
+    """Convert input into a resolved FolderLike.
 
-
-def FolderLike(path: Any) -> FolderLike:
-    """Folder objects constructor
-
-    :param path: A file system path to a folder
+    :param path: Path to a folder
     :type path: Any
-    :return: Expanded and resolved file system folder path
-    :rtype: PathLike
+    :raises ValueError: If the path is not a valid directory
+    :return: Resolved folder path
+    :rtype: FolderLike
     """
-    if os.path.isdir(PathLike(path=path)):
-        return path
-    else:
-        raise ValueError
+    resolved = Path(resolve_path(path=path))
+    if resolved.is_dir():
+        return FolderLike(resolved)
+    raise ValueError(f"Invalid folder path: {path}")
 
 
-FileLike: TypeVar = TypeVar("FileLike", str, Path, _PathLike, PathLike)
-"""Path to file objects"""
+def as_filelike(path: Any) -> FileLike:
+    """Convert input into a resolved FileLike.
 
-
-def FileLike(path: Any) -> FileLike:
-    """File objects constructor
-
-    :param path: A file system path to a file
+    :param path: Path to a file
     :type path: Any
-    :return: Expanded and resolved file system file path
-    :rtype: PathLike
+    :raises ValueError: If the path is not a valid file
+    :return: Resolved file path
+    :rtype: FileLike
     """
-    if os.path.isfile(PathLike(path=path)):
-        return path
-    else:
-        raise ValueError
+    resolved = Path(resolve_path(path=path))
+    if resolved.is_file():
+        return FileLike(resolved)
+    raise ValueError(f"Invalid file path: {path}")

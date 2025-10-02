@@ -7,7 +7,14 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List
 
-from xffl.custom.types import FileLike, FolderLike, PathLike
+from xffl.custom.types import (
+    FileLike,
+    FolderLike,
+    PathLike,
+    as_filelike,
+    as_folderlike,
+    as_pathlike,
+)
 from xffl.utils.utils import check_input, get_param_name, resolve_path
 
 logger: Logger = getLogger(__name__)
@@ -73,7 +80,16 @@ def check_cli_arguments(
             )
 
             if namespace.get(target_name):
-                namespace[target_name] = str(Path(namespace[target_name]).resolve())
+                try:
+                    if action.type is FolderLike:
+                        namespace[target_name] = as_folderlike(namespace[target_name])
+                    elif action.type is FileLike:
+                        namespace[target_name] = as_filelike(namespace[target_name])
+                    elif action.type is PathLike:
+                        namespace[target_name] = as_pathlike(namespace[target_name])
+                except ValueError as err:
+                    logger.error(f"Error with argument {target_name}: {err}")
+                    raise err
 
     if "arguments" in namespace:
         namespace["arguments"] = expand_paths_in_args(namespace["arguments"])

@@ -276,7 +276,11 @@ def config(args: argparse.Namespace) -> int:
         (this mirrors the original behaviour you requested).
     """
     # Validate CLI usage
-    check_cli_arguments(args=args, parser=subparsers.choices["config"])
+    try:
+        check_cli_arguments(args=args, parser=subparsers.choices["config"])
+    except ValueError:
+        logger.error("Aborting configuration")
+        return 1
 
     # Prepare workdir
     try:
