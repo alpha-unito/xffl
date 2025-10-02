@@ -28,7 +28,7 @@ test-files:
 		head -c 64
 
 generate-project:
-	@cat config-example.txt | xffl config -p ${PROJECT} --arguments --model llama3.1-8b --dataset clean_mc4_it
+	@cat config-example.txt | xffl -dbg config -p ${PROJECT} --arguments --model llama3.1-8b --dataset clean_mc4_it
 
 setup: clean
 	@mkdir ${WORKDIR} ${TEMPDIR} ${MODEL_PATH}

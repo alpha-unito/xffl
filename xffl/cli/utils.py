@@ -1,8 +1,7 @@
-"""CLI utility methods"""
+"""CLI utility methods for xFFL."""
 
 import argparse
 import inspect
-import os
 from logging import Logger, getLogger
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,63 +15,66 @@ logger: Logger = getLogger(__name__)
 
 
 def get_facilitator_path() -> FileLike:
-    """Returns the facilitator absolute file path
+    """Return the absolute path of the facilitator script.
 
-    :return: Facilitator absolute file path
+    :return: Facilitator absolute file path.
     :rtype: FileLike
     """
     import xffl.workflow
 
-    return os.path.join(
-        os.path.dirname(inspect.getfile(xffl.workflow)), "scripts", "facilitator.sh"
-    )
+    workflow_dir = Path(inspect.getfile(xffl.workflow)).parent
+    return workflow_dir / "scripts" / "facilitator.sh"
 
 
 def check_default_value(
     argument_name: str, argument_value: Any, parser: argparse.ArgumentParser
 ) -> None:
-    """Checks if a cli argument value equals its default value
+    """Check if a CLI argument value equals its default.
 
-    :param argument_name: Variable name of the argument
+    :param argument_name: Variable name of the argument.
     :type argument_name: str
-    :param argument_value: Actual value of the argument
+    :param argument_value: Actual value of the argument.
     :type argument_value: Any
-    :param parser: Parser from which the argument originated
+    :param parser: Parser from which the argument originated.
     :type parser: argparse.ArgumentParser
     """
     default_value = parser.get_default(dest=argument_name)
     if argument_value == default_value:
-        logger.warning(
-            f'CLI argument "{argument_name}" has got default value "{default_value}"'
+        logger.debug(
+            f'CLI argument "{argument_name}" has default value "{default_value}"'
         )
 
 
 def check_cli_arguments(
     args: argparse.Namespace, parser: argparse.ArgumentParser
 ) -> SimpleNamespace:
-    """Checks which cli arguments have the default value and expands relative path into absolute ones
+    """Check CLI arguments and expand relative paths into absolute ones.
 
-    :param args: Command line arguments
+    :param args: Command line arguments.
     :type args: argparse.Namespace
-    :param parser: Command line argument parser
+    :param parser: Command line argument parser.
     :type parser: argparse.ArgumentParser
+    :return: Expanded namespace with absolute paths where applicable.
+    :rtype: SimpleNamespace
     """
-    # for key, value in vars(args).items():
-    #    check_default_value(argument_name=key, argument_value=value, parser=parser)
 
-    namespace = vars(args)
+    for key, value in vars(args).items():
+        check_default_value(argument_name=key, argument_value=value, parser=parser)
+
+    namespace = vars(args).copy()
+
     for action in parser._actions:
-        if action.type in [FolderLike, FileLike, PathLike]:
-            namespace_input = (
-                get_param_name(action.option_strings, parser.prefix_chars)
-                if input in namespace
-                else action.dest  # Arguments can be stored in a variable with a name different from their flag, namely dest
+        if action.type in (FolderLike, FileLike, PathLike):
+            param_name = get_param_name(action.option_strings, parser.prefix_chars)
+            target_name = (
+                param_name
+                if param_name in namespace
+                else action.dest  # fallback to dest if flags differ
             )
-            namespace[namespace_input] = (
-                os.path.abspath(namespace[namespace_input])
-                if namespace[namespace_input]
-                else None
-            )
+
+            if namespace.get(target_name):
+                namespace[target_name] = str(Path(namespace[target_name]).resolve())
+
     if "arguments" in namespace:
         namespace["arguments"] = expand_paths_in_args(namespace["arguments"])
 
@@ -80,73 +82,70 @@ def check_cli_arguments(
 
 
 def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
-    """Expands relative paths in absolute one when variable type is not available
+    """Expand relative paths in arguments to absolute paths.
 
-    :param args: List of command-line arguments
+    Used when the parser does not define a specific type.
+
+    :param args: List of command-line arguments.
     :type args: List[str]
-    :param prefix: Prefix symbol preceding a flag, defaults to "-"
+    :param prefix: Prefix symbol preceding a flag (default: "-").
     :type prefix: str, optional
-    :raises FileExistsError: If the file path does not exist
-    :raises FileNotFoundError: If the file path is not found
-    :return: List of command-line arguments with expanded paths
+    :return: List of command-line arguments with expanded paths.
     :rtype: List[str]
     """
-    for index, arg in enumerate(args):
-        if arg[0] != prefix:
-            if os.path.isfile(arg) or os.path.isdir(arg) or os.path.exists(arg):
-                if not os.path.isabs(arg):
-                    args[index] = os.path.abspath(arg)
+    expanded_args: List[str] = []
 
-    return args
+    for arg in args:
+        if not arg.startswith(prefix) and Path(arg).exists():
+            expanded_args.append(str(Path(arg).resolve()))
+        else:
+            expanded_args.append(arg)
+
+    return expanded_args
 
 
 def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
-    """Creates a mapping between the CLI arguments and new environmental variables
+    """Create a mapping between CLI arguments and environment variables.
 
-    :param args: CLI arguments
+    :param args: CLI arguments.
     :type args: Dict[str, Any]
-    :param mapping: Mapping between environmental variables and CLI arguments names
+    :param mapping: Mapping between environment variables and CLI argument names.
     :type mapping: Dict[str, str]
-    :return: New environment variables dictionary
+    :return: New environment variables dictionary.
     :rtype: Dict[str, str]
     """
-    env = {}
-    for env_var, parse_var in mapping.items():
-        env[env_var] = str(args[parse_var])
-
-    return env
+    return {env_var: str(args[parse_var]) for env_var, parse_var in mapping.items()}
 
 
 def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderLike:
-    """Checks the directory path, the folder name, and creates them accordingly
+    """Check the base directory and create a subfolder.
 
-    :param workdir_path: Directory path
-    :type workdir_path: FolderLike
-    :param project_name: Folder name
-    :type project_name: PathLike
-    :raises FileNotFoundError: Il the working directory path is not found
-    :return: Absolute path to the project folder
+    :param dir_path: Base directory path.
+    :type dir_path: FolderLike
+    :param folder_name: Name of the subfolder to create.
+    :type folder_name: PathLike
+    :raises FileNotFoundError: If the base directory path does not exist.
+    :raises FileExistsError: If the target directory already exists and overwrite is denied.
+    :return: Absolute path to the created (or existing) folder.
     :rtype: FolderLike
     """
-    # Directory path resolving
-    dir: FolderLike = resolve_path(path=dir_path)
+    base_dir: Path = Path(resolve_path(path=dir_path))
 
-    if Path(dir).exists():
-        dir: FolderLike = os.path.join(dir, folder_name)
+    if not base_dir.exists():
+        logger.error(f"The provided working directory path {base_dir} does not exist.")
+        raise FileNotFoundError(base_dir)
 
-        logger.debug(f"Attempting to create directory {dir}")
-        try:
-            os.makedirs(dir)
-        except FileExistsError as fee:
-            another = check_input(
-                f"Directory {dir} alredy existing. Overwrite it? [y/n]: ",
-                "Answer not accepted.",
-                lambda answer: answer.lower() in ["y", "yes", "n", "no"],
-            )
-            if another.lower() in ["n", "no"]:
-                raise fee
-    else:
-        logger.error(f"The provided working directory path {dir} does not exists")
-        raise FileNotFoundError()
+    target_dir: Path = base_dir / folder_name
+    logger.debug(f"Attempting to create directory {target_dir}")
 
-    return Path(dir)
+    try:
+        target_dir.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        answer = check_input(
+            f"Directory {target_dir} already exists. Overwrite it? [y/n]: ",
+            "Answer not accepted.",
+            lambda ans: ans.lower() in ("y", "yes", "n", "no"),
+        )
+        if answer.lower() in ("n", "no"):
+            raise
+    return target_dir.resolve()
