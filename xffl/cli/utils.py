@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, List
 
 from xffl.custom.types import FileLike, FolderLike, PathLike
-from xffl.utils.utils import get_param_name, resolve_path
+from xffl.utils.utils import check_input, get_param_name, resolve_path
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -117,35 +117,36 @@ def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
     return env
 
 
-def check_and_create_workdir(
-    workdir_path: FolderLike, project_name: PathLike
-) -> FolderLike:
-    """Checks the working directory path, the project name, and created the project folder accordingly
+def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderLike:
+    """Checks the directory path, the folder name, and creates them accordingly
 
-    :param workdir_path: Working directory path
+    :param workdir_path: Directory path
     :type workdir_path: FolderLike
-    :param project_name: Project name
+    :param project_name: Folder name
     :type project_name: PathLike
-    :raises FileExistsError: If the project folder already exists
     :raises FileNotFoundError: Il the working directory path is not found
     :return: Absolute path to the project folder
     :rtype: FolderLike
     """
-    # Working directory path resolving
-    workdir: FolderLike = resolve_path(path=workdir_path)
+    # Directory path resolving
+    dir: FolderLike = resolve_path(path=dir_path)
 
-    if Path(workdir).exists():
-        workdir: FolderLike = os.path.join(workdir, project_name)
+    if Path(dir).exists():
+        dir: FolderLike = os.path.join(dir, folder_name)
 
-        logger.debug(f"Attempting to create project directory {workdir}")
+        logger.debug(f"Attempting to create directory {dir}")
         try:
-            os.makedirs(workdir)
-        except FileExistsError as e:
-            raise FileExistsError(f"Project directory {workdir} already exists") from e
-
+            os.makedirs(dir)
+        except FileExistsError as fee:
+            another = check_input(
+                f"Directory {dir} alredy existing. Overwrite it? [y/n]: ",
+                "Answer not accepted.",
+                lambda answer: answer.lower() in ["y", "yes", "n", "no"],
+            )
+            if another.lower() in ["n", "no"]:
+                raise fee
     else:
-        raise FileNotFoundError(
-            f"The provided working directory path {workdir} does not exists"
-        )
+        logger.error(f"The provided working directory path {dir} does not exists")
+        raise FileNotFoundError()
 
-    return Path(workdir)
+    return Path(dir)

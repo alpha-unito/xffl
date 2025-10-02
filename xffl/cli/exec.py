@@ -178,9 +178,9 @@ def main(args: argparse.Namespace) -> int:
     logger.info("*** Cross-Facility Federated Learning (xFFL) - Execution starting ***")
     try:
         return exec(args=args)
-    except Exception as exc:
-        logger.exception("Configuration failed: %s", exc)
-        raise
+    except Exception as exception:
+        logger.exception("Execution failed: %s", exception)
+        raise exception
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Execution finished ***"

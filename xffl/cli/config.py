@@ -15,7 +15,7 @@ from typing import Tuple
 import yaml
 
 from xffl.cli.parser import subparsers
-from xffl.cli.utils import check_and_create_workdir, check_cli_arguments
+from xffl.cli.utils import check_and_create_dir, check_cli_arguments
 from xffl.utils.constants import DEFAULT_xFFL_DIR
 from xffl.utils.utils import check_input, resolve_path
 from xffl.workflow.templates.cwl import (
@@ -279,9 +279,13 @@ def config(args: argparse.Namespace) -> int:
     check_cli_arguments(args=args, parser=subparsers.choices["config"])
 
     # Prepare workdir
-    workdir = check_and_create_workdir(
-        workdir_path=args.workdir, project_name=args.project
-    )
+    try:
+        workdir = check_and_create_dir(dir_path=args.workdir, folder_name=args.project)
+    except FileExistsError:
+        logger.error("Aborting configuration")
+        return 0
+    except FileNotFoundError:
+        return 1
     logger.debug("Workdir set to %s", workdir)
 
     # Create templates
@@ -419,16 +423,16 @@ def config(args: argparse.Namespace) -> int:
 def main(args: argparse.Namespace) -> int:
     """xFFL project's guided configuration entrypoint."""
     logger.info(
-        "*** Cross-Facility Federated Learning (xFFL) - Guided configuration ***"
+        "*** Cross-Facility Federated Learning (xFFL) - Configuration starting ***"
     )
     try:
         return config(args=args)
     except Exception as exception:
         logger.exception("Configuration failed: %s", exception)
-        raise
+        raise exception
     finally:
         logger.info(
-            "*** Cross-Facility Federated Learning (xFFL) - Guided configuration finished ***"
+            "*** Cross-Facility Federated Learning (xFFL) - Configuration finished ***"
         )
 
 
