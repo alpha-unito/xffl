@@ -404,7 +404,7 @@ def config(args: argparse.Namespace) -> int:
         another = check_input(
             "Insert another facility? [y/n]: ",
             "Answer not accepted.",
-            lambda answer: answer.lower() in ["y", "yes", "n", "no"],
+            lambda reply: reply.lower() in ["y", "yes", "n", "no"],
         )
         if another.lower() in ["n", "no"]:
             break

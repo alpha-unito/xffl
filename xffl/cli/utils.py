@@ -160,7 +160,7 @@ def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderL
         answer = check_input(
             f"Directory {target_dir} already exists. Overwrite it? [y/n]: ",
             "Answer not accepted.",
-            lambda ans: ans.lower() in ("y", "yes", "n", "no"),
+            lambda reply: reply.lower() in ("y", "yes", "n", "no"),
         )
         if answer.lower() in ("n", "no"):
             raise
