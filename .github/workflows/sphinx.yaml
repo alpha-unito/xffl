@@ -8,6 +8,7 @@ jobs:
     permissions:
       contents: write
     steps:
+    
     - name: Checkout repo
       uses: actions/checkout@v4
       with:
@@ -31,6 +32,7 @@ jobs:
       with:
         name: html-docs
         path: docs/build/html/
+
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       if: github.ref == 'refs/heads/main'

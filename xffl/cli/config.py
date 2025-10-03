@@ -265,7 +265,9 @@ def config(args: argparse.Namespace) -> int:
 
     # Prepare workdir
     try:
-        workdir = check_and_create_dir(dir_path=args.workdir, folder_name=args.project)
+        workdir: FolderLike = check_and_create_dir(
+            dir_path=args.workdir, folder_name=args.project
+        )
     except FileExistsError:
         logger.error("Aborting configuration")
         return 0
@@ -336,7 +338,7 @@ def config(args: argparse.Namespace) -> int:
         local_workdir if local_workdir else Path.cwd().joinpath("tmp")
     )  # TODO: non è coerente con il commento sopra
     logger.debug("local_workdir: %s", local_workdir)
-    streamflow_config.add_root_step(local_workdir)
+    streamflow_config.add_root_step(str(local_workdir))
 
     # Number of iterations
     num_of_iterations: int = int(
