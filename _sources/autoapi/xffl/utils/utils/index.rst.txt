@@ -63,20 +63,17 @@ Module Contents
    :rtype: str
 
 
-.. py:function:: resolve_path(path: str, is_local_path: bool = True) -> str
+.. py:function:: resolve_path(path: str) -> pathlib.Path
 
    Check the path is well formatted, otherwise tries to fix it.
-   Moreover, the path is resolve to the absolute form if it is defined as a local path
 
    :param path: abbreviated path
    :type path: str
-   :param is_local_path:
-   :type is_local_path: bool
    :return: expanded path
    :rtype: str
 
 
-.. py:function:: check_input(text: str, warning_msg: str, control: collections.abc.Callable, is_path: bool = False, is_local_path=True) -> str
+.. py:function:: check_input(text: str, warning_msg: str, control: Optional[collections.abc.Callable] = lambda _: True, is_path: bool = False) -> str | pathlib.Path
 
    Receives and checks a user input based on the specified condition
 
@@ -88,8 +85,6 @@ Module Contents
    :param control: Control function to be checked on the inserted value
    :param control: Control function to be checked on the inserted value
    :type control: Callable
-   :param is_path: Flag signaling if the expected input is a path, defaults to False
-   :type is_path: bool, optional
    :param is_local_path: If the provided path is a local path, defaults to True
    :type is_local_path: bool
    :return: The value inserted from the user satisfying the condition

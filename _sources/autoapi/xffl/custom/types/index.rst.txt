@@ -9,8 +9,8 @@ xffl.custom.types
 
 
 
-Attributes
-----------
+Classes
+-------
 
 .. autoapisummary::
 
@@ -19,63 +19,48 @@ Attributes
    xffl.custom.types.FileLike
 
 
-Functions
----------
-
-.. autoapisummary::
-
-   xffl.custom.types.as_pathlike
-   xffl.custom.types.as_folderlike
-   xffl.custom.types.as_filelike
-
-
 Module Contents
 ---------------
 
-.. py:data:: PathLike
+.. py:class:: PathLike
+
+   Bases: :py:obj:`pathlib.Path`
+
 
    Path-like object (file or folder).
 
 
-.. py:data:: FolderLike
+   .. py:attribute:: _flavour
+
+
+   .. py:method:: __call__(path: Any) -> PathLike
+
+
+.. py:class:: FolderLike
+
+   Bases: :py:obj:`PathLike`
+
 
    Path to a folder.
 
 
-.. py:data:: FileLike
+   .. py:attribute:: _flavour
+
+
+   .. py:method:: __call__(path: Any) -> FolderLike
+
+
+.. py:class:: FileLike
+
+   Bases: :py:obj:`PathLike`
+
 
    Path to a file.
 
 
-.. py:function:: as_pathlike(path: Any) -> PathLike
-
-   Convert input into a resolved PathLike.
-
-   :param path: File system path (string, Path, etc.)
-   :type path: Any
-   :return: Resolved filesystem path
-   :rtype: PathLike
+   .. py:attribute:: _flavour
 
 
-.. py:function:: as_folderlike(path: Any) -> FolderLike
-
-   Convert input into a resolved FolderLike.
-
-   :param path: Path to a folder
-   :type path: Any
-   :raises ValueError: If the path is not a valid directory
-   :return: Resolved folder path
-   :rtype: FolderLike
-
-
-.. py:function:: as_filelike(path: Any) -> FileLike
-
-   Convert input into a resolved FileLike.
-
-   :param path: Path to a file
-   :type path: Any
-   :raises ValueError: If the path is not a valid file
-   :return: Resolved file path
-   :rtype: FileLike
+   .. py:method:: __call__(path: Any) -> FileLike
 
 

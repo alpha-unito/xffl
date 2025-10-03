@@ -299,8 +299,8 @@
           <section id="module-xffl.custom.types">
 <span id="xffl-custom-types"></span><h1>xffl.custom.types<a class="headerlink" href="#module-xffl.custom.types" title="Link to this heading">¶</a></h1>
 <p>Custom types for better type hints in xFFL.</p>
-<section id="attributes">
-<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading">¶</a></h2>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading">¶</a></h2>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -317,99 +317,57 @@
 </table>
 </div>
 </section>
-<section id="functions">
-<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading">¶</a></h2>
-<div class="table-wrapper autosummary longtable docutils container">
-<table class="autosummary longtable docutils align-default">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.custom.types.as_pathlike" title="xffl.custom.types.as_pathlike"><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_pathlike</span></code></a>(→ PathLike)</p></td>
-<td><p>Convert input into a resolved PathLike.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#xffl.custom.types.as_folderlike" title="xffl.custom.types.as_folderlike"><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_folderlike</span></code></a>(→ FolderLike)</p></td>
-<td><p>Convert input into a resolved FolderLike.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.custom.types.as_filelike" title="xffl.custom.types.as_filelike"><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_filelike</span></code></a>(→ FileLike)</p></td>
-<td><p>Convert input into a resolved FileLike.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</section>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
-<dl class="py data">
+<dl class="py class">
 <dt class="sig sig-object py" id="xffl.custom.types.PathLike">
-<span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">PathLike</span></span><a class="headerlink" href="#xffl.custom.types.PathLike" title="Link to this definition">¶</a></dt>
-<dd><p>Path-like object (file or folder).</p>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">PathLike</span></span><a class="headerlink" href="#xffl.custom.types.PathLike" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pathlib.Path</span></code></p>
+<p>Path-like object (file or folder).</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="xffl.custom.types.PathLike._flavour">
+<span class="sig-name descname"><span class="pre">_flavour</span></span><a class="headerlink" href="#xffl.custom.types.PathLike._flavour" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xffl.custom.types.PathLike.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#xffl.custom.types.PathLike" title="xffl.custom.types.PathLike"><span class="pre">PathLike</span></a></span></span><a class="headerlink" href="#xffl.custom.types.PathLike.__call__" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
-<dl class="py data">
+<dl class="py class">
 <dt class="sig sig-object py" id="xffl.custom.types.FolderLike">
-<span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">FolderLike</span></span><a class="headerlink" href="#xffl.custom.types.FolderLike" title="Link to this definition">¶</a></dt>
-<dd><p>Path to a folder.</p>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">FolderLike</span></span><a class="headerlink" href="#xffl.custom.types.FolderLike" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#xffl.custom.types.PathLike" title="xffl.custom.types.PathLike"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PathLike</span></code></a></p>
+<p>Path to a folder.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="xffl.custom.types.FolderLike._flavour">
+<span class="sig-name descname"><span class="pre">_flavour</span></span><a class="headerlink" href="#xffl.custom.types.FolderLike._flavour" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="xffl.custom.types.FolderLike.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#xffl.custom.types.FolderLike" title="xffl.custom.types.FolderLike"><span class="pre">FolderLike</span></a></span></span><a class="headerlink" href="#xffl.custom.types.FolderLike.__call__" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
-<dl class="py data">
+<dl class="py class">
 <dt class="sig sig-object py" id="xffl.custom.types.FileLike">
-<span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">FileLike</span></span><a class="headerlink" href="#xffl.custom.types.FileLike" title="Link to this definition">¶</a></dt>
-<dd><p>Path to a file.</p>
-</dd></dl>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">FileLike</span></span><a class="headerlink" href="#xffl.custom.types.FileLike" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#xffl.custom.types.PathLike" title="xffl.custom.types.PathLike"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PathLike</span></code></a></p>
+<p>Path to a file.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="xffl.custom.types.FileLike._flavour">
+<span class="sig-name descname"><span class="pre">_flavour</span></span><a class="headerlink" href="#xffl.custom.types.FileLike._flavour" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="xffl.custom.types.as_pathlike">
-<span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">as_pathlike</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">PathLike</span></span></span><a class="headerlink" href="#xffl.custom.types.as_pathlike" title="Link to this definition">¶</a></dt>
-<dd><p>Convert input into a resolved PathLike.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<em>Any</em>) – File system path (string, Path, etc.)</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Resolved filesystem path</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>PathLike</p>
-</dd>
-</dl>
-</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="xffl.custom.types.FileLike.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#xffl.custom.types.FileLike" title="xffl.custom.types.FileLike"><span class="pre">FileLike</span></a></span></span><a class="headerlink" href="#xffl.custom.types.FileLike.__call__" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="xffl.custom.types.as_folderlike">
-<span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">as_folderlike</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FolderLike</span></span></span><a class="headerlink" href="#xffl.custom.types.as_folderlike" title="Link to this definition">¶</a></dt>
-<dd><p>Convert input into a resolved FolderLike.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<em>Any</em>) – Path to a folder</p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>ValueError</strong> – If the path is not a valid directory</p>
-</dd>
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Resolved folder path</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>FolderLike</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="xffl.custom.types.as_filelike">
-<span class="sig-prename descclassname"><span class="pre">xffl.custom.types.</span></span><span class="sig-name descname"><span class="pre">as_filelike</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FileLike</span></span></span><a class="headerlink" href="#xffl.custom.types.as_filelike" title="Link to this definition">¶</a></dt>
-<dd><p>Convert input into a resolved FileLike.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<em>Any</em>) – Path to a file</p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>ValueError</strong> – If the path is not a valid file</p>
-</dd>
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Resolved file path</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>FileLike</p>
-</dd>
-</dl>
 </dd></dl>
 
 </section>
@@ -471,15 +429,23 @@
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">xffl.custom.types</a><ul>
-<li><a class="reference internal" href="#attributes">Attributes</a></li>
-<li><a class="reference internal" href="#functions">Functions</a></li>
+<li><a class="reference internal" href="#classes">Classes</a></li>
 <li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
-<li><a class="reference internal" href="#xffl.custom.types.PathLike"><code class="docutils literal notranslate"><span class="pre">PathLike</span></code></a></li>
-<li><a class="reference internal" href="#xffl.custom.types.FolderLike"><code class="docutils literal notranslate"><span class="pre">FolderLike</span></code></a></li>
-<li><a class="reference internal" href="#xffl.custom.types.FileLike"><code class="docutils literal notranslate"><span class="pre">FileLike</span></code></a></li>
-<li><a class="reference internal" href="#xffl.custom.types.as_pathlike"><code class="docutils literal notranslate"><span class="pre">as_pathlike()</span></code></a></li>
-<li><a class="reference internal" href="#xffl.custom.types.as_folderlike"><code class="docutils literal notranslate"><span class="pre">as_folderlike()</span></code></a></li>
-<li><a class="reference internal" href="#xffl.custom.types.as_filelike"><code class="docutils literal notranslate"><span class="pre">as_filelike()</span></code></a></li>
+<li><a class="reference internal" href="#xffl.custom.types.PathLike"><code class="docutils literal notranslate"><span class="pre">PathLike</span></code></a><ul>
+<li><a class="reference internal" href="#xffl.custom.types.PathLike._flavour"><code class="docutils literal notranslate"><span class="pre">PathLike._flavour</span></code></a></li>
+<li><a class="reference internal" href="#xffl.custom.types.PathLike.__call__"><code class="docutils literal notranslate"><span class="pre">PathLike.__call__()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xffl.custom.types.FolderLike"><code class="docutils literal notranslate"><span class="pre">FolderLike</span></code></a><ul>
+<li><a class="reference internal" href="#xffl.custom.types.FolderLike._flavour"><code class="docutils literal notranslate"><span class="pre">FolderLike._flavour</span></code></a></li>
+<li><a class="reference internal" href="#xffl.custom.types.FolderLike.__call__"><code class="docutils literal notranslate"><span class="pre">FolderLike.__call__()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#xffl.custom.types.FileLike"><code class="docutils literal notranslate"><span class="pre">FileLike</span></code></a><ul>
+<li><a class="reference internal" href="#xffl.custom.types.FileLike._flavour"><code class="docutils literal notranslate"><span class="pre">FileLike._flavour</span></code></a></li>
+<li><a class="reference internal" href="#xffl.custom.types.FileLike.__call__"><code class="docutils literal notranslate"><span class="pre">FileLike.__call__()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

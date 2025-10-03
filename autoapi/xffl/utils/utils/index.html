@@ -322,10 +322,10 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#xffl.utils.utils.get_param_name" title="xffl.utils.utils.get_param_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_param_name</span></code></a>(→ str)</p></td>
 <td><p>Returns the command line parameter full name given its flag list</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.utils.utils.resolve_path" title="xffl.utils.utils.resolve_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_path</span></code></a>(→ str)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.utils.utils.resolve_path" title="xffl.utils.utils.resolve_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_path</span></code></a>(→ pathlib.Path)</p></td>
 <td><p>Check the path is well formatted, otherwise tries to fix it.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#xffl.utils.utils.check_input" title="xffl.utils.utils.check_input"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_input</span></code></a>(→ str)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#xffl.utils.utils.check_input" title="xffl.utils.utils.check_input"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_input</span></code></a>(→ str | pathlib.Path)</p></td>
 <td><p>Receives and checks a user input based on the specified condition</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#xffl.utils.utils.get_timeout" title="xffl.utils.utils.get_timeout"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_timeout</span></code></a>(→ datetime.timedelta)</p></td>
@@ -388,15 +388,11 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xffl.utils.utils.resolve_path">
-<span class="sig-prename descclassname"><span class="pre">xffl.utils.utils.</span></span><span class="sig-name descname"><span class="pre">resolve_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_local_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#xffl.utils.utils.resolve_path" title="Link to this definition">¶</a></dt>
-<dd><p>Check the path is well formatted, otherwise tries to fix it.
-Moreover, the path is resolve to the absolute form if it is defined as a local path</p>
+<span class="sig-prename descclassname"><span class="pre">xffl.utils.utils.</span></span><span class="sig-name descname"><span class="pre">resolve_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">pathlib.Path</span></span></span><a class="headerlink" href="#xffl.utils.utils.resolve_path" title="Link to this definition">¶</a></dt>
+<dd><p>Check the path is well formatted, otherwise tries to fix it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>path</strong> (<em>str</em>) – abbreviated path</p></li>
-<li><p><strong>is_local_path</strong> (<em>bool</em>)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em>) – abbreviated path</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>expanded path</p>
@@ -409,7 +405,7 @@ Moreover, the path is resolve to the absolute form if it is defined as a local p
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xffl.utils.utils.check_input">
-<span class="sig-prename descclassname"><span class="pre">xffl.utils.utils.</span></span><span class="sig-name descname"><span class="pre">check_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warning_msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">control</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">collections.abc.Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_local_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#xffl.utils.utils.check_input" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">xffl.utils.utils.</span></span><span class="sig-name descname"><span class="pre">check_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warning_msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">control</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">collections.abc.Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">lambda</span> <span class="pre">_:</span> <span class="pre">...</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">pathlib.Path</span></span></span><a class="headerlink" href="#xffl.utils.utils.check_input" title="Link to this definition">¶</a></dt>
 <dd><p>Receives and checks a user input based on the specified condition</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -419,7 +415,6 @@ Moreover, the path is resolve to the absolute form if it is defined as a local p
 <li><p><strong>warning_msg</strong> – Error message in case the inserted value does not satisfy the control condition</p></li>
 <li><p><strong>control</strong> (<em>Callable</em>) – Control function to be checked on the inserted value</p></li>
 <li><p><strong>control</strong> – Control function to be checked on the inserted value</p></li>
-<li><p><strong>is_path</strong> (<em>bool</em><em>, </em><em>optional</em>) – Flag signaling if the expected input is a path, defaults to False</p></li>
 <li><p><strong>is_local_path</strong> (<em>bool</em>) – If the provided path is a local path, defaults to True</p></li>
 </ul>
 </dd>

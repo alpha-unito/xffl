@@ -437,12 +437,12 @@ It also forces PyTorch’s to use deterministic algorithms, reducing performance
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xffl.learning.utils.preload">
-<span class="sig-prename descclassname"><span class="pre">xffl.learning.utils.</span></span><span class="sig-name descname"><span class="pre">preload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">xffl.custom.types.PathLike</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#xffl.learning.utils.preload" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">xffl.learning.utils.</span></span><span class="sig-name descname"><span class="pre">preload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.PathLike" title="xffl.custom.types.PathLike"><span class="pre">xffl.custom.types.PathLike</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#xffl.learning.utils.preload" title="Link to this definition">¶</a></dt>
 <dd><p>Pre-loads the given list of files and folders</p>
 <p>Particularly useful on HPC, where data can be moved near the computing nodes ahead of time</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>files</strong> (<em>List</em><em>[</em><em>PathLike</em><em>]</em>) – Paths of the files and folders to be preloaded</p>
+<dd class="field-odd"><p><strong>files</strong> (<em>List</em><em>[</em><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.PathLike" title="xffl.custom.types.PathLike"><em>PathLike</em></a><em>]</em>) – Paths of the files and folders to be preloaded</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>OSError</strong><strong>, </strong><strong>ValueError</strong> – If the subprocess run fails</p>

@@ -42,24 +42,24 @@ Module Contents
    Default xFFL logger
 
 
-.. py:function:: _get_training_info() -> Tuple[pathlib.Path, pathlib.Path, str]
+.. py:function:: _get_training_info() -> Tuple[xffl.custom.types.FileLike, xffl.custom.types.FileLike, str]
 
    Prompt user for training script path, parser path and parser name.
 
 
-.. py:function:: _get_model_info() -> Tuple[pathlib.Path, str]
+.. py:function:: _get_model_info() -> Tuple[xffl.custom.types.PathLike, str]
 
    Prompt user for model path and new model name.
 
 
-.. py:function:: _configure_facility(facility: str, parser_name: str, parser_path: pathlib.Path, args: argparse.Namespace, streamflow_config: xffl.workflow.templates.streamflow.StreamFlowFile, main_cwl: xffl.workflow.templates.cwl.MainWorkflow, round_cwl: xffl.workflow.templates.cwl.RoundWorkflow, cwl_config: xffl.workflow.templates.cwl.CWLConfig) -> None
+.. py:function:: _configure_facility(facility: str, parser_name: str, parser_path: xffl.custom.types.FileLike, args: argparse.Namespace, streamflow_config: xffl.workflow.templates.streamflow.StreamFlowFile, main_cwl: xffl.workflow.templates.cwl.MainWorkflow, round_cwl: xffl.workflow.templates.cwl.RoundWorkflow, cwl_config: xffl.workflow.templates.cwl.CWLConfig) -> None
 
    Configure a single facility interactively.
 
-   NOTE: re-imports the user parser on purpose (keeps the original behaviour).
+   NOTE: re-imports the user parser on purpose.
 
 
-.. py:function:: _write_output_files(workdir: pathlib.Path, streamflow_config: xffl.workflow.templates.streamflow.StreamFlowFile, cwl_config: xffl.workflow.templates.cwl.CWLConfig, main_cwl: xffl.workflow.templates.cwl.MainWorkflow, round_cwl: xffl.workflow.templates.cwl.RoundWorkflow, aggregate_cwl: xffl.workflow.templates.cwl.AggregateStep, training_cwl: xffl.workflow.templates.cwl.TrainingStep) -> None
+.. py:function:: _write_output_files(workdir: xffl.custom.types.FolderLike, streamflow_config: xffl.workflow.templates.streamflow.StreamFlowFile, cwl_config: xffl.workflow.templates.cwl.CWLConfig, main_cwl: xffl.workflow.templates.cwl.MainWorkflow, round_cwl: xffl.workflow.templates.cwl.RoundWorkflow, aggregate_cwl: xffl.workflow.templates.cwl.AggregateStep, training_cwl: xffl.workflow.templates.cwl.TrainingStep) -> None
 
    Write StreamFlow, CWL and config files to disk.
 

@@ -24,7 +24,6 @@ Functions
 
    xffl.cli.utils.get_facilitator_path
    xffl.cli.utils.check_default_value
-   xffl.cli.utils.check_cli_arguments
    xffl.cli.utils.expand_paths_in_args
    xffl.cli.utils.setup_env
    xffl.cli.utils.check_and_create_dir
@@ -57,18 +56,6 @@ Module Contents
    :type argument_value: Any
    :param parser: Parser from which the argument originated.
    :type parser: argparse.ArgumentParser
-
-
-.. py:function:: check_cli_arguments(args: argparse.Namespace, parser: argparse.ArgumentParser) -> types.SimpleNamespace
-
-   Check CLI arguments and expand relative paths into absolute ones.
-
-   :param args: Command line arguments.
-   :type args: argparse.Namespace
-   :param parser: Command line argument parser.
-   :type parser: argparse.ArgumentParser
-   :return: Expanded namespace with absolute paths where applicable.
-   :rtype: SimpleNamespace
 
 
 .. py:function:: expand_paths_in_args(args: List[str], prefix: str = '-') -> List[str]

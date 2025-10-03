@@ -322,16 +322,13 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#xffl.cli.utils.check_default_value" title="xffl.cli.utils.check_default_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_default_value</span></code></a>(→ None)</p></td>
 <td><p>Check if a CLI argument value equals its default.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.cli.utils.check_cli_arguments" title="xffl.cli.utils.check_cli_arguments"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_cli_arguments</span></code></a>(→ types.SimpleNamespace)</p></td>
-<td><p>Check CLI arguments and expand relative paths into absolute ones.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#xffl.cli.utils.expand_paths_in_args" title="xffl.cli.utils.expand_paths_in_args"><code class="xref py py-obj docutils literal notranslate"><span class="pre">expand_paths_in_args</span></code></a>(→ List[str])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.cli.utils.expand_paths_in_args" title="xffl.cli.utils.expand_paths_in_args"><code class="xref py py-obj docutils literal notranslate"><span class="pre">expand_paths_in_args</span></code></a>(→ List[str])</p></td>
 <td><p>Expand relative paths in arguments to absolute paths.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.cli.utils.setup_env" title="xffl.cli.utils.setup_env"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_env</span></code></a>(→ Dict[str, str])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#xffl.cli.utils.setup_env" title="xffl.cli.utils.setup_env"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_env</span></code></a>(→ Dict[str, str])</p></td>
 <td><p>Create a mapping between CLI arguments and environment variables.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#xffl.cli.utils.check_and_create_dir" title="xffl.cli.utils.check_and_create_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_and_create_dir</span></code></a>(→ xffl.custom.types.FolderLike)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#xffl.cli.utils.check_and_create_dir" title="xffl.cli.utils.check_and_create_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">check_and_create_dir</span></code></a>(→ xffl.custom.types.FolderLike)</p></td>
 <td><p>Check the base directory and create a subfolder.</p></td>
 </tr>
 </tbody>
@@ -348,14 +345,14 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xffl.cli.utils.get_facilitator_path">
-<span class="sig-prename descclassname"><span class="pre">xffl.cli.utils.</span></span><span class="sig-name descname"><span class="pre">get_facilitator_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">xffl.custom.types.FileLike</span></span></span><a class="headerlink" href="#xffl.cli.utils.get_facilitator_path" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">xffl.cli.utils.</span></span><span class="sig-name descname"><span class="pre">get_facilitator_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.FileLike" title="xffl.custom.types.FileLike"><span class="pre">xffl.custom.types.FileLike</span></a></span></span><a class="headerlink" href="#xffl.cli.utils.get_facilitator_path" title="Link to this definition">¶</a></dt>
 <dd><p>Return the absolute path of the facilitator script.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Facilitator absolute file path.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>FileLike</p>
+<dd class="field-even"><p><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.FileLike" title="xffl.custom.types.FileLike">FileLike</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -371,26 +368,6 @@
 <li><p><strong>argument_value</strong> (<em>Any</em>) – Actual value of the argument.</p></li>
 <li><p><strong>parser</strong> (<em>argparse.ArgumentParser</em>) – Parser from which the argument originated.</p></li>
 </ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="xffl.cli.utils.check_cli_arguments">
-<span class="sig-prename descclassname"><span class="pre">xffl.cli.utils.</span></span><span class="sig-name descname"><span class="pre">check_cli_arguments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">argparse.Namespace</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">argparse.ArgumentParser</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">types.SimpleNamespace</span></span></span><a class="headerlink" href="#xffl.cli.utils.check_cli_arguments" title="Link to this definition">¶</a></dt>
-<dd><p>Check CLI arguments and expand relative paths into absolute ones.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>argparse.Namespace</em>) – Command line arguments.</p></li>
-<li><p><strong>parser</strong> (<em>argparse.ArgumentParser</em>) – Command line argument parser.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Expanded namespace with absolute paths where applicable.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>SimpleNamespace</p>
 </dd>
 </dl>
 </dd></dl>
@@ -438,13 +415,13 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="xffl.cli.utils.check_and_create_dir">
-<span class="sig-prename descclassname"><span class="pre">xffl.cli.utils.</span></span><span class="sig-name descname"><span class="pre">check_and_create_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dir_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">xffl.custom.types.FolderLike</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">xffl.custom.types.PathLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">xffl.custom.types.FolderLike</span></span></span><a class="headerlink" href="#xffl.cli.utils.check_and_create_dir" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">xffl.cli.utils.</span></span><span class="sig-name descname"><span class="pre">check_and_create_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dir_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.FolderLike" title="xffl.custom.types.FolderLike"><span class="pre">xffl.custom.types.FolderLike</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.PathLike" title="xffl.custom.types.PathLike"><span class="pre">xffl.custom.types.PathLike</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.FolderLike" title="xffl.custom.types.FolderLike"><span class="pre">xffl.custom.types.FolderLike</span></a></span></span><a class="headerlink" href="#xffl.cli.utils.check_and_create_dir" title="Link to this definition">¶</a></dt>
 <dd><p>Check the base directory and create a subfolder.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dir_path</strong> (<em>FolderLike</em>) – Base directory path.</p></li>
-<li><p><strong>folder_name</strong> (<em>PathLike</em>) – Name of the subfolder to create.</p></li>
+<li><p><strong>dir_path</strong> (<a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.FolderLike" title="xffl.custom.types.FolderLike"><em>FolderLike</em></a>) – Base directory path.</p></li>
+<li><p><strong>folder_name</strong> (<a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.PathLike" title="xffl.custom.types.PathLike"><em>PathLike</em></a>) – Name of the subfolder to create.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
@@ -457,7 +434,7 @@
 <dd class="field-odd"><p>Absolute path to the created (or existing) folder.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>FolderLike</p>
+<dd class="field-even"><p><a class="reference internal" href="../../custom/types/index.html#xffl.custom.types.FolderLike" title="xffl.custom.types.FolderLike">FolderLike</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -527,7 +504,6 @@
 <li><a class="reference internal" href="#xffl.cli.utils.logger"><code class="docutils literal notranslate"><span class="pre">logger</span></code></a></li>
 <li><a class="reference internal" href="#xffl.cli.utils.get_facilitator_path"><code class="docutils literal notranslate"><span class="pre">get_facilitator_path()</span></code></a></li>
 <li><a class="reference internal" href="#xffl.cli.utils.check_default_value"><code class="docutils literal notranslate"><span class="pre">check_default_value()</span></code></a></li>
-<li><a class="reference internal" href="#xffl.cli.utils.check_cli_arguments"><code class="docutils literal notranslate"><span class="pre">check_cli_arguments()</span></code></a></li>
 <li><a class="reference internal" href="#xffl.cli.utils.expand_paths_in_args"><code class="docutils literal notranslate"><span class="pre">expand_paths_in_args()</span></code></a></li>
 <li><a class="reference internal" href="#xffl.cli.utils.setup_env"><code class="docutils literal notranslate"><span class="pre">setup_env()</span></code></a></li>
 <li><a class="reference internal" href="#xffl.cli.utils.check_and_create_dir"><code class="docutils literal notranslate"><span class="pre">check_and_create_dir()</span></code></a></li>
