@@ -7,7 +7,7 @@ import xffl
 from xffl.custom.types import PathLike
 
 # Version #
-VERSION: Final[str] = "v0.1.0"
+VERSION: Final[str] = "v0.2.1"
 """xFFL software version"""
 
 # Paths #
