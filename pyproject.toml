@@ -15,6 +15,7 @@ requires-python = ">=3.9"
 authors = [
     {name = "Gianluca Mittone", email = "gianluca.mittone@unito.it"},
     {name = "Alberto Mulone", email = "alberto.mulone@unito.it"},
+    {name = "Giulio Malenza", email = "giulio.malenza@unito.it"},
     {name = "Iacopo Colonnelli", email = "iacopo.colonnelli@unito.it"},
     {name = "Robert Birke", email = "robert.birke@unito.it"},
     {name = "Marco Aldinucci", email = "marco.aldinucci@unito.it"}

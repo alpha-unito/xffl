@@ -1,0 +1,28 @@
+name: "xFFL static checks"
+
+on: push
+
+jobs:
+  static-checks:
+    name: "xFFL static checks"
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        step: [ "lint" ]
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            lint-requirements.txt
+
+      - name: "Install lint Dependencies"
+        run: |
+          python -m pip install -r lint-requirements.txt
+
+      - name: "Run xFFL static analysis"
+        run: make format-check codespell-check flake8

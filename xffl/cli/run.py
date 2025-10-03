@@ -9,7 +9,6 @@ import asyncio
 from logging import Logger, getLogger
 
 from xffl.cli.parser import subparsers
-from xffl.cli.utils import check_cli_arguments
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -23,8 +22,6 @@ def run(args: argparse.Namespace) -> int:
     :return: Exit code (0 if success).
     :rtype: int
     """
-    # Validate CLI arguments
-    check_cli_arguments(args=args, parser=subparsers.choices["run"])
 
     # Import deferred for performance and to avoid heavy dependencies at CLI init
     from xffl.workflow.streamflow import run_streamflow

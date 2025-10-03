@@ -15,9 +15,10 @@ from typing import Tuple
 import yaml
 
 from xffl.cli.parser import subparsers
-from xffl.cli.utils import check_and_create_dir, check_cli_arguments
+from xffl.cli.utils import check_and_create_dir
+from xffl.custom.types import FileLike, FolderLike, PathLike
 from xffl.utils.constants import DEFAULT_xFFL_DIR
-from xffl.utils.utils import check_input, resolve_path
+from xffl.utils.utils import check_input
 from xffl.workflow.templates.cwl import (
     AggregateStep,
     CWLConfig,
@@ -37,59 +38,53 @@ logger: Logger = getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-def _get_training_info() -> Tuple[Path, Path, str]:
+def _get_training_info() -> Tuple[FileLike, FileLike, str]:
     """Prompt user for training script path, parser path and parser name."""
-    executable_path = resolve_path(
-        check_input(
-            "xFFL requires the Python training scripts\nTraining script path: ",
-            "File {} does not exist.",
-            lambda path: Path(path).is_file(),
-            is_path=True,
-        )
+    executable_path: FileLike = check_input(
+        text="Training script path: ",
+        warning_msg="File {} does not exist.",
+        control=lambda path: path.is_file(),
+        is_path=True,
     )
 
-    parser_path = resolve_path(
-        check_input(
-            "Custom arguments parser path: ",
-            "File {} does not exist.",
-            lambda path: Path(path).is_file(),
-            is_path=True,
-        )
+    parser_path: FileLike = check_input(
+        text="Custom arguments parser path: ",
+        warning_msg="File {} does not exist.",
+        control=lambda path: path.is_file(),
+        is_path=True,
     )
 
-    parser_name = check_input(
-        "Arguments parser module name: ",
-        "Invalid name (letters, numbers, dashes, underscores, must start with alnum).",
-        lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
+    parser_name: str = check_input(
+        text="Arguments parser module name: ",
+        warning_msg="Invalid name (letters, numbers, dashes, underscores, must start with alnum).",
+        control=lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
 
-    return Path(executable_path), Path(parser_path), parser_name
+    return executable_path, parser_path, parser_name
 
 
-def _get_model_info() -> Tuple[Path, str]:
+def _get_model_info() -> Tuple[PathLike, str]:
     """Prompt user for model path and new model name."""
-    model_path = resolve_path(
-        check_input(
-            "Python model path (file or directory): ",
-            "{} does not exist.",
-            lambda path: Path(path).exists(),
-            is_path=True,
-        )
+    model_path: PathLike = check_input(
+        text="Python model path (file or directory): ",
+        warning_msg="{} does not exist.",
+        control=lambda path: path.exists(),
+        is_path=True,
     )
 
-    new_model_name = check_input(
-        "Name of the new model: ",
-        "Invalid name (letters, numbers, dashes, underscores, must start with alnum).",
-        lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
+    new_model_name: str = check_input(
+        text="Name of the new model: ",
+        warning_msg="Invalid name (letters, numbers, dashes, underscores, must start with alnum).",
+        control=lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
 
-    return Path(model_path), new_model_name
+    return model_path, new_model_name
 
 
 def _configure_facility(
     facility: str,
     parser_name: str,
-    parser_path: Path,
+    parser_path: FileLike,
     args: argparse.Namespace,
     streamflow_config: StreamFlowFile,
     main_cwl: MainWorkflow,
@@ -98,49 +93,41 @@ def _configure_facility(
 ) -> None:
     """Configure a single facility interactively.
 
-    NOTE: re-imports the user parser on purpose (keeps the original behaviour).
+    NOTE: re-imports the user parser on purpose.
     """
     # SSH info
-    address = input(f"{facility}'s frontend node address [IP:port]: ")
-    username = input(f"{facility}'s username: ")
-    ssh_key = check_input(
-        f"Path to {facility}'s SSH key file: ",
-        "{} does not exist.",
-        lambda p: Path(p).exists(),
+    address: str = input(f"{facility}'s frontend node address [IP:port]: ")
+    username: str = input(f"{facility}'s username: ")
+    ssh_key: FileLike = check_input(
+        text=f"Path to {facility}'s SSH key file: ",
+        warning_msg="{} does not exist.",
+        control=lambda p: p.is_file(),
         is_path=True,
     )
 
     # SLURM template
-    slurm_template = resolve_path(
-        check_input(
-            f"Path to {facility}'s SLURM template: ",
-            "{} does not exist.",
-            lambda p: Path(p).exists(),
-            is_path=True,
-        )
+    slurm_template: FileLike = check_input(
+        text=f"Path to {facility}'s SLURM template: ",
+        warning_msg="{} does not exist.",
+        control=lambda p: p.is_file(),
+        is_path=True,
     )
 
     # Remote paths (must be resolved as remote)
-    step_workdir = check_input(
-        "Facility working directory: ",
-        "Invalid path.",
-        lambda x: resolve_path(x, is_local_path=False),
+    step_workdir: FolderLike = check_input(
+        text="Facility working directory: ",
+        warning_msg="Invalid path.",
         is_path=True,
-        is_local_path=False,
     )
-    image_path = check_input(
-        "Facility image file path: ",
-        "Invalid path.",
-        lambda x: resolve_path(x, is_local_path=False),
+    image_path: FileLike = check_input(
+        text="Facility image file path: ",
+        warning_msg="Invalid path.",
         is_path=True,
-        is_local_path=False,
     )
-    dataset_path = check_input(
-        "Facility dataset directory path: ",
-        "Invalid path.",
-        lambda x: resolve_path(x, is_local_path=False),
+    dataset_path: PathLike = check_input(
+        text="Facility dataset directory path: ",
+        warning_msg="Invalid path.",
         is_path=True,
-        is_local_path=False,
     )
 
     # --- Re-import user ArgumentParser and extract args for this facility ---
@@ -177,8 +164,8 @@ def _configure_facility(
     cwl_config.add_inputs(
         facility_name=facility,
         extra_inputs={
-            "image": {"class": "File", "path": Path(image_path).name},
-            "dataset": {"class": "Directory", "path": Path(dataset_path).name},
+            "image": {"class": "File", "path": image_path.name},
+            "dataset": {"class": "Directory", "path": dataset_path.name},
         }
         | arg_to_value,
     )
@@ -188,16 +175,16 @@ def _configure_facility(
         facility_name=facility,
         address=address,
         username=username,
-        ssh_key=ssh_key,
-        step_workdir=step_workdir,
-        slurm_template=slurm_template,
+        ssh_key=str(ssh_key),
+        step_workdir=str(step_workdir),
+        slurm_template=str(slurm_template),
     )
 
     streamflow_config.add_training_step(
         facility_name=facility,
         mapping={
-            f"dataset_{facility}": str(Path(dataset_path).parent),
-            f"image_{facility}": str(Path(image_path).parent),
+            f"dataset_{facility}": str(dataset_path.parent),
+            f"image_{facility}": str(image_path.parent),
         },
     )
     streamflow_config.add_inputs(facility_name=facility)
@@ -214,7 +201,7 @@ def _configure_facility(
 
 
 def _write_output_files(
-    workdir: Path,
+    workdir: FolderLike,
     streamflow_config: StreamFlowFile,
     cwl_config: CWLConfig,
     main_cwl: MainWorkflow,
@@ -235,7 +222,7 @@ def _write_output_files(
     cwl_dir.mkdir(parents=True, exist_ok=True)
     clt_dir.mkdir(parents=True, exist_ok=True)
 
-    def _dump_cwl(path: Path, data: dict) -> None:
+    def _dump_cwl(path: FileLike, data: dict) -> None:
         with path.open("w") as f:
             f.write("#!/usr/bin/env cwl-runner\n")
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
@@ -275,16 +262,12 @@ def config(args: argparse.Namespace) -> int:
       * once per facility inside _configure_facility to re-import/re-evaluate arguments
         (this mirrors the original behaviour you requested).
     """
-    # Validate CLI usage
-    try:
-        check_cli_arguments(args=args, parser=subparsers.choices["config"])
-    except ValueError:
-        logger.error("Aborting configuration")
-        return 1
 
     # Prepare workdir
     try:
-        workdir = check_and_create_dir(dir_path=args.workdir, folder_name=args.project)
+        workdir: FolderLike = check_and_create_dir(
+            dir_path=args.workdir, folder_name=args.project
+        )
     except FileExistsError:
         logger.error("Aborting configuration")
         return 0
@@ -345,23 +328,24 @@ def config(args: argparse.Namespace) -> int:
     model_path, new_model_name = _get_model_info()
 
     # Local workdir
-    local_workdir = check_input(
-        "Local workdir (leave blank for $TMPDIR): ",
-        "Invalid path or blank.",
-        lambda p: p == "" or resolve_path(p),
+    local_workdir: FolderLike = check_input(
+        text="Local workdir (leave blank for $TMPDIR): ",
+        warning_msg="Invalid path or blank.",
+        control=lambda path: path.is_dir(),
+        is_path=True,
     )
     local_workdir = (
-        resolve_path(local_workdir) if local_workdir else Path.cwd().joinpath("tmp")
-    )
+        local_workdir if local_workdir else Path.cwd().joinpath("tmp")
+    )  # TODO: non è coerente con il commento sopra
     logger.debug("local_workdir: %s", local_workdir)
-    streamflow_config.add_root_step(local_workdir)
+    streamflow_config.add_root_step(str(local_workdir))
 
     # Number of iterations
-    num_of_iterations = int(
+    num_of_iterations: int = int(
         check_input(
-            "Number of iterations to the federated training: ",
-            "Insert an integer",
-            lambda x: x.isdigit(),
+            text="Number of iterations to the federated training: ",
+            warning_msg="Insert an integer",
+            control=lambda x: x.isdigit(),
         )
     )
 
@@ -383,10 +367,10 @@ def config(args: argparse.Namespace) -> int:
     # Facility loop (each iteration re-imports the parser inside _configure_facility)
     facilities: set[str] = set()
     while True:
-        facility = check_input(
-            "Type facility's logic name: ",
-            "Already used.",
-            lambda f: f not in facilities,
+        facility: str = check_input(
+            text="Type facility's logic name: ",
+            warning_msg="Already used.",
+            control=lambda f: f not in facilities,
         )
         facilities.add(facility)
 
@@ -401,10 +385,10 @@ def config(args: argparse.Namespace) -> int:
             cwl_config=cwl_config,
         )
 
-        another = check_input(
-            "Insert another facility? [y/n]: ",
-            "Answer not accepted.",
-            lambda reply: reply.lower() in ["y", "yes", "n", "no"],
+        another: str = check_input(
+            text="Insert another facility? [y/n]: ",
+            warning_msg="Answer not accepted.",
+            control=lambda reply: reply.lower() in ["y", "yes", "n", "no"],
         )
         if another.lower() in ["n", "no"]:
             break

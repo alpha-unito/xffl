@@ -16,7 +16,7 @@ from types import SimpleNamespace
 from typing import Dict, List
 
 from xffl.cli.parser import subparsers
-from xffl.cli.utils import check_cli_arguments, get_facilitator_path, setup_env
+from xffl.cli.utils import get_facilitator_path, setup_env
 from xffl.distributed.networking import get_cells_ids
 
 logger: Logger = getLogger(__name__)
@@ -88,7 +88,6 @@ def exec(args: argparse.Namespace) -> int:
     :return: Exit code (0 if success, 1 otherwise)
     :rtype: int
     """
-    args = check_cli_arguments(args=args, parser=subparsers.choices["exec"])
 
     # Replace localhost with actual hostname
     if args.nodelist == ["localhost"]:
@@ -136,8 +135,8 @@ def exec(args: argparse.Namespace) -> int:
                     [
                         env_str,
                         f"XFFL_NODEID={index}",
-                        facilitator_script,
-                        args.executable,
+                        str(facilitator_script),
+                        str(args.executable),
                     ]
                     + list(map(str, args.arguments))
                 ),

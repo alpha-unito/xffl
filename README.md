@@ -61,7 +61,8 @@ xFFL implements a centralized FL schema in which a central server coordinates, d
 | Name                                                               | Email                        | Role                     |
 |:-------------------------------------------------------------------|:-----------------------------|:-------------------------|
 | [Gianluca Mittone](https://alpha.di.unito.it/gianluca-mittone/)    | <gianluca.mittone@unito.it>  | Creator and maintainer   |
-| [Alberto Mulone](https://alpha.di.unito.it/alberto-mulone/)        | <alberto.mulone@unito.it>    | Developer and maintainer |  
+| [Alberto Mulone](https://alpha.di.unito.it/alberto-mulone/)        | <alberto.mulone@unito.it>    | Developer and maintainer |
+| [Giulio Malenza](https://alpha.di.unito.it/giulio-malenza/)        | <giulio.malenza@unito.it>    | Developer                |
 | [Iacopo Colonnelli](https://alpha.di.unito.it/iacopo-colonnelli/)  | <iacopo.colonnelli@unito.it> | Investigator             | 
 | [Robert Birke](https://alpha.di.unito.it/robert-rene-maria-birke/) | <robert.birke@unito.it>      | Investigator             |   
 | [Marco Aldinucci](https://alpha.di.unito.it/marco-aldinucci/)      | <marco.aldinucci@unito.it>   | Principal investigator   |

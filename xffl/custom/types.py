@@ -1,58 +1,49 @@
 """Custom types for better type hints in xFFL."""
 
 from pathlib import Path
-from typing import Any, NewType
+from typing import Any, Union
 
 from xffl.utils.utils import resolve_path
 
-# --- Type aliases ---
-PathLike = NewType("PathLike", Path)
-"""Path-like object (file or folder)."""
 
-FolderLike = NewType("FolderLike", Path)
-"""Path to a folder."""
+class PathLike(Path):
+    """Path-like object (file or folder)."""
 
-FileLike = NewType("FileLike", Path)
-"""Path to a file."""
+    _flavour = Path()._flavour
 
+    def __new__(cls, path: Union[str, Path, Any]) -> "PathLike":
+        resolved = resolve_path(path=path)
+        return super().__new__(cls, resolved)
 
-# --- Constructors ---
-def as_pathlike(path: Any) -> PathLike:
-    """Convert input into a resolved PathLike.
-
-    :param path: File system path (string, Path, etc.)
-    :type path: Any
-    :return: Resolved filesystem path
-    :rtype: PathLike
-    """
-    return PathLike(resolve_path(path=path))
+    def __call__(self, path: Any) -> "PathLike":
+        return PathLike(path)
 
 
-def as_folderlike(path: Any) -> FolderLike:
-    """Convert input into a resolved FolderLike.
+class FolderLike(PathLike):
+    """Path to a folder."""
 
-    :param path: Path to a folder
-    :type path: Any
-    :raises ValueError: If the path is not a valid directory
-    :return: Resolved folder path
-    :rtype: FolderLike
-    """
-    resolved = Path(resolve_path(path=path))
-    if resolved.is_dir():
-        return FolderLike(resolved)
-    raise ValueError(f"Invalid folder path: {path}")
+    _flavour = Path()._flavour
+
+    def __new__(cls, path: Union[str, Path, Any]) -> "FolderLike":
+        resolved = resolve_path(path=path)
+        if not resolved.is_dir():
+            raise ValueError(f"Invalid folder path: {path}")
+        return super().__new__(cls, resolved)
+
+    def __call__(self, path: Any) -> "FolderLike":
+        return FolderLike(path)
 
 
-def as_filelike(path: Any) -> FileLike:
-    """Convert input into a resolved FileLike.
+class FileLike(PathLike):
+    """Path to a file."""
 
-    :param path: Path to a file
-    :type path: Any
-    :raises ValueError: If the path is not a valid file
-    :return: Resolved file path
-    :rtype: FileLike
-    """
-    resolved = Path(resolve_path(path=path))
-    if resolved.is_file():
-        return FileLike(resolved)
-    raise ValueError(f"Invalid file path: {path}")
+    _flavour = Path()._flavour
+
+    def __new__(cls, path: Union[str, Path, Any]) -> "FileLike":
+        resolved = resolve_path(path=path)
+        if not resolved.is_file():
+            raise ValueError(f"Invalid file path: {path}")
+        return super().__new__(cls, resolved)
+
+    def __call__(self, path: Any) -> "FileLike":
+        return FileLike(path)
