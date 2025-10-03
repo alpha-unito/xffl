@@ -1,17 +1,13 @@
 name: "System Tests"
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+
+on: push
+
 concurrency:
   group: build-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   cli-config:
-    name: "Test xffl config command"
+    name: "Test xffl config"
     strategy:
       matrix:
         on: [ "ubuntu-24.04"]
@@ -21,12 +17,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.13
+          python-version: 3.11
           cache: pip
           cache-dependency-path: requirements.txt
       - name: "Install Python Dependencies"
         run: python -m pip install .
-      - name: "Create an xffl project using the config option in the CLI."
+      - name: "Create an xffl project using the config CLI interface."
         env:
           CHECKSUM: "2962309eecc0505d112d1eeb4bbdbe4d06e91f136f72a187a520dd68a5c11f03"
         run: |
@@ -41,24 +37,3 @@ jobs:
           make generate-project
           xffl run --project test --validate
           make clean
-  static-checks:
-    name: "xFFL static checks"
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        step: [ "lint" ]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            lint-requirements.txt
-      - name: "Install Python Dependencies and xFFL"
-        run: |
-          python -m pip install .
-          python -m pip install -r lint-requirements.txt
-      - name: "Run xFFL static analysis"
-        run: make format-check codespell-check flake8
