@@ -4,18 +4,10 @@ import argparse
 import inspect
 from logging import Logger, getLogger
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Dict, List
 
-from xffl.custom.types import (
-    FileLike,
-    FolderLike,
-    PathLike,
-    as_filelike,
-    as_folderlike,
-    as_pathlike,
-)
-from xffl.utils.utils import check_input, get_param_name, resolve_path
+from xffl.custom.types import FileLike, FolderLike, PathLike
+from xffl.utils.utils import check_input
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -50,51 +42,6 @@ def check_default_value(
         logger.debug(
             f'CLI argument "{argument_name}" has default value "{default_value}"'
         )
-
-
-def check_cli_arguments(
-    args: argparse.Namespace, parser: argparse.ArgumentParser
-) -> SimpleNamespace:
-    """Check CLI arguments and expand relative paths into absolute ones.
-
-    :param args: Command line arguments.
-    :type args: argparse.Namespace
-    :param parser: Command line argument parser.
-    :type parser: argparse.ArgumentParser
-    :return: Expanded namespace with absolute paths where applicable.
-    :rtype: SimpleNamespace
-    """
-
-    for key, value in vars(args).items():
-        check_default_value(argument_name=key, argument_value=value, parser=parser)
-
-    namespace = vars(args).copy()
-
-    for action in parser._actions:
-        if action.type in (FolderLike, FileLike, PathLike):
-            param_name = get_param_name(action.option_strings, parser.prefix_chars)
-            target_name = (
-                param_name
-                if param_name in namespace
-                else action.dest  # fallback to dest if flags differ
-            )
-
-            if namespace.get(target_name):
-                try:
-                    if action.type is FolderLike:
-                        namespace[target_name] = as_folderlike(namespace[target_name])
-                    elif action.type is FileLike:
-                        namespace[target_name] = as_filelike(namespace[target_name])
-                    elif action.type is PathLike:
-                        namespace[target_name] = as_pathlike(namespace[target_name])
-                except ValueError as err:
-                    logger.error(f"Error with argument {target_name}: {err}")
-                    raise err
-
-    if "arguments" in namespace:
-        namespace["arguments"] = expand_paths_in_args(namespace["arguments"])
-
-    return SimpleNamespace(**namespace)
 
 
 def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
@@ -145,13 +92,12 @@ def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderL
     :return: Absolute path to the created (or existing) folder.
     :rtype: FolderLike
     """
-    base_dir: Path = Path(resolve_path(path=dir_path))
 
-    if not base_dir.exists():
-        logger.error(f"The provided working directory path {base_dir} does not exist.")
-        raise FileNotFoundError(base_dir)
+    if not dir_path.exists():
+        logger.error(f"The provided working directory path {dir_path} does not exist.")
+        raise FileNotFoundError(dir_path)
 
-    target_dir: Path = base_dir / folder_name
+    target_dir: Path = dir_path / folder_name
     logger.debug(f"Attempting to create directory {target_dir}")
 
     try:

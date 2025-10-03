@@ -11,7 +11,7 @@ import logging
 import os
 from typing import Tuple
 
-from xffl.custom.types import PathLike
+from xffl.custom.types import FileLike, FolderLike
 
 
 def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
@@ -32,7 +32,7 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
         "--workdir",
         help="Working directory where the experiment files are stored. "
         "Defaults to the current working directory.",
-        type=PathLike,
+        type=FolderLike,
         default=os.getcwd(),
     )
 
@@ -140,7 +140,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     exec_parser.add_argument(
         "executable",
         help="Path to the Python script or executable to run.",
-        type=PathLike,
+        type=FileLike,
     )
     exec_parser.add_argument(
         "-f",
@@ -170,14 +170,14 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         "-v",
         "--venv",
         help="Use the specified Python virtual environment for the experiment.",
-        type=PathLike,
+        type=FolderLike,
         default=None,
     )
     virtualization_group.add_argument(
         "-i",
         "--image",
         help="Use a Docker, Singularity, or Apptainer image for the execution.",
-        type=PathLike,
+        type=FileLike,
         default=None,
     )
 

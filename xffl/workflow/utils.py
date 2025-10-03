@@ -75,6 +75,7 @@ def from_args_to_cwl(
                     else {}
                 )
 
+                # TODO: this does not seems to be working with dbg store_true
                 if add_default_value := isinstance(
                     action.default, bool
                 ) or not isinstance(action, _StoreConstAction):
