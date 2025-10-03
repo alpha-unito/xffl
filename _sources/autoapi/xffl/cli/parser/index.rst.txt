@@ -1,0 +1,53 @@
+xffl.cli.parser
+===============
+
+.. py:module:: xffl.cli.parser
+
+.. autoapi-nested-parse::
+
+   Argument parser for xFFL.
+
+   This module defines the main parser and all subcommands for the xFFL CLI.
+
+   The base parser offers common options like version and debug logging.
+   Advanced features are provided by subcommands and their specific options.
+
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.cli.parser._add_common_project_options
+   xffl.cli.parser._add_arguments_option
+   xffl.cli.parser.build_parser
+
+
+Module Contents
+---------------
+
+.. py:function:: _add_common_project_options(subparser: argparse.ArgumentParser) -> None
+
+   Add common project-related options to a subparser.
+
+   :param subparser: The argparse subparser to extend
+   :type subparser: argparse.ArgumentParser
+
+
+.. py:function:: _add_arguments_option(subparser: argparse.ArgumentParser) -> None
+
+   Add the --arguments passthrough option to a subparser.
+
+   :param subparser: The argparse subparser to extend
+   :type subparser: argparse.ArgumentParser
+
+
+.. py:function:: build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]
+
+   Build the main xFFL argument parser.
+
+   :return: Configured argparse parser
+   :rtype: argparse.ArgumentParser
+
+

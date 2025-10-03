@@ -1,0 +1,77 @@
+xffl.learning.modelling
+=======================
+
+.. py:module:: xffl.learning.modelling
+
+.. autoapi-nested-parse::
+
+   Methods useful for model handling
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.learning.modelling.logger
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.learning.modelling.create_fsdp_model
+   xffl.learning.modelling.save_fsdp_model
+
+
+Module Contents
+---------------
+
+.. py:data:: logger
+   :type:  logging.Logger
+
+   Default xFFL logger
+
+
+.. py:function:: create_fsdp_model(module: torch.nn.Module | transformers.AutoModel, state: xffl.distributed.distributed.DistributedState, model_info: xffl.custom.models.ModelInfo, mixed_precision: Optional[torch.distributed.fsdp.MixedPrecision] = None) -> torch.distributed.fsdp.FullyShardedDataParallel
+
+   Creates an FSDP model
+
+   :param module: FSDP-wrapped model to be saved
+   :type module: nn.Module | AutoModel
+   :param state: Instantiated distributed state
+   :type state: DistributedState
+   :param model_info: Dataclass with model's information
+   :type model_info: ModelInfo
+   :param mixed_precision: Precision to use for the module, defaults to None
+   :type mixed_precision: Optional[MixedPrecision], optional
+   :return: The original module wrapped by FSDP
+   :rtype: FullyShardedDataParallel
+
+
+.. py:function:: save_fsdp_model(model: torch.distributed.fsdp.FullyShardedDataParallel, optimizer: torch.optim.Optimizer, path: xffl.custom.types.PathLike, name: str, rank: int, epoch: Optional[int] = None, checkpoint: Optional[int] = None, precision: Optional[torch.dtype] = None) -> None
+
+   Saves an FSDP wrapped model to a specified path
+
+   All processes part of the FSDP training have to call this method to effectively save the model
+
+   :param model: FSDP-wrapped model to be saved
+   :type model: FullyShardedDataParallel
+   :param optimizer: Model optimizer
+   :type optimizer: Optimizer
+   :param path: Path where to save the model
+   :type path: PathLike
+   :param name: Model's name
+   :type name: str
+   :param rank: Calling process' global rank
+   :type rank: int
+   :param epoch: Epoch tag to add to the model's name, defaults to None
+   :type epoch: Optional[int], optional
+   :param checkpoint: Checkpoint tag to add to the model's name, defaults to None
+   :type checkpoint: Optional[int], optional
+   :param precision: Numerical format to use to save the model, defaults to None
+   :type precision: Optional[torch.dtype], optional
+
+

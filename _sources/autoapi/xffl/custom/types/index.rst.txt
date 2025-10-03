@@ -1,0 +1,81 @@
+xffl.custom.types
+=================
+
+.. py:module:: xffl.custom.types
+
+.. autoapi-nested-parse::
+
+   Custom types for better type hints in xFFL.
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.custom.types.PathLike
+   xffl.custom.types.FolderLike
+   xffl.custom.types.FileLike
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.custom.types.as_pathlike
+   xffl.custom.types.as_folderlike
+   xffl.custom.types.as_filelike
+
+
+Module Contents
+---------------
+
+.. py:data:: PathLike
+
+   Path-like object (file or folder).
+
+
+.. py:data:: FolderLike
+
+   Path to a folder.
+
+
+.. py:data:: FileLike
+
+   Path to a file.
+
+
+.. py:function:: as_pathlike(path: Any) -> PathLike
+
+   Convert input into a resolved PathLike.
+
+   :param path: File system path (string, Path, etc.)
+   :type path: Any
+   :return: Resolved filesystem path
+   :rtype: PathLike
+
+
+.. py:function:: as_folderlike(path: Any) -> FolderLike
+
+   Convert input into a resolved FolderLike.
+
+   :param path: Path to a folder
+   :type path: Any
+   :raises ValueError: If the path is not a valid directory
+   :return: Resolved folder path
+   :rtype: FolderLike
+
+
+.. py:function:: as_filelike(path: Any) -> FileLike
+
+   Convert input into a resolved FileLike.
+
+   :param path: Path to a file
+   :type path: Any
+   :raises ValueError: If the path is not a valid file
+   :return: Resolved file path
+   :rtype: FileLike
+
+

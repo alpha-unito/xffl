@@ -1,0 +1,118 @@
+xffl.utils.utils
+================
+
+.. py:module:: xffl.utils.utils
+
+.. autoapi-nested-parse::
+
+   Utility methods exploitable in many different situations
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.utils.utils.logger
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.utils.utils.get_param_flag
+   xffl.utils.utils.get_param_name
+   xffl.utils.utils.resolve_path
+   xffl.utils.utils.check_input
+   xffl.utils.utils.get_timeout
+   xffl.utils.utils.get_default_nccl_process_group_options
+
+
+Module Contents
+---------------
+
+.. py:data:: logger
+   :type:  logging.Logger
+
+   Default xFFL logger
+
+
+.. py:function:: get_param_flag(flag_list: Sequence[str]) -> str
+
+   Gets the full command line parameter flag
+
+   :param flag_list: List of the parameter's flags
+   :type flag_list: List[str]
+   :return: The full parameter flag
+   :rtype: str
+
+
+.. py:function:: get_param_name(flag_list: Sequence[str], prefix: str = '-') -> str
+
+   Returns the command line parameter full name given its flag list
+
+    This method also replaces scores with underscores
+
+   :param flag_list: List of the parameter's flags
+   :type flag_list: List[str]
+   :param prefix: Prefix symbol preceding a flag, defaults to "-"
+   :type prefix: str
+   :return: Full parameter name
+   :rtype: str
+
+
+.. py:function:: resolve_path(path: str, is_local_path: bool = True) -> str
+
+   Check the path is well formatted, otherwise tries to fix it.
+   Moreover, the path is resolve to the absolute form if it is defined as a local path
+
+   :param path: abbreviated path
+   :type path: str
+   :param is_local_path:
+   :type is_local_path: bool
+   :return: expanded path
+   :rtype: str
+
+
+.. py:function:: check_input(text: str, warning_msg: str, control: collections.abc.Callable, is_path: bool = False, is_local_path=True) -> str
+
+   Receives and checks a user input based on the specified condition
+
+   :param text: Question to be asked to the user
+   :type text: str
+   :param warning_msg: Error message in case the inserted value does not satisfy the control condition
+   :param warning_msg: Error message in case the inserted value does not satisfy the control condition
+   :type warning_msg: str
+   :param control: Control function to be checked on the inserted value
+   :param control: Control function to be checked on the inserted value
+   :type control: Callable
+   :param is_path: Flag signaling if the expected input is a path, defaults to False
+   :type is_path: bool, optional
+   :param is_local_path: If the provided path is a local path, defaults to True
+   :type is_local_path: bool
+   :return: The value inserted from the user satisfying the condition
+   :rtype: str
+
+
+.. py:function:: get_timeout(seconds: Optional[int] = 120) -> datetime.timedelta
+
+   Maximum allowed timeout for distributed communications
+
+   :param seconds: Maximum allowed timeout in seconds, defaults to 12
+   :type seconds: Optional[int], optional
+   :return: Maximum allowed time delta
+   :rtype: timedelta
+
+
+.. py:function:: get_default_nccl_process_group_options(is_high_priority_stream: Optional[bool] = True)
+
+   Default NCCL backend configuration for xFFL
+
+   :param is_high_priority_stream: Whether to pick up the highest priority CUDA stream, defaults to True
+   :type is_high_priority_stream: Optional[bool], optional
+   :return: Configured options for the NCCL backend
+   :rtype: ProcessGroupNCCL.Options
+
+

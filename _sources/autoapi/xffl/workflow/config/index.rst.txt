@@ -1,0 +1,31 @@
+xffl.workflow.config
+====================
+
+.. py:module:: xffl.workflow.config
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   xffl.workflow.config.YamlConfig
+
+
+Module Contents
+---------------
+
+.. py:class:: YamlConfig
+
+   .. py:attribute:: content
+      :type:  collections.abc.MutableMapping[str, Any]
+
+
+   .. py:method:: get_default_content() -> collections.abc.MutableMapping[str, Any]
+      :classmethod:
+
+
+
+   .. py:method:: save() -> collections.abc.MutableMapping[str, Any]
+
+

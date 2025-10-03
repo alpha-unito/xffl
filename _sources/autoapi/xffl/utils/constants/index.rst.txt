@@ -1,0 +1,37 @@
+xffl.utils.constants
+====================
+
+.. py:module:: xffl.utils.constants
+
+.. autoapi-nested-parse::
+
+   All the constants used in xFFL should be declared and sourced from here
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.utils.constants.VERSION
+   xffl.utils.constants.DEFAULT_xFFL_DIR
+
+
+Module Contents
+---------------
+
+.. py:data:: VERSION
+   :type:  Final[str]
+   :value: 'v0.1.0'
+
+
+   xFFL software version
+
+
+.. py:data:: DEFAULT_xFFL_DIR
+   :type:  Final[xffl.custom.types.PathLike]
+
+   FastFederatedLearning default root directory
+
+

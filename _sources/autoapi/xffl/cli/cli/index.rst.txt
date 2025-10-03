@@ -1,0 +1,67 @@
+xffl.cli.cli
+============
+
+.. py:module:: xffl.cli.cli
+
+.. autoapi-nested-parse::
+
+   Command line interface (CLI) for xFFL.
+
+   This is the main entrypoint of the xFFL CLI.
+   Argument parsing takes place here and the various xFFL subcommands are dispatched.
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.cli.cli.logger
+   xffl.cli.cli.COMMANDS
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.cli.cli.dispatch_command
+   xffl.cli.cli.main
+   xffl.cli.cli.run
+
+
+Module Contents
+---------------
+
+.. py:data:: logger
+   :type:  logging.Logger
+
+   Default xFFL logger
+
+
+.. py:data:: COMMANDS
+   :type:  Dict[str, str]
+
+.. py:function:: dispatch_command(command: str, args: argparse.Namespace) -> int
+
+   Dispatch a subcommand safely, logging errors.
+
+   :param command: Subcommand name
+   :param args: Parsed argparse.Namespace
+   :return: Exit code
+
+
+.. py:function:: main(arguments: List[str]) -> int
+
+   xFFL command line interface.
+
+   :param arguments: Command line arguments
+   :return: Exit code
+
+
+.. py:function:: run() -> None
+
+   Main CLI entrypoint
+
+

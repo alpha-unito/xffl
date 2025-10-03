@@ -1,0 +1,48 @@
+xffl.custom.models.mixtral
+==========================
+
+.. py:module:: xffl.custom.models.mixtral
+
+.. autoapi-nested-parse::
+
+   Mixtral modelling
+
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   xffl.custom.models.mixtral.Mixtral
+
+
+Module Contents
+---------------
+
+.. py:class:: Mixtral
+
+   Bases: :py:obj:`xffl.custom.models.model_info.ModelInfo`
+
+
+   Mixtral essential information
+
+
+   .. py:attribute:: model_type
+      :type:  Type
+
+
+   .. py:attribute:: decoder_layer
+      :type:  Type
+
+
+   .. py:attribute:: wrapping_policy
+      :type:  Callable
+
+
+   .. py:attribute:: path
+      :type:  xffl.custom.types.FolderLike
+      :value: '/path/to/mixtral/model'
+
+
+

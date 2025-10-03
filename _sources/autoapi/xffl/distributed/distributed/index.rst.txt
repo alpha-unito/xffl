@@ -1,0 +1,148 @@
+xffl.distributed.distributed
+============================
+
+.. py:module:: xffl.distributed.distributed
+
+.. autoapi-nested-parse::
+
+   Common distributed PyTorch utilities
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.distributed.distributed.logger
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.distributed.distributed.get_appropriate_sharding_strategy
+   xffl.distributed.distributed.setup_distributed_process_group
+   xffl.distributed.distributed.init_distributed_process_group
+   xffl.distributed.distributed.cleanup_distributed_process_group
+   xffl.distributed.distributed._get_current_device
+   xffl.distributed.distributed._get_init_device
+   xffl.distributed.distributed._setup_devices
+
+
+Module Contents
+---------------
+
+.. py:data:: logger
+   :type:  logging.Logger
+
+   Default xFFL logger
+
+
+.. py:function:: get_appropriate_sharding_strategy(state: xffl.distributed.distributed_state.DistributedState) -> torch.distributed.fsdp.ShardingStrategy
+
+   Federated averaging of corresponding model's shards on different hosts
+
+   :param state: Instantiated distributed state
+   :type state: DistributedState
+
+
+.. py:function:: setup_distributed_process_group(rank: Optional[int] = None, world_size: Optional[int] = None, group_local_rank: Optional[int] = None, group_local_size: Optional[int] = None, group_rank: Optional[int] = None, group_world_size: Optional[int] = None, backend: Optional[torch.distributed.distributed_c10d.Backend] = None, master_addr: Optional[str] = None, master_port: Optional[int] = None, device: Optional[torch.device] = None, hsdp: Optional[int] = None, federated: Optional[Tuple[int]] = None, streams: Optional[int] = None) -> xffl.distributed.distributed_state.DistributedState
+
+   Setup PyTorch's distributed environment
+
+   To be called AFTER the various processes have been created and by ALL processes
+   The distributed rendez-vous point determined by two environmental variable that should be set BEFORE calling this method (same values for all processes):
+   MASTER_ADD:  network address of the rendezvous
+   MASTER_PORT: network port of the rendezvous
+
+   :param rank: Rank of the calling process, otherwise obtained from the environment, defaults to None
+   :type rank: Optional[int], optional
+   :param world_size: Global world size, otherwise obtained from the environment, defaults to None
+   :type world_size: Optional[int], optional
+   :param group_local_rank: Local group rank of the calling process, otherwise obtained from the environment, defaults to None
+   :type group_local_rank: Optional[int], optional
+   :param group_local_size: Size of the local group of the calling process, otherwise obtained from the environment, defaults to None
+   :type group_local_size: Optional[int], optional
+   :param group_rank: Rank of the group of the calling process, otherwise obtained from the environment, defaults to None
+   :type group_rank: Optional[int], optional
+   :param group_world_size: World size of the groups, otherwise obtained from the environment, defaults to None
+   :type group_world_size: Optional[int], optional
+   :param backend: Communication backend to be used, defaults to "nccl" (distributed GPU training), defaults to None
+   :type backend: Backend, optional
+   :param master_addr: IP address for the PyTorch.distributed rendez-vous, otherwise obtained from the environment, defaults to None
+   :type master_addr: Optional[str], optional
+   :param master_port: Port number for the PyTorch.distributed rendez-vous, otherwise obtained from the environment, defaults to None
+   :type master_port: Optional[int], optional
+   :param device: Device type used by the distributed processes, if not specified we will try to guess it, defaults to None
+   :type device: Optional[torch.device], optional
+   :param hsdp: Activate Hybrid Sharding Distributed Parallelism with specified replica group size, defaults to None
+   :type hsdp: Optional[int], optional
+   :param federated:Activate Federated Scaling with specified federated group size, defaults to None
+   :type federated: Optional[int], optional
+   :param streams: Number of CUDA streams to instantiate, defaults to None
+   :type streams: Optional[int]
+   :raises AttributeError: If backend is not in nccl, gloo, or mpi
+   :raises ValueError: If no valid MASTER_ADDR and MASTER_PORT are set
+   :return: Distributed state of the current training setup
+   :rtype: DistributedState
+
+
+.. py:function:: init_distributed_process_group(state: xffl.distributed.distributed_state.DistributedState) -> None
+
+   PyTorch's distributed backend initialization
+
+   :param state: Partially instantiated distributed state (rank, world_size, backend)
+   :type state: DistributedState
+
+
+.. py:function:: cleanup_distributed_process_group(state: xffl.distributed.distributed_state.DistributedState, del_obj: Tuple[Any] = ()) -> None
+
+   Cleanup PyTorch's distributed environment
+
+   To be called AFTER the various processes have completed their work and by ALL processes
+
+   :param state: Instantiated distributed state
+   :type state: DistributedState
+   :param del_obj: Objects to be deleted before destroying the process group, defaults to []
+   :type state: Tuple[Any]
+
+
+.. py:function:: _get_current_device(state: xffl.distributed.distributed_state.DistributedState) -> torch.device | int
+
+   PyTorch current device setup
+
+   Returns the device for the current process and empties its cache if it is a GPU
+
+   :param state: Instantiated distributed state
+   :type state: DistributedState
+   :return: The computation device
+   :rtype: torch.device | int
+
+
+.. py:function:: _get_init_device(state: xffl.distributed.distributed_state.DistributedState) -> tuple[torch.device, bool]
+
+   PyTorch initiazation device setup
+
+   Returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True) and if meta initialisation is required
+
+   :param state: Instantiated distributed state
+   :type state: DistributedState
+   :return: The device for model initialisation and if meta initialisation is enabled
+   :rtype: tuple[torch.device, bool]
+
+
+.. py:function:: _setup_devices(state: xffl.distributed.distributed_state.DistributedState) -> tuple[torch.device | int, torch.device, bool]
+
+   PyTorch device setup
+
+       Sets the GPU for the current process and empties its cache
+       Also, returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
+   s
+       :param state: Instantiated distributed state
+       :type state: DistributedState
+       :return: Two devices, one for computation and the other for model initialisation, and if meta initialisation is enabled
+       :rtype: tuple[int, torch.device | int, bool]
+
+

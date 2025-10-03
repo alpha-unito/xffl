@@ -1,0 +1,17 @@
+xffl.workflow.templates
+=======================
+
+.. py:module:: xffl.workflow.templates
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/xffl/workflow/templates/aggregation_application/index
+   /autoapi/xffl/workflow/templates/cwl/index
+   /autoapi/xffl/workflow/templates/streamflow/index
+
+

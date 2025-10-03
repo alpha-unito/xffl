@@ -1,0 +1,48 @@
+xffl.workflow.streamflow
+========================
+
+.. py:module:: xffl.workflow.streamflow
+
+.. autoapi-nested-parse::
+
+   StreamFlow wrappers
+
+   This file contains all the scripts and wrapper code related to StreamFlow and its execution
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.workflow.streamflow.logger
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.workflow.streamflow.run_streamflow
+
+
+Module Contents
+---------------
+
+.. py:data:: logger
+   :type:  logging.Logger
+
+   Default xFFL logger
+
+
+.. py:function:: run_streamflow(args: argparse.Namespace) -> None
+   :async:
+
+
+   Run a StreamFlow workflow
+
+   :param args: Command line arguments
+   :type args: argparse.Namespace
+
+

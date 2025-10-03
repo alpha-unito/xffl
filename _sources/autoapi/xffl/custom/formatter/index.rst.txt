@@ -1,0 +1,102 @@
+xffl.custom.formatter
+=====================
+
+.. py:module:: xffl.custom.formatter
+
+.. autoapi-nested-parse::
+
+   Custom logging.Formatter for formatted and coloured logging with logger filtering.
+
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   xffl.custom.formatter.ExcludeLoggerFilter
+   xffl.custom.formatter.CustomFormatter
+
+
+Module Contents
+---------------
+
+.. py:class:: ExcludeLoggerFilter(exclude: Optional[List[str]] = None)
+
+   Bases: :py:obj:`logging.Filter`
+
+
+   Filter to exclude logs from specified loggers.
+
+
+   .. py:attribute:: exclude
+
+
+   .. py:method:: filter(record: logging.LogRecord) -> bool
+
+      Return True if the log should be emitted, False otherwise.
+
+
+
+.. py:class:: CustomFormatter(fmt: Optional[str] = None, datefmt: Optional[str] = None, style: Literal['%', '{', '$'] = '%', validate: bool = True)
+
+   Bases: :py:obj:`logging.Formatter`
+
+
+   Logging formatter with color support per log level.
+
+
+   .. py:attribute:: GREY
+      :value: '\x1b[38;20m'
+
+
+
+   .. py:attribute:: BLUE
+      :value: '\x1b[38;5;39m'
+
+
+
+   .. py:attribute:: YELLOW
+      :value: '\x1b[38;5;226m'
+
+
+
+   .. py:attribute:: RED
+      :value: '\x1b[38;5;196m'
+
+
+
+   .. py:attribute:: BOLD_RED
+      :value: '\x1b[31;1m'
+
+
+
+   .. py:attribute:: RESET
+      :value: '\x1b[0m'
+
+
+
+   .. py:attribute:: DEFAULT_FORMAT
+      :value: '%(asctime)s | %(name)16s | %(levelname)8s | %(message)s'
+
+
+
+   .. py:attribute:: DATE_FORMAT
+      :value: '%H:%M:%S'
+
+
+
+   .. py:attribute:: fmt
+      :value: '%(asctime)s | %(name)16s | %(levelname)8s | %(message)s'
+
+
+
+   .. py:attribute:: FORMATS
+
+
+   .. py:method:: format(record: logging.LogRecord) -> str
+
+      Format the log record with level-specific color.
+
+
+

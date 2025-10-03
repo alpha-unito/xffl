@@ -1,0 +1,60 @@
+xffl.utils.logging
+==================
+
+.. py:module:: xffl.utils.logging
+
+.. autoapi-nested-parse::
+
+   Logging utilities for xFFL.
+
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   xffl.utils.logging.EXCLUDED_LOGGERS
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   xffl.utils.logging.setup_logging
+   xffl.utils.logging.get_default_handler
+
+
+Module Contents
+---------------
+
+.. py:data:: EXCLUDED_LOGGERS
+   :value: ['asyncio', 'git']
+
+
+.. py:function:: setup_logging(log_level: int = logging.INFO) -> None
+
+   Set up the global logging configuration and root xFFL logger.
+
+   This function configures a default StreamHandler with the CustomFormatter,
+   applies the ExcludeLoggerFilter to ignore unwanted loggers, and sets the
+   root logger level.
+
+   :param log_level: Logging level (0-50). Defaults to logging.INFO [20].
+   :type log_level: int, optional
+
+
+.. py:function:: get_default_handler(log_level: int = logging.INFO) -> logging.StreamHandler
+
+   Create and return the default xFFL logging StreamHandler.
+
+   The handler uses CustomFormatter for colored output and an
+   ExcludeLoggerFilter to ignore unwanted loggers.
+
+   :param log_level: Logging level (0-50). Defaults to logging.INFO [20].
+   :type log_level: int, optional
+   :return: Configured StreamHandler for xFFL logging
+   :rtype: logging.StreamHandler
+
+
