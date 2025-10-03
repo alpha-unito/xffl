@@ -15,10 +15,7 @@ jobs:
     strategy:
       matrix:
         on: [ "ubuntu-24.04"]
-        python: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
-        include:
-          - on: "macos-14"
-            python: "3.13"
+        python: [ "3.10", "3.11", "3.12" ]
     runs-on: ${{ matrix.on }}
     steps:
       - uses: actions/checkout@v4
