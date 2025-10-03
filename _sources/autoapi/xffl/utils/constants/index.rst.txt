@@ -23,7 +23,7 @@ Module Contents
 
 .. py:data:: VERSION
    :type:  Final[str]
-   :value: 'v0.1.0'
+   :value: 'v0.2.1'
 
 
    xFFL software version
