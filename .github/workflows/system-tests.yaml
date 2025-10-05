@@ -1,6 +1,9 @@
 name: "System Tests"
 
-on: push
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   cli-config:
