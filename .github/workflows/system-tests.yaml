@@ -3,7 +3,7 @@ name: "System Tests"
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   cli-config:

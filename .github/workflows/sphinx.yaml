@@ -3,7 +3,7 @@ name: "Sphinx: Render docs"
 on:
   push:
     branches:
-      - master
+      - main
       - docs
 
 jobs:
