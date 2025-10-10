@@ -32,7 +32,7 @@ data = pd.read_csv(
 )
 
 xlabel = "Training step"
-xlim = (0, 250)
+xlim = (0, 256)
 xticks = [0, 50, 100, 150, 200, 250]
 
 ylabel = "Loss"

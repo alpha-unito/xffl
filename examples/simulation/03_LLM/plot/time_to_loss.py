@@ -199,14 +199,13 @@ data_fl["Relative Time (Process)"] = (
 
 # Plot
 
-xlabel = "Time"
+xlabel = "Time (s)"
 xlim = (0, 1050)
 xticks = [0, 200, 400, 600, 800, 1000]
 
 ylabel = "Loss"
 ylim = (3.5, 14.5)
 yticks = [0, 2, 4, 6, 8, 10, 12, 14, 16]
-
 
 fig = sns.lineplot(
     data=data_fsdp,

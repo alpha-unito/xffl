@@ -3,16 +3,16 @@ import pandas as pd
 import seaborn as sns
 
 # -- General settings --
-FONT_SIZE = 10
+
 
 sns.set_theme(style="darkgrid")
 
-plt.rc("xtick", labelsize=FONT_SIZE)
-plt.rc("ytick", labelsize=FONT_SIZE)
+plt.rc("xtick", labelsize=16)
+plt.rc("ytick", labelsize=14)
 
 
 # -- Data extraction --
-logs = "/leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/logs"
+logs = "/leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/aggregation_logs"
 
 model = "llama3.1-8b"
 fs = 1
@@ -42,81 +42,82 @@ data = pd.concat([dataframe for _, dataframe in data.items()])
 
 data_layer = data[
     (data["Aggregation Strategy"] == "layer_by_layer")
-    & (data["Multiple CUDA Streams"] is True)
-    & (data["Contiguous Memory"] is True)
+    & (data["Multiple CUDA Streams"] == True)
+    & (data["Contiguous Memory"] == True)
 ]
 
 data_bucket = data[
     (data["Aggregation Strategy"] == "bucket_flatten")
-    & (data["Multiple CUDA Streams"] is True)
-    & (data["Contiguous Memory"] is True)
+    & (data["Multiple CUDA Streams"] == True)
+    & (data["Contiguous Memory"] == True)
 ]
 
 data_coalesced = data[
     (data["Aggregation Strategy"] == "bucket_coalesced")
-    & (data["Multiple CUDA Streams"] is True)
-    & (data["Contiguous Memory"] is True)
+    & (data["Multiple CUDA Streams"] == True)
+    & (data["Contiguous Memory"] == True)
 ]
 
 data_layer_optimized = data[
     (data["Aggregation Strategy"] == "layer_by_layer_optimized")
-    & (data["Multiple CUDA Streams"] is True)
-    & (data["Contiguous Memory"] is True)
+    & (data["Multiple CUDA Streams"] == True)
+    & (data["Contiguous Memory"] == True)
 ]
 
 data_bucket_optimized = data[
     (data["Aggregation Strategy"] == "bucket_optimized_flatten")
-    & (data["Multiple CUDA Streams"] is True)
-    & (data["Contiguous Memory"] is True)
+    & (data["Multiple CUDA Streams"] == True)
+    & (data["Contiguous Memory"] == True)
 ]
 
 data_coalesced_optimized = data[
     (data["Aggregation Strategy"] == "bucket_optimized_coalesced")
-    & (data["Multiple CUDA Streams"] is True)
-    & (data["Contiguous Memory"] is True)
+    & (data["Multiple CUDA Streams"] == True)
+    & (data["Contiguous Memory"] == True)
 ]
 
 data_layer_ = data[
     (data["Aggregation Strategy"] == "layer_by_layer")
-    & (data["Multiple CUDA Streams"] is False)
-    & (data["Contiguous Memory"] is False)
+    & (data["Multiple CUDA Streams"] == False)
+    & (data["Contiguous Memory"] == False)
 ]
 
 data_bucket_ = data[
     (data["Aggregation Strategy"] == "bucket_flatten")
-    & (data["Multiple CUDA Streams"] is False)
-    & (data["Contiguous Memory"] is False)
+    & (data["Multiple CUDA Streams"] == False)
+    & (data["Contiguous Memory"] == False)
 ]
 
 data_coalesced_ = data[
     (data["Aggregation Strategy"] == "bucket_coalesced")
-    & (data["Multiple CUDA Streams"] is False)
-    & (data["Contiguous Memory"] is False)
+    & (data["Multiple CUDA Streams"] == False)
+    & (data["Contiguous Memory"] == False)
 ]
 
 data_layer_optimized_ = data[
     (data["Aggregation Strategy"] == "layer_by_layer_optimized")
-    & (data["Multiple CUDA Streams"] is False)
-    & (data["Contiguous Memory"] is False)
+    & (data["Multiple CUDA Streams"] == False)
+    & (data["Contiguous Memory"] == False)
 ]
 
 data_bucket_optimized_ = data[
     (data["Aggregation Strategy"] == "bucket_optimized_flatten")
-    & (data["Multiple CUDA Streams"] is False)
-    & (data["Contiguous Memory"] is False)
+    & (data["Multiple CUDA Streams"] == False)
+    & (data["Contiguous Memory"] == False)
 ]
 
 data_coalesced_optimized_ = data[
     (data["Aggregation Strategy"] == "bucket_optimized_coalesced")
-    & (data["Multiple CUDA Streams"] is False)
-    & (data["Contiguous Memory"] is False)
+    & (data["Multiple CUDA Streams"] == False)
+    & (data["Contiguous Memory"] == False)
 ]
+
 
 # -- Subplot ---
 
 xticks = [2, 4, 8, 16, 32, 64, 128]
 yticks = [80, 90, 100, 110, 120]
-ytickslabels = [80, 90, 100, 110, 120]
+ytickslabels = [80, None, 100, None, 120]
 x_lim = (2, 128)
 y_lim = (80, 120)
 
@@ -140,18 +141,20 @@ fig, ax = plt.subplots(
         "xticklabels": xticks,
     },
 )
-fig.supylabel("Throughput (Gb/s)", fontsize=14, y=0.45)
-fig.supxlabel("Number of nodes", fontsize=14, x=0.75, y=0.03)
+fig.supylabel("Throughput (Gb/s)", fontsize=16, y=0.45, x=0.01)
+fig.supxlabel("Number of nodes", fontsize=16, x=0.75, y=0.02)
 
-ax[0][0].set_title("With optimizations (multiple streams + contiguous memory)")
-ax[0][1].set_title("Without optimizations")
+ax[0][0].set_title(
+    "With optimizations (mult. streams + contiguous mem.)", fontsize=16, y=1.1
+)
+ax[0][1].set_title("Without optimizations", fontsize=16, y=1.1)
 
-ax[0][0].set_ylabel("Layer")
-ax[1][0].set_ylabel("Layer bal.")
-ax[2][0].set_ylabel("Bucket")
-ax[3][0].set_ylabel("Bucket bal.")
-ax[4][0].set_ylabel("Coalesced")
-ax[5][0].set_ylabel("Coalesced bal.")
+ax[0][0].set_ylabel("Layer", fontsize=15)
+ax[1][0].set_ylabel("Layer bal.", fontsize=15)
+ax[2][0].set_ylabel("Bucket", fontsize=15)
+ax[3][0].set_ylabel("Bucket bal.", fontsize=15)
+ax[4][0].set_ylabel("Coal.", fontsize=15)
+ax[5][0].set_ylabel("Coal. bal.", fontsize=15)
 
 hue_order = [
     "ring",
@@ -355,7 +358,7 @@ fig1.legend(
     loc="center right",
     handles=fig1.get_legend_handles_labels()[0],
     labels=[
-        "NCCL Algorithm",
+        "NCCL Algo.",
         "Ring",
         "Tree",
         "Collnet",
@@ -364,17 +367,17 @@ fig1.legend(
         "NVLS",
         "NVLSTree",
         "PAT",
-        "NCLL Protocol",
+        "NCLL Proto.",
         "SIMPLE",
         "LL",
         "LL128",
     ],
     ncol=1,
-    bbox_to_anchor=(2.4, -2.3),
-    fontsize=12,
+    bbox_to_anchor=(2.50, -2.3),
+    fontsize=16,
 )
 
-plt.subplots_adjust(hspace=0.3, wspace=0.05, bottom=0.1, top=0.8, right=1.4)
+plt.subplots_adjust(hspace=0.3, wspace=0.08, bottom=0.1, top=0.8, right=1.4)
 fig.figure.savefig("out.png", bbox_inches="tight", dpi=300, format="png")
 fig.figure.savefig("nccl_tests.pdf", bbox_inches="tight", dpi=300, format="pdf")
 quit()

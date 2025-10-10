@@ -4,10 +4,10 @@ import seaborn as sns
 
 sns.set_theme(style="darkgrid")
 
-plt.rc("xtick", labelsize=12)
-plt.rc("ytick", labelsize=12)
+plt.rc("xtick", labelsize=16)
+plt.rc("ytick", labelsize=16)
 
-logs = "/leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/logs"
+logs = "/leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/aggregation_logs"
 
 model = "llama3.1-8b"
 fs = 1
@@ -67,11 +67,14 @@ order = [
 ]
 labels = [
     "Layer",
-    "Layer\nbalanced",
+    "Layer bal.",
+    # "Layer\nbalanced",
     "Bucket",
-    "Bucket\nbalanced",
+    "Bucket bal.",
+    # "Bucket\nbalanced",
     "Coalesced",
-    "Coalesced\nbalanced",
+    # "Coalesced\nbalanced",
+    "Coal. bal.",
 ]
 
 palette = {
@@ -97,9 +100,10 @@ fig1 = sns.lineplot(
     ax=ax[0],
 )
 fig1.set(
-    ylabel="Without memory overheads",
+    # ylabel="Without memory overheads",
     ylim=y_lim,
 )
+fig1.set_ylabel("Without mem. overheads", fontsize=14)
 # fig1.set_xticks([], minor=True)
 # fig1.set_xticks(ticks=xticks)
 # fig1.grid(True, axis="both")
@@ -120,14 +124,16 @@ fig2 = sns.lineplot(
     ax=ax[1],
 )
 fig2.set(
-    ylabel="With memory overheads",
+    # ylabel="With memory overheads",
     ylim=y_lim,
     xlim=x_lim,
-    xlabel="Number of nodes",
+    # xlabel="Number of nodes",
     xscale="log",
     xticks=xticks,
     xticklabels=xticks,
 )
+fig2.set_ylabel("With mem. overheads", fontsize=14)
+fig2.set_xlabel("Number of nodes", fontsize=16)
 fig2.grid(True, axis="both")
 
 fig1.legend(
@@ -136,19 +142,20 @@ fig1.legend(
     handles=fig1.get_legend_handles_labels()[0],
     labels=["Optimization"]
     + [
-        "No optimizations",
+        "No opt.",
+        # "No optimizations",
         "Contiguous\nMemory",
         "Multiple\nCUDA Streams",
         "Both",
     ]
-    + ["\nAggregation algorithm"]
+    + ["\nAlgorithm"]
     + labels,
     ncol=1,
-    bbox_to_anchor=(1.21, 0.92),
-    fontsize=12,
+    bbox_to_anchor=(1.23, 1.13),
+    fontsize=16,
 )
 
-fig.supylabel("Throughput (Gb/s)", fontsize=14, y=0.37)
-plt.subplots_adjust(hspace=0.07, wspace=0.06, bottom=0.15, top=0.6, right=1.4)
+fig.supylabel("Throughput (Gb/s)", fontsize=17, y=0.38, x=0)
+plt.subplots_adjust(hspace=0.2, wspace=0.06, bottom=0.15, top=0.6, right=1.4)
 fig.figure.savefig("out.png", bbox_inches="tight", dpi=300, format="png")
 fig.figure.savefig("multiple-node.pdf", bbox_inches="tight", dpi=300, format="pdf")
