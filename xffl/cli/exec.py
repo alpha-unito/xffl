@@ -16,7 +16,7 @@ from types import SimpleNamespace
 from typing import Dict, List
 
 from xffl.cli.parser import subparsers
-from xffl.cli.utils import get_facilitator_path, setup_env
+from xffl.cli.utils import _check_default_value, get_facilitator_path, setup_env
 from xffl.distributed.networking import get_cells_ids
 
 logger: Logger = getLogger(__name__)
@@ -55,6 +55,8 @@ def setup_execution_env(args: SimpleNamespace) -> Dict[str, str]:
             "XFFL_DATASET_FOLDER": "dataset",
             "XFFL_IMAGE": "image",
         } | base_env_mapping
+        for arg in ["workdir", "model", "dataset"]:
+            _check_default_value(arg, getattr(args, arg), subparsers.choices["exec"])
     elif sys.prefix != sys.base_prefix:
         # Already in a venv, use it
         args.venv = sys.prefix
@@ -63,7 +65,7 @@ def setup_execution_env(args: SimpleNamespace) -> Dict[str, str]:
     else:
         raise ValueError("No execution environment specified [container/virtual env]")
 
-    env = setup_env(args=vars(args), mapping=env_mapping)
+    env = setup_env(args=args, mapping=env_mapping)
     env["XFFL_EXECUTION"] = "true"
 
     if args.image:

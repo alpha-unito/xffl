@@ -53,8 +53,9 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 
 		# Python virtual environment
 		if [ -n "$XFFL_VENV" ] ; then
-			COMMAND="${XFFL_SCRIPTS_FOLDER}/run.sh"
+			COMMAND="${XFFL_SCRIPTS_FOLDER}/run.sh $*"
 		else
+		# PYTHON_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
 				--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
@@ -65,11 +66,13 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 				--home /code/ \
 				$GPU_FLAG \
 				${XFFL_IMAGE} \
-				/usr/local/lib/python3.12/dist-packages/xffl/workflow/scripts/run.sh" # TODO: make this dynamic
+				bash -c \"python /code/$* --model /model/ --dataset /datasets/\""
 		fi
+				# ${PYTHON_PATH}/xffl/workflow/scripts/run.sh
 
 		# Run the local simulation process
-		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND $*" &
+		echo "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND"
+		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND" &
 		pids[_RANK]=$!
 	done
 

@@ -62,7 +62,7 @@ class ArgumentParser(argparse.ArgumentParser):
             help="Path to the model's configuration class",
             type=str,
             required=True,
-            choices=list(MODELS.keys()),
+            # choices=list(MODELS.keys()),
         )
 
         self.add_argument(
@@ -71,7 +71,7 @@ class ArgumentParser(argparse.ArgumentParser):
             help="Dataset's name",
             type=str,
             required=True,
-            choices=list(DATASETS.keys()),
+            # choices=list(DATASETS.keys()),
         )
 
         self.add_argument(

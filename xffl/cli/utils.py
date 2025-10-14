@@ -25,7 +25,7 @@ def get_facilitator_path() -> FileLike:
     return workflow_dir / "scripts" / "facilitator.sh"
 
 
-def check_default_value(
+def _check_default_value(
     argument_name: str, argument_value: Any, parser: argparse.ArgumentParser
 ) -> None:
     """Check if a CLI argument value equals its default.
@@ -39,7 +39,7 @@ def check_default_value(
     """
     default_value = parser.get_default(dest=argument_name)
     if argument_value == default_value:
-        logger.debug(
+        logger.warning(
             f'CLI argument "{argument_name}" has default value "{default_value}"'
         )
 
@@ -67,7 +67,7 @@ def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
     return expanded_args
 
 
-def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
+def setup_env(args: argparse.Namespace, mapping: Dict[str, str]) -> Dict[str, str]:
     """Create a mapping between CLI arguments and environment variables.
 
     :param args: CLI arguments.
@@ -77,6 +77,7 @@ def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
     :return: New environment variables dictionary.
     :rtype: Dict[str, str]
     """
+    args: Dict[str, Any] = vars(args)
     return {env_var: str(args[parse_var]) for env_var, parse_var in mapping.items()}
 
 
