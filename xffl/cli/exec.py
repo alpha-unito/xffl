@@ -140,7 +140,6 @@ def exec(args: argparse.Namespace) -> int:
                         str(facilitator_script),
                         str(args.executable),
                     ]
-                    + list(map(str, args.arguments))
                 ),
             ]
             logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))

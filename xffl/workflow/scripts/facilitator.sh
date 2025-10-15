@@ -55,20 +55,18 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 		if [ -n "$XFFL_VENV" ] ; then
 			COMMAND="${XFFL_SCRIPTS_FOLDER}/run.sh $*"
 		else
-		# PYTHON_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
 				--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
-				--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/datasets/ \
+				--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/dataset/ \
 				--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
 				--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
 				--mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
 				--home /code/ \
 				$GPU_FLAG \
 				${XFFL_IMAGE} \
-				bash -c \"python /code/$* --model /model/ --dataset /datasets/\""
+				bash -c \"python /code/$* --model /model/ --dataset /dataset/\""
 		fi
-				# ${PYTHON_PATH}/xffl/workflow/scripts/run.sh
 
 		# Run the local simulation process
 		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND" &
@@ -106,6 +104,6 @@ else
 		${GPU_FLAG} \
 		${XFFL_IMAGE} \
 		${XFFL_SCRIPTS_FOLDER}/run.sh $*"
-	echo "[Rank $RANK] Executing: $COMMAND"		
+	echo "[Rank $RANK] Executing: $COMMAND"		# TODO: potremmo anche sbarazzarci di run.sh
 	eval "$COMMAND"
 fi

@@ -37,23 +37,6 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_arguments_option(subparser: argparse.ArgumentParser) -> None:
-    """Add the --arguments passthrough option to a subparser.
-
-    :param subparser: The argparse subparser to extend
-    :type subparser: argparse.ArgumentParser
-    """
-    subparser.add_argument(
-        "-args",
-        "--arguments",
-        help="Additional command line arguments to pass directly to the "
-        "executable script or experiment runner.",
-        type=str,
-        nargs="+",
-        default=[],
-    )
-
-
 def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     """Build the main xFFL argument parser.
 
@@ -108,7 +91,6 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         help="Execute an experiment using xFFL.",
     )
     _add_common_project_options(run_parser)
-    _add_arguments_option(run_parser)
 
     run_parser.add_argument(
         "-o",
@@ -135,7 +117,6 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         description="Execute a Python script or experiment locally through xFFL.",
         help="Run a local script with xFFL execution framework.",
     )
-    _add_arguments_option(exec_parser)
 
     exec_parser.add_argument(
         "executable",

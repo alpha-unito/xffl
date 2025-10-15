@@ -4,19 +4,18 @@ Inspired from llama-recipes' fine-tuning.py script:
 https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetuning.py
 """
 
-import argparse
 import functools
 import math
-import sys
+import os
 import time
 from logging import Logger, getLogger
-from parser import parser
 from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
 import transformers
 import wandb
+from config import xffl_config
 from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision, wrap
 from torch.optim import AdamW
@@ -35,7 +34,8 @@ logger: Logger = getLogger(__name__)
 
 
 def pretraining(
-    args: argparse.Namespace, model_info: PathLike, dataset_info: PathLike
+    config: xffl_config,
+    # args: argparse.Namespace, model_info: PathLike, dataset_info: PathLike
 ) -> None:
     """LLM pre-training script
 
@@ -51,19 +51,26 @@ def pretraining(
     setup_time: float = time.perf_counter()
 
     # Set the requested logging level
-    setup_logging(log_level=args.loglevel)
+    setup_logging(log_level=config.loglevel)
 
     # Sets RNGs seeds and force PyTorch's deterministic execution
     generator: Optional[torch.Generator] = (
-        utils.set_deterministic_execution(seed=args.seed) if args.seed else None
+        utils.set_deterministic_execution(seed=config.seed) if config.seed else None
     )
+
+    if "XFFL_IMAGE" in os.environ:
+        model_path: str = str(PathLike("/model/"))
+        dataset_path: str = str(PathLike("/dataset/"))
+    else:
+        model_path: str = str(PathLike(config.model.path + config.model.name))
+        dataset_path: str = str(PathLike(config.dataset.path + config.dataset.name))
 
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
-        hsdp=args.hsdp,
-        federated=args.federated_scaling,
-        streams=args.cuda_streams,
+        hsdp=config.hsdp,
+        federated=config.federated_scaling,
+        streams=config.cuda_streams,
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -72,19 +79,18 @@ def pretraining(
 
     # Large data preloading in background
     if state.node_local_rank == 0:
-        # utils.preload(files=[model_info.path])
-        utils.preload(files=[model_info])
+        utils.preload(files=[model_path])
 
     # WandB setup
     wandb_run: wandb.wandb_run.Run = wandb.init(  # Default entity
         entity="alpha-unito",
         project="xFFL - convergence",
-        group=args.wandb_name,
+        group=config.wandb_name,
         name=f"client_{state.rank}",
-        notes=f"{args.model} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
-        tags=["xFFL", f"{args.model}", "clean_mc4_it"],
-        mode=args.wandb_mode,  # Set to "disable" to execute without wandb
-        config=vars(args),
+        notes=f"{config.model.name} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
+        tags=["xFFL", f"{config.model.name}", "clean_mc4_it"],
+        mode=config.wandb_mode,  # Set to "disable" to execute without wandb
+        # config=config.__dict__,
     )
 
     # The whole training is done in bfloat16
@@ -100,11 +106,11 @@ def pretraining(
     start_time = time.perf_counter()
     model: AutoModel = (
         AutoModelForCausalLM.from_pretrained(  # Configuration is automatically loaded from the JSON file inside the model folder
-            pretrained_model_name_or_path=str(model_info),  # model_info.path,
+            pretrained_model_name_or_path=model_path,  # model_info.path,
             use_cache=False,
             # output_loading_info=True #TODO: to add to verbose mode
-            local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
-            attn_implementation=args.attention,
+            local_files_only=not config.online,  # Most HPCs do not have internet access from the nodes
+            attn_implementation=config.attention,
             dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
             device_map=state.init_device,
             use_safetensors=True,
@@ -127,7 +133,7 @@ def pretraining(
             f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
         logger.debug(
-            f"Training {args.model}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
+            f"Training {config.model.name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
         )
 
     # FSDP/HSDP setup
@@ -142,15 +148,14 @@ def pretraining(
             },
         ),
         mixed_precision=mixed_precision,
-    )  # TODO: try with origin_params
+    )
 
     # Activation checkpointing
+    # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
     utils.set_activation_checkpointing(
         model=model,
-        layer=(
-            transformers.models.llama.modeling_llama.LlamaDecoderLayer
-        ),  # model_info.decoder_layer
-    )  # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
+        layer=config.model.decoder_layers,
+    )
 
     if state.rank == 0:
         logger.debug(
@@ -158,13 +163,10 @@ def pretraining(
         )
 
     # Dataset loading
-    splits: Dict[str, str] = {
-        "train": "train",
-        "val": "val",
-    }
     start_time = time.perf_counter()
     datasets: Dict[str, Dataset | DatasetDict] = data.load_datasets_from_disk(
-        splits=splits, base_path=dataset_info
+        splits=config.dataset.splits,
+        base_path=dataset_path,
     )  # Original LLaMA training packs the datasets
     if state.rank == 0:
         logger.debug(
@@ -174,10 +176,10 @@ def pretraining(
     # Dataloaders creation
     start_time = time.perf_counter()
     dataloaders: Dict[str, DataLoader] = {}
-    for split in splits:
+    for split in config.dataset.splits:
 
-        if split == "train" and args.subsampling:
-            datasets[split] = datasets[split].select(list(range(0, args.subsampling)))
+        if split == "train" and config.subsampling:
+            datasets[split] = datasets[split].select(list(range(0, config.subsampling)))
 
         if state.rank == 0:
             logger.debug(f"{split} set size: {len(datasets[split])} samples")
@@ -185,24 +187,26 @@ def pretraining(
         dataloaders[split] = DataLoader(
             dataset=datasets[split],
             batch_size=(
-                args.train_batch_size if split == "train" else args.val_batch_size
+                config.train_batch_size if split == "train" else config.val_batch_size
             ),
             sampler=DistributedSampler(
                 dataset=datasets[split],
                 num_replicas=state.world_size,
                 rank=state.rank,
                 shuffle=split == "train",
-                seed=args.seed if args.seed else None,
+                seed=config.seed if config.seed else None,
                 drop_last=True,
             ),
-            num_workers=args.workers,
+            num_workers=config.workers,
             collate_fn=default_data_collator,
             pin_memory=True,
             drop_last=True,
             worker_init_fn=(
-                utils.seed_dataloader_worker if args.seed else None
+                utils.seed_dataloader_worker if config.seed else None
             ),  # Necessary for reproducibility
-            generator=generator if args.seed else None,  # Necessary for reproducibility
+            generator=(
+                generator if config.seed else None
+            ),  # Necessary for reproducibility
         )
 
         if state.rank == 0:
@@ -218,18 +222,18 @@ def pretraining(
     # This is needed to keep the effective learning rate per sample constant
     # when the global batch size changes due to data parallelism
     # TODO: Investigate this more
-    if args.scale_learning_rate:
-        args.learning_rate = args.learning_rate * state.world_size
+    if config.scale_learning_rate:
+        config.learning_rate = config.learning_rate * state.world_size
 
     if state.rank == 0:
-        logger.info(f"Learning rate adjusted to: {args.learning_rate}")
+        logger.info(f"Learning rate adjusted to: {config.learning_rate}")
 
     # Optimizer and lr scheduler creation
     optimizer: AdamW = AdamW(
         params=model.parameters(),
-        lr=args.learning_rate,
-        weight_decay=args.weight_decay,
-        betas=(0.9, 0.95),
+        lr=config.learning_rate,
+        weight_decay=config.weight_decay,
+        betas=config.betas,
         # foreach=True,  # Optimizes performances but uses more memory
         fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
@@ -271,7 +275,7 @@ def pretraining(
             f"GPU RAM allocated before training: {torch.cuda.max_memory_allocated() / 10**9:.2f} GB"
         )
 
-    if args.benchmark:
+    if config.benchmark:
         with torch.no_grad():
             if state.is_federated_scaling_setup():
                 from xffl.distributed.aggregation import benchmark_aggregation
@@ -279,8 +283,8 @@ def pretraining(
                 benchmark_aggregation(
                     model=model,
                     state=state,
-                    iterations=args.benchmark,
-                    dump=f"{args.workspace}/{args.csv}",
+                    iterations=config.benchmark,
+                    dump=f"{config.workspace}/{config.csv}",
                 )
             else:
                 logger.critical("Federated scaling is required for benchmarking")
@@ -299,17 +303,16 @@ def pretraining(
                 total_steps=len(dataloaders["train"]),
             ),
             wandb_run=wandb_run,
-            save_path=args.output,
-            output_model_name=args.output_model,
-            epochs=args.epochs,
-            federated_batches=args.federated_batches,
+            save_path=config.output,
+            output_model_name=config.output_model,
+            epochs=config.epochs,
+            federated_batches=config.federated_batches,
         )
 
         if state.rank == 0:
             [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
-            if args.wandb:
-                for k, v in results.items():
-                    wandb_run.summary[k] = v
+            for k, v in results.items():
+                wandb_run.summary[k] = v
 
     # PyTorch's distributed backend cleanup
     wandb.finish()
@@ -322,12 +325,7 @@ def main():
     """Argument parsing and training launch"""
 
     try:
-        args = parser.parse_args(sys.argv[1:])
-        pretraining(
-            args=args,
-            model_info=args.model,  # MODELS[args.model],
-            dataset_info=args.dataset,  # DATASETS[args.dataset],
-        )
+        pretraining(xffl_config)
     except KeyboardInterrupt as e:
         logger.exception(e)
     except Exception as e:
