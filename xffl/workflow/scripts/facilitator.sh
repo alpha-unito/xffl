@@ -71,7 +71,6 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 				# ${PYTHON_PATH}/xffl/workflow/scripts/run.sh
 
 		# Run the local simulation process
-		echo "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND"
 		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND" &
 		pids[_RANK]=$!
 	done

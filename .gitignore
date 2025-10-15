@@ -145,3 +145,4 @@ models/*
 images/*
 *.csv
 *.pstats
+.bash_history

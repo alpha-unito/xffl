@@ -3,7 +3,7 @@
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import torch
 from torch import nn
@@ -12,7 +12,6 @@ from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
 from transformers import AutoModel
 
-from xffl.custom.models import ModelInfo
 from xffl.custom.types import PathLike
 from xffl.distributed.distributed import (
     DistributedState,
@@ -26,7 +25,7 @@ logger: Logger = getLogger(__name__)
 def create_fsdp_model(
     module: nn.Module | AutoModel,
     state: DistributedState,
-    model_info: ModelInfo,
+    wrapping_policy: Callable,
     mixed_precision: Optional[MixedPrecision] = None,
 ) -> FullyShardedDataParallel:
     """Creates an FSDP model
@@ -35,8 +34,8 @@ def create_fsdp_model(
     :type module: nn.Module | AutoModel
     :param state: Instantiated distributed state
     :type state: DistributedState
-    :param model_info: Dataclass with model's information
-    :type model_info: ModelInfo
+    :param wrapping_policy: Model's wrapping policy
+    :type wrapping_policy:  Callable
     :param mixed_precision: Precision to use for the module, defaults to None
     :type mixed_precision: Optional[MixedPrecision], optional
     :return: The original module wrapped by FSDP
@@ -52,7 +51,7 @@ def create_fsdp_model(
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=module,
         sharding_strategy=get_appropriate_sharding_strategy(state=state),
-        auto_wrap_policy=model_info.wrapping_policy,
+        auto_wrap_policy=wrapping_policy,
         device_id=state.current_device,
         forward_prefetch=True,
         limit_all_gathers=False,

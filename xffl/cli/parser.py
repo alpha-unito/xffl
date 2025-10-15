@@ -11,31 +11,30 @@ import logging
 import os
 from typing import Tuple
 
-from xffl.custom.datasets import DATASETS
-from xffl.custom.models import MODELS
 from xffl.custom.types import FileLike, FolderLike
 
-# def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
-#     """Add common project-related options to a subparser.
 
-#     :param subparser: The argparse subparser to extend
-#     :type subparser: argparse.ArgumentParser
-#     """
-#     subparser.add_argument(
-#         "-p",
-#         "--project",
-#         help="Name of the project or experiment. Default is 'project'.",
-#         type=str,
-#         default="project",
-#     )
-#     subparser.add_argument(
-#         "-w",
-#         "--workdir",
-#         help="Working directory where the experiment files are stored. "
-#         "Defaults to the current working directory.",
-#         type=FolderLike,
-#         default=os.getcwd(),
-#     )
+def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
+    """Add common project-related options to a subparser.
+
+    :param subparser: The argparse subparser to extend
+    :type subparser: argparse.ArgumentParser
+    """
+    subparser.add_argument(
+        "-p",
+        "--project",
+        help="Name of the project or experiment. Default is 'project'.",
+        type=str,
+        default="project",
+    )
+    subparser.add_argument(
+        "-w",
+        "--workdir",
+        help="Working directory where the experiment files are stored. "
+        "Defaults to the current working directory.",
+        type=FolderLike,
+        default=os.getcwd(),
+    )
 
 
 def _add_arguments_option(subparser: argparse.ArgumentParser) -> None:
@@ -100,7 +99,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         description="Interactively configure a new xFFL experiment.",
         help="Create or edit a federated learning experiment configuration.",
     )
-    # _add_common_project_options(config_parser)
+    _add_common_project_options(config_parser)
 
     # Subcommand: run
     run_parser = subparsers.add_parser(
@@ -108,7 +107,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         description="Run a previously configured xFFL experiment.",
         help="Execute an experiment using xFFL.",
     )
-    # _add_common_project_options(run_parser)
+    _add_common_project_options(run_parser)
     _add_arguments_option(run_parser)
 
     run_parser.add_argument(
@@ -136,7 +135,6 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         description="Execute a Python script or experiment locally through xFFL.",
         help="Run a local script with xFFL execution framework.",
     )
-    # _add_common_project_options(exec_parser)
     _add_arguments_option(exec_parser)
 
     exec_parser.add_argument(

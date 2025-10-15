@@ -5,6 +5,7 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 """
 
 import argparse
+import functools
 import math
 import sys
 import time
@@ -14,17 +15,17 @@ from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
+import transformers
 import wandb
 from datasets import Dataset, DatasetDict
-from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
+from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision, wrap
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
-from xffl.custom.datasets import DATASETS, DatasetInfo
-from xffl.custom.models import MODELS, ModelInfo
+from xffl.custom.types import PathLike
 from xffl.distributed import distributed
 from xffl.learning import data, modelling, processing, utils
 from xffl.utils.logging import setup_logging
@@ -34,7 +35,7 @@ logger: Logger = getLogger(__name__)
 
 
 def pretraining(
-    args: argparse.Namespace, model_info: ModelInfo, dataset_info: DatasetInfo
+    args: argparse.Namespace, model_info: PathLike, dataset_info: PathLike
 ) -> None:
     """LLM pre-training script
 
@@ -42,10 +43,10 @@ def pretraining(
 
     :param args: Command-line arguments
     :type args: argparse.Namespace
-    :param model_info: Model information class
-    :type model_info: ModelInfo
-    :param dataset_info: Dataset information class
-    :type dataset_info: DatasetInfo
+    :param model_info: Model path
+    :type model_info: PathLike
+    :param dataset_info: Dataset path
+    :type dataset_info: PathLike
     """
     setup_time: float = time.perf_counter()
 
@@ -71,7 +72,8 @@ def pretraining(
 
     # Large data preloading in background
     if state.node_local_rank == 0:
-        utils.preload(files=[model_info.path])
+        # utils.preload(files=[model_info.path])
+        utils.preload(files=[model_info])
 
     # WandB setup
     wandb_run: wandb.wandb_run.Run = wandb.init(  # Default entity
@@ -98,7 +100,7 @@ def pretraining(
     start_time = time.perf_counter()
     model: AutoModel = (
         AutoModelForCausalLM.from_pretrained(  # Configuration is automatically loaded from the JSON file inside the model folder
-            pretrained_model_name_or_path=model_info.path,
+            pretrained_model_name_or_path=str(model_info),  # model_info.path,
             use_cache=False,
             # output_loading_info=True #TODO: to add to verbose mode
             local_files_only=not args.online,  # Most HPCs do not have internet access from the nodes
@@ -133,13 +135,21 @@ def pretraining(
     model: FullyShardedDataParallel = modelling.create_fsdp_model(
         module=model,
         state=state,
-        model_info=model_info,
+        wrapping_policy=functools.partial(
+            wrap.transformer_auto_wrap_policy,
+            transformer_layer_cls={
+                transformers.models.llama.modeling_llama.LlamaDecoderLayer
+            },
+        ),
         mixed_precision=mixed_precision,
     )  # TODO: try with origin_params
 
     # Activation checkpointing
     utils.set_activation_checkpointing(
-        model=model, layer=model_info.decoder_layer
+        model=model,
+        layer=(
+            transformers.models.llama.modeling_llama.LlamaDecoderLayer
+        ),  # model_info.decoder_layer
     )  # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
 
     if state.rank == 0:
@@ -148,9 +158,13 @@ def pretraining(
         )
 
     # Dataset loading
+    splits: Dict[str, str] = {
+        "train": "train",
+        "val": "val",
+    }
     start_time = time.perf_counter()
     datasets: Dict[str, Dataset | DatasetDict] = data.load_datasets_from_disk(
-        splits=dataset_info.splits, base_path=dataset_info.path
+        splits=splits, base_path=dataset_info
     )  # Original LLaMA training packs the datasets
     if state.rank == 0:
         logger.debug(
@@ -160,7 +174,7 @@ def pretraining(
     # Dataloaders creation
     start_time = time.perf_counter()
     dataloaders: Dict[str, DataLoader] = {}
-    for split in dataset_info.splits:
+    for split in splits:
 
         if split == "train" and args.subsampling:
             datasets[split] = datasets[split].select(list(range(0, args.subsampling)))
@@ -311,8 +325,8 @@ def main():
         args = parser.parse_args(sys.argv[1:])
         pretraining(
             args=args,
-            model_info=MODELS[args.model],
-            dataset_info=DATASETS[args.dataset],
+            model_info=args.model,  # MODELS[args.model],
+            dataset_info=args.dataset,  # DATASETS[args.dataset],
         )
     except KeyboardInterrupt as e:
         logger.exception(e)

@@ -5,9 +5,7 @@ The custom xFFL argument parser is essentially a Python standard ArgumentParser,
 
 import argparse
 
-from xffl.custom.datasets import DATASETS
-from xffl.custom.models import MODELS
-from xffl.custom.types import FolderLike
+from xffl.custom.types import FolderLike, PathLike
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -60,7 +58,7 @@ class ArgumentParser(argparse.ArgumentParser):
             "-m",
             "--model",
             help="Path to the model's configuration class",
-            type=str,
+            type=PathLike,
             required=True,
             # choices=list(MODELS.keys()),
         )
@@ -69,18 +67,18 @@ class ArgumentParser(argparse.ArgumentParser):
             "-d",
             "--dataset",
             help="Dataset's name",
-            type=str,
+            type=PathLike,
             required=True,
             # choices=list(DATASETS.keys()),
         )
 
-        self.add_argument(
-            "-w",
-            "--workspace",
-            help="Path to the folder containing the necessary Python scripts to run the training",
-            type=FolderLike,
-            default=None,
-        )
+        # self.add_argument(
+        #     "-w",
+        #     "--workspace",
+        #     help="Path to the folder containing the necessary Python scripts to run the training",
+        #     type=FolderLike,
+        #     default=None,
+        # )
 
         self.add_argument(
             "-o",
