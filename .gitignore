@@ -148,3 +148,4 @@ images/*
 .bash_history
 .local
 .local/
+project/

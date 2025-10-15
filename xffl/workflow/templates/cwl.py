@@ -32,7 +32,7 @@ class CWLConfig(YamlConfig):
         }
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Adds the CWL inputs to the YAML content
 
@@ -72,7 +72,7 @@ class Workflow(ABC):
 
     @abstractmethod
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Add the given extra inputs to the Workflow definition
 
@@ -146,7 +146,7 @@ class AggregateStep(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Add the given extra inputs to the AggregateStep definition
 
@@ -251,7 +251,7 @@ class MainWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Add the given extra inputs to the MainWorkflow definition
 
@@ -414,7 +414,7 @@ class RoundWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Add the given extra inputs to the RoundWorkflow definition
 
@@ -590,7 +590,7 @@ class TrainingStep(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Add the given extra inputs to the TrainingStep definition
 

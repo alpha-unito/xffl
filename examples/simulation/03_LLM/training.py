@@ -58,6 +58,7 @@ def pretraining(
         utils.set_deterministic_execution(seed=config.seed) if config.seed else None
     )
 
+    # Convert paths to the container's deafults if executing inside one
     if "XFFL_IMAGE" in os.environ:
         model_path: str = str(PathLike("/model/"))
         dataset_path: str = str(PathLike("/dataset/"))
