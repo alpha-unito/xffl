@@ -242,24 +242,24 @@ def distributed_training(
             val_step_loss.extend(temp_val_loss)
             val_step_perplexity.extend(temp_step_perplexity)
 
-            if output_model_name:
-                checkpoint_start_time = time.perf_counter()
-                save_fsdp_model(
-                    model=model,
-                    optimizer=optimizer,
-                    path=save_path,
-                    name=output_model_name,
-                    rank=state.rank,
-                    epoch=epoch,
-                )
-                checkpoint_times.append(time.perf_counter() - checkpoint_start_time)
-
             if eval_epoch_loss < best_val_loss:
                 best_val_loss: torch.Tensor = eval_epoch_loss
                 # if state.rank == 0:
                 #    logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(best_val_loss))
             val_perp.append(float(eval_ppl))
+
+        if output_model_name:
+            checkpoint_start_time = time.perf_counter()
+            save_fsdp_model(
+                model=model,
+                optimizer=optimizer,
+                path=save_path,
+                name=output_model_name,
+                rank=state.rank,
+                epoch=epoch,
+            )
+            checkpoint_times.append(time.perf_counter() - checkpoint_start_time)
 
         if state.rank == 0:
             if validate:

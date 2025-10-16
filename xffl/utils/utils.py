@@ -1,5 +1,7 @@
 """Utility methods exploitable in many different situations"""
 
+from __future__ import annotations
+
 import os
 from collections.abc import Callable
 from datetime import timedelta

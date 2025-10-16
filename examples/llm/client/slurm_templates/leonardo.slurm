@@ -5,7 +5,7 @@
 #SBATCH --error=xFFL.err
 #SBATCH --nodes=2
 #SBATCH --time=00:15:00
-#SBATCH --account=ICT25_MHPC_0
+#SBATCH --account=EUHPC_B27_058
 #SBATCH --partition=boost_usr_prod
 #SBATCH --qos=boost_qos_dbg
 #SBATCH --ntasks-per-node=4			# GPUs x 1 node

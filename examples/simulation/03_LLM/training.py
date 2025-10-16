@@ -299,7 +299,7 @@ def pretraining(config: xffl_config) -> None:
                 total_steps=len(dataloaders["train"]),
             ),
             wandb_run=wandb_run,
-            save_path=config.output,
+            save_path=PathLike(config.output),
             output_model_name=config.output_model,
             epochs=config.epochs,
             federated_batches=config.federated_batches,

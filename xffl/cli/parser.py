@@ -39,17 +39,25 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
 
 
 def _get_default_nodelis() -> Tuple[str]:
-    return tuple(
-        subprocess.run(
-            ["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]],
-            capture_output=True,
-            text=True,
-        ).stdout.split("\n")[:-1]
+    return (
+        tuple(
+            subprocess.run(
+                ["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]],
+                capture_output=True,
+                text=True,
+            ).stdout.split("\n")[:-1]
+        )
+        if "SLURM_JOB_NODELIST" in os.environ
+        else None
     )
 
 
 def _get_default_ppn() -> int:
-    return len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+    return (
+        len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+        if "CUDA_VISIBLE_DEVICES" in os.environ
+        else None
+    )
 
 
 def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:

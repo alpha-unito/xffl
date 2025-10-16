@@ -73,7 +73,7 @@ class xffl_config:
     wandb_mode: str = "disabled"
     online: bool = False
     attention: str = "sdpa"
-    subsampling: int = 16
+    subsampling: int = 32
     train_batch_size: int = 2
     val_batch_size: int = 1
     workers: int = 2
@@ -84,7 +84,7 @@ class xffl_config:
     benchmark: int = 0
     workspace: FolderLike = None
     csv: FileLike = None
-    output: PathLike = None
-    output_model: str = None
+    output: PathLike = "/output/"
+    output_model: str = "output"
     epochs: int = 1
     federated_batches: int = 8
