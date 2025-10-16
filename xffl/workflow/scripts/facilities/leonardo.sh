@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ulimit -n 131072
-module load cuda/12.2 nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
+#module load cuda/12.2 nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
 
 # LEONARDO specific environment variables
 export XFFL_LOCAL_TMPDIR=${TMPDIR}
