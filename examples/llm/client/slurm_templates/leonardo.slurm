@@ -14,7 +14,3 @@
 #SBATCH --exclusive
 
 srun bash -c "{{ streamflow_command }}" 2>&1
-# cd /leonardo_scratch/fast/uToID_bench/xffl/ && \
-# source .venv/bin/activate && \
-# xffl -dbg simulate ./examples/llm/client/src/training.py -f leonardo -p "${SLURM_GPUS_PER_NODE}" -n $(scontrol show hostnames "${SLURM_JOB_NODELIST}" | tr -s \\n " ")  -v .venv \
-#     -args -m llama3.1-8b -d clean_mc4_it --seed 42 --subsampling 128 -t 1 -dbg -fs 4 -b 5

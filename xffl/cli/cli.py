@@ -50,18 +50,11 @@ def main(arguments: List[str]) -> int:
     :return: Exit code
     """
 
-    # Split args vs passthrough args
-    args_index: int = len(arguments)
-    if "-args" in arguments:
-        args_index = arguments.index("-args")
-    elif "--arguments" in arguments:
-        args_index = arguments.index("--arguments")
-
-    args: argparse.Namespace = parser.parse_args(arguments[:args_index])
-    args.arguments = arguments[args_index + 1 :]
+    args: argparse.Namespace = parser.parse_args(arguments)
 
     # Setup logging
     setup_logging(args.loglevel)
+    logger.debug(f"Input arguments: {args}")
 
     # Handle version
     if getattr(args, "version", False):

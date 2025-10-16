@@ -33,10 +33,7 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def pretraining(
-    config: xffl_config,
-    # args: argparse.Namespace, model_info: PathLike, dataset_info: PathLike
-) -> None:
+def pretraining(config: xffl_config) -> None:
     """LLM pre-training script
 
     This is not considered fine-tuning since no parameter reduction/quantization technique is applied
@@ -58,7 +55,7 @@ def pretraining(
         utils.set_deterministic_execution(seed=config.seed) if config.seed else None
     )
 
-    # Convert paths to the container's deafults if executing inside one
+    # Convert paths to the container's defaults if executing inside one
     if "XFFL_IMAGE" in os.environ:
         model_path: str = str(PathLike("/model/"))
         dataset_path: str = str(PathLike("/dataset/"))
@@ -105,17 +102,15 @@ def pretraining(
 
     # LLM loading from saved model
     start_time = time.perf_counter()
-    model: AutoModel = (
-        AutoModelForCausalLM.from_pretrained(  # Configuration is automatically loaded from the JSON file inside the model folder
-            pretrained_model_name_or_path=model_path,  # model_info.path,
-            use_cache=False,
-            # output_loading_info=True #TODO: to add to verbose mode
-            local_files_only=not config.online,  # Most HPCs do not have internet access from the nodes
-            attn_implementation=config.attention,
-            dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
-            device_map=state.init_device,
-            use_safetensors=True,
-        )
+    model: AutoModel = AutoModelForCausalLM.from_pretrained(
+        pretrained_model_name_or_path=model_path,
+        use_cache=False,
+        # output_loading_info=True #TODO: to add to verbose mode
+        local_files_only=not config.online,  # Most HPCs do not have internet access from the nodes
+        attn_implementation=config.attention,
+        dtype=default_precision,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
+        device_map=state.init_device,
+        use_safetensors=True,
     )
 
     # Reset model weights

@@ -88,8 +88,3 @@ class xffl_config:
     output_model: str = None
     epochs: int = 1
     federated_batches: int = 8
-
-
-if __name__ == "__main__":
-    args = xffl_config()
-    print(args.__dict__)

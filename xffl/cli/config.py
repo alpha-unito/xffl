@@ -27,7 +27,6 @@ from xffl.workflow.templates.cwl import (
     TrainingStep,
 )
 from xffl.workflow.templates.streamflow import StreamFlowFile
-from xffl.workflow.utils import from_args_to_cwl, import_from_path
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -46,19 +45,6 @@ def _get_training_info() -> Tuple[FileLike, FileLike, str]:
         control=lambda path: path.is_file(),
         is_path=True,
     )
-
-    # parser_path: FileLike = check_input(
-    #     text="Custom arguments parser path: ",
-    #     warning_msg="File {} does not exist.",
-    #     control=lambda path: path.is_file(),
-    #     is_path=True,
-    # )
-
-    # parser_name: str = check_input(
-    #     text="Arguments parser module name: ",
-    #     warning_msg="Invalid name (letters, numbers, dashes, underscores, must start with alnum).",
-    #     control=lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
-    # )
 
     return executable_path  # , parser_path, parser_name
 
@@ -129,34 +115,6 @@ def _configure_facility(
         warning_msg="Invalid path.",
         is_path=True,
     )
-
-    # # --- Re-import user ArgumentParser and extract args for this facility ---
-    # logger.debug(
-    #     f"Dynamically loading ArgumentParser '{parser_name}' from file '{parser_path}' (facility {facility})"
-    # )
-    # try:
-    #     executable_parser_module = import_from_path(
-    #         module_name=parser_name, file_path=parser_path
-    #     )
-    #     logger.info(
-    #         f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
-    #     )
-
-    #     arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-    #         parser=executable_parser_module.parser, arguments=args.arguments
-    #     )
-    # except SystemExit as se:
-    #     # The user parser called sys.exit (probably missing required args)
-    #     logger.error(
-    #         "The script requires some parameters. Add them using the --arguments option"
-    #     )
-    #     raise se
-    # except Exception:
-    #     logger.exception(
-    #         "Error while importing or parsing the user ArgumentParser for facility %s",
-    #         facility,
-    #     )
-    #     raise
 
     # Populate CWL config for this facility
     main_cwl.add_inputs(facility_name=facility)  # , extra_inputs=arg_to_type)
@@ -307,35 +265,6 @@ def config(args: argparse.Namespace) -> int:
         control=lambda path: path.is_file(),
         is_path=True,
     )
-
-    # # --- First import: extract arguments mapping to populate training inputs ---
-    # logger.debug(
-    #     f"Dynamically loading ArgumentParser '{parser_name}' from file '{parser_path}' (initial import)"
-    # )
-    # try:
-    #     executable_parser_module = import_from_path(
-    #         module_name=parser_name, file_path=parser_path
-    #     )
-    #     logger.info(
-    #         f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
-    #     )
-
-    #     arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-    #         parser=executable_parser_module.parser, arguments=args.arguments
-    #     )
-    # except SystemExit as se:
-    #     logger.error(
-    #         "The script requires some parameters. Add them using the --arguments option"
-    #     )
-    #     raise se
-    # except Exception:
-    #     logger.exception(
-    #         "Error importing or parsing the user ArgumentParser (initial import)"
-    #     )
-    #     raise
-
-    # # Populate training step with the "bidding" info (inputs used by training)
-    # training_cwl.add_inputs(facility_name=None, extra_inputs=arg_to_bidding)
 
     # Model info
     model_path, new_model_name = _get_model_info()

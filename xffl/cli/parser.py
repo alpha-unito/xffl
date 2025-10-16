@@ -9,6 +9,7 @@ Advanced features are provided by subcommands and their specific options.
 import argparse
 import logging
 import os
+import subprocess
 from typing import Tuple
 
 from xffl.custom.types import FileLike, FolderLike
@@ -35,6 +36,20 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
         type=FolderLike,
         default=os.getcwd(),
     )
+
+
+def _get_default_nodelis() -> Tuple[str]:
+    return tuple(
+        subprocess.run(
+            ["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]],
+            capture_output=True,
+            text=True,
+        ).stdout.split("\n")[:-1]
+    )
+
+
+def _get_default_ppn() -> int:
+    return len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
 
 
 def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
@@ -123,6 +138,21 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         help="Path to the Python script or executable to run.",
         type=FileLike,
     )
+
+    exec_parser.add_argument(
+        "configuration",
+        help="Path to the run configuration file.",
+        type=FileLike,
+    )
+
+    exec_parser.add_argument(
+        "-c",
+        "--config",
+        help="Desired configuration to be instantiated from the configuration file.",
+        type=str,
+        default="xffl_config",
+    )
+
     exec_parser.add_argument(
         "-f",
         "--facility",
@@ -130,13 +160,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         type=str,
         default="leonardo",
     )
-    exec_parser.add_argument(
-        "-n",
-        "--nodelist",
-        help="List of compute nodes available for the execution. Default is ['localhost'].",
-        nargs="+",
-        default=["localhost"],
-    )
+
     exec_parser.add_argument(
         "-fs",
         "--federated-scaling",
@@ -163,38 +187,19 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     )
 
     exec_parser.add_argument(
+        "-n",
+        "--nodelist",
+        help="List of compute nodes available for the execution. Default is ['localhost'].",
+        nargs="+",
+        default=_get_default_nodelis(),
+    )
+
+    exec_parser.add_argument(
         "-ppn",
         "--processes-per-node",
         help="Number of GPUs or processes available per compute node. Default is 1.",
         type=int,
-        default=1,
-    )
-
-    exec_parser.add_argument(
-        "-m",
-        "--model",
-        help="Path to the model's configuration class",
-        type=str,
-        # choices=list(MODELS.keys()),
-        default=os.getcwd(),
-    )
-
-    exec_parser.add_argument(
-        "-d",
-        "--dataset",
-        help="Dataset's name",
-        type=str,
-        # choices=list(DATASETS.keys()),
-        default=os.getcwd(),
-    )
-
-    exec_parser.add_argument(
-        "-w",
-        "--workdir",
-        help="Working directory where the experiment files are stored. "
-        "Defaults to the current working directory.",
-        type=FolderLike,
-        default=os.getcwd(),
+        default=_get_default_ppn(),
     )
 
     return parser, subparsers
