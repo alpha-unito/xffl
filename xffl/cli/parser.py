@@ -56,7 +56,7 @@ def _get_default_ppn() -> int:
     return (
         len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
         if "CUDA_VISIBLE_DEVICES" in os.environ
-        else None
+        else len(os.environ["ROCR_VISIBLE_DEVICES"].split(","))
     )
 
 
