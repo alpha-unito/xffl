@@ -57,15 +57,15 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 		else
 		# Container image
 			COMMAND="${CONTAINER_PLT} exec \
-				--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
-				--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/dataset/ \
-				--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
-				--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
-				--mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
-				--home /code/ \
-				$GPU_FLAG \
-				${XFFL_IMAGE} \
-				bash -c \"python /code/$* --model /model/ --dataset /dataset/\""
+--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
+--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/dataset/ \
+--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
+--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
+--mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
+--home /code/ \
+$GPU_FLAG \
+${XFFL_IMAGE} \
+bash -c \"python /code/$* --model /model/ --dataset /dataset/\""
 		fi
 
 		# Run the local simulation process

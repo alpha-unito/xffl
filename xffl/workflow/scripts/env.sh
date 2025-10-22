@@ -50,7 +50,7 @@ Limit_PyTorch_threads () {
 # This is necessary since each process is run on only 1GPU, and some SLURM installation do not reset correctly the CUDA_VISIBLE_DEVICES variable
 Reset_visible_devices () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then
-        VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) )
+        VISIBLE_DEVICES=$( seq -s , 0 $(( LOCAL_WORLD_SIZE - 1 )) )
     elif command -v srun > /dev/null ; then # Check SLURM
         VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # TODO: change SLURM_GPUS_PER_NODE for cloud environments
     fi
@@ -73,7 +73,7 @@ LLaMA_default_env () {
 Gpu_detection () {
     # Check Nvidia GPU
     if command -v nvidia-smi > /dev/null ; then 
-        export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES		
+        export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES	
         export GPU_FLAG="--nv"
         return 0
     fi 

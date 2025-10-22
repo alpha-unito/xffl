@@ -100,6 +100,11 @@ def save_fsdp_model(
     :type precision: Optional[torch.dtype], optional
     """
 
+    # Clear GPU cache and reset peak memory stats
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
+
     # Gather the full, un-sharded state dict
     state_dict, _ = get_state_dict(
         model=model,
