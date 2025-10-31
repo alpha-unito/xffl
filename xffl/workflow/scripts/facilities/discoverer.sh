@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 # MELUXINA specific environment variables
 export XFFL_LOCAL_TMPDIR=$WORKDIR

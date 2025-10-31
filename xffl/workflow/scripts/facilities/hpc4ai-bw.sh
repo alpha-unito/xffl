@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 # C3S specific environment variables
 export XFFL_LOCAL_TMPDIR=${TMPDIR}

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 # The PyTorch's FSDP runtime requires the following environment variables to be correctly set to operate correctly.
 # These environment variables are very similar to those used by other distributed systems (i.e., MPI)
@@ -15,6 +15,14 @@ Derive_env () {
         export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE 						
 
     elif command -v srun > /dev/null ; then # Check SLURM
+        if [ -z "${SLURM_NTASKS_PER_NODE+x}" ]; then 
+            echo "SLURM_NTASKS_PER_NODE is unset"
+            exit 1
+        fi
+        if [ -z "${SLURM_NTASKS+x}" ]; then 
+            echo "SLURM_NTASKS is unset"
+            exit 1
+        fi
         if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS
         else
@@ -40,7 +48,18 @@ Limit_PyTorch_threads () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then
 	    export OMP_NUM_THREADS=$(( $(nproc) / LOCAL_WORLD_SIZE ))
     elif command -v srun > /dev/null ; then # Check SLURM
+        if [ -z "${SLURM_CPUS_PER_TASK+x}" ]; then
+            echo "SLURM_CPUS_PER_TASK is unset"
+            exit 1
+        fi
         export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+    else
+        exit 1
+    fi
+
+    if [ -z ${OMP_NUM_THREADS+x} ]; then 
+        echo "Variable OMP_NUM_THREADS is unset"
+        exit 1
     fi
 
     return 0

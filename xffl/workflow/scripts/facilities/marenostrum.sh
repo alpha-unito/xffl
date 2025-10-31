@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 # MARENOSTRUM5 specific environment variables
 export XFFL_LOCAL_TMPDIR=${TMPDIR}

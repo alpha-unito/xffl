@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/bash -ex
+
+module load LUMI/23.09 partition/G rocm/5.6.1
 
 # LUMI specific environment variables
 export XFFL_LOCAL_TMPDIR="/tmp/"

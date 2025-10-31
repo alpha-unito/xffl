@@ -149,3 +149,4 @@ images/*
 .local
 .local/
 project/
+*.sif

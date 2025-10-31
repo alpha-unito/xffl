@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 # input environment variables: 
 #  - XFFL_MODEL_FOLDER
@@ -16,6 +16,7 @@ source "${XFFL_SCRIPTS_FOLDER}/env.sh"
 XFFL_FACILITY_SCRIPT="${XFFL_SCRIPTS_FOLDER}/facilities/${XFFL_FACILITY}.sh"
 if [ ! -f "${XFFL_FACILITY_SCRIPT}" ]; then
     echo "${XFFL_FACILITY_SCRIPT} does not exist."
+	exit 1
 else
     source "$XFFL_FACILITY_SCRIPT"
 fi
@@ -80,30 +81,22 @@ bash -c \"python /code/$* --model /model/ --dataset /dataset/\""
 
 # StreamFlow execution
 else
-	XFFL_EXECUTABLE_FOLDER=$(dirname "$1")
 	XFFL_RESOLVED_MODEL_FOLDER=$(readlink -f "${XFFL_MODEL_FOLDER}")
 	XFFL_RESOLVED_DATASET_FOLDER=$(readlink -f "${XFFL_DATASET_FOLDER}")
-	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(readlink -f "$1")
-	XFFL_RESOLVED_EXECUTABLE_FOLDER=$(dirname "${XFFL_RESOLVED_EXECUTABLE_FOLDER}")
+	XFFL_RESOLVED_CODE_FOLDER=$(readlink -f "$1")
+	XFFL_RESOLVED_CODE_FOLDER=$(dirname "${XFFL_RESOLVED_CODE_FOLDER}")
 	# TODO: mount the whole workdir. It avoids to mount each single path to include the data are created by the step
 	#	however, if the data are not in the workdir (e.g. the dataset). It is necessary to mount also the real path
 	COMMAND="${CONTAINER_PLT} exec \
-		--mount type=bind,src=${XFFL_MODEL_FOLDER},dst=${XFFL_MODEL_FOLDER} \
-		--mount type=bind,src=${XFFL_RESOLVED_MODEL_FOLDER},dst=${XFFL_RESOLVED_MODEL_FOLDER} \
-		--mount type=bind,src=${XFFL_DATASET_FOLDER},dst=${XFFL_DATASET_FOLDER} \
-		--mount type=bind,src=${XFFL_RESOLVED_DATASET_FOLDER},dst=${XFFL_RESOLVED_DATASET_FOLDER} \
-		--mount type=bind,src=${XFFL_LOCAL_TMPDIR},dst=/tmp \
-		--mount type=bind,src=${XFFL_OUTPUT_FOLDER},dst=${XFFL_OUTPUT_FOLDER} \
-		--mount type=bind,src=${XFFL_TMPDIR_FOLDER}/,dst=${XFFL_TMPDIR_FOLDER}/ \
-		--mount type=bind,src=${XFFL_EXECUTABLE_FOLDER},dst=${XFFL_EXECUTABLE_FOLDER} \
-		--mount type=bind,src=${XFFL_RESOLVED_EXECUTABLE_FOLDER},dst=${XFFL_RESOLVED_EXECUTABLE_FOLDER} \
-		--mount type=bind,src=${XFFL_SCRIPTS_FOLDER},dst=${XFFL_SCRIPTS_FOLDER} \
-		--mount type=bind,src=/leonardo/home/userexternal/amulone1/xffl/,dst=/leonardo/home/userexternal/amulone1/xffl/ \
-		--mount type=bind,src=/leonardo/home/userexternal/amulone1/,dst=/home/ \
+		--mount type=bind,src=${XFFL_RESOLVED_MODEL_FOLDER}/,dst=/model/ \
+		--mount type=bind,src=${XFFL_RESOLVED_DATASET_FOLDER}/,dst=/dataset/ \
+		--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
+		--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
+		--mount type=bind,src=${XFFL_RESOLVED_CODE_FOLDER}/,dst=/code \
 		--home /home/ \
 		${GPU_FLAG} \
 		${XFFL_IMAGE} \
-		${XFFL_SCRIPTS_FOLDER}/run.sh $*"
+		bash -c \"python /code/$(basename $1)\""
 	echo "[Rank $RANK] Executing: $COMMAND"		# TODO: potremmo anche sbarazzarci di run.sh
 	eval "$COMMAND"
 fi
