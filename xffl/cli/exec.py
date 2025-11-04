@@ -6,7 +6,6 @@ offering a homogeneous interface with xFFL.
 
 import argparse
 import importlib.util
-import shlex
 import socket
 import subprocess
 import sys
@@ -156,7 +155,7 @@ def exec(args: argparse.Namespace) -> int:
             env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = str(args.federated_scaling)
 
     # Environment string (safer join)
-    env_str = " ".join(f"{k}={shlex.quote(v)}" for k, v in env.items())
+    env_str = " ".join(f"{k}={v}" for k, v in env.items())
 
     logger.info("Running local execution...")
     start_time = time.perf_counter()
@@ -170,7 +169,8 @@ def exec(args: argparse.Namespace) -> int:
                 "ssh",
                 "-oStrictHostKeyChecking=no",
                 node,
-                shlex.join(
+                "\"",
+                " ".join(
                     [
                         env_str,
                         f"XFFL_NODEID={index}",
@@ -178,6 +178,7 @@ def exec(args: argparse.Namespace) -> int:
                         str(args.executable),
                     ]
                 ),
+                "\"",
             ]
             logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))
 
