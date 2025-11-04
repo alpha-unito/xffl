@@ -46,7 +46,7 @@ Derive_env () {
 # Due to PyTorch's aggressive thread policy OMP_NUM_THREADS should be manually set to the number of actually available cores (by default PyTorch would spawn a thread for each processor's core)
 Limit_PyTorch_threads () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then
-	    export OMP_NUM_THREADS=$(( $(nproc) / LOCAL_WORLD_SIZE ))
+	    export OMP_NUM_THREADS=$(( $(nproc --all) / LOCAL_WORLD_SIZE ))
     elif command -v srun > /dev/null ; then # Check SLURM
         if [ -z "${SLURM_CPUS_PER_TASK+x}" ]; then
             echo "SLURM_CPUS_PER_TASK is unset"
