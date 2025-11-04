@@ -33,7 +33,7 @@ class llama(ModelInfo):
             transformer_layer_cls={decoder_layers},
         ),
     )
-    path = "/leonardo_scratch/fast/uToID_bench/xffl/models/"
+    path = "/flash/project_465002202/xffl/models/"
 
 
 @dataclass
@@ -45,7 +45,7 @@ class mixtral(ModelInfo):
         wrap.transformer_auto_wrap_policy,
         transformer_layer_cls={decoder_layers},
     )
-    path = "/leonardo_scratch/fast/uToID_bench/xffl/models/"
+    path = "/flash/project_465002202/xffl/models/"
 
 
 @dataclass
@@ -55,7 +55,7 @@ class cleanmc4it(DatasetInfo):
         "train": "train",
         "val": "val",
     }
-    path = "/leonardo_scratch/fast/uToID_bench/xffl/data/"
+    path = "/flash/project_465002202/xffl/data/"
 
 
 @dataclass
