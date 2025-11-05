@@ -22,14 +22,14 @@ else
 fi
 
 # Set general env variables for distributed ML
+if [ -z "$XFFL_VENV" ] ; then
+	Container_platform_detection
+fi
 Derive_env
 Limit_PyTorch_threads
 Reset_visible_devices
 LLaMA_default_env
 Gpu_detection
-if [ -z "$XFFL_VENV" ] ; then
-	Container_platform_detection
-fi
 
 if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then 
 	XFFL_OUTPUT_FOLDER=$XFFL_LOCAL_TMPDIR
@@ -49,28 +49,36 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 		ROLE_RANK=$_RANK
 		GROUP_RANK=$(( _RANK / LOCAL_WORLD_SIZE ))
 
-		XFFL_RANKS="RANK=$RANK LOCAL_RANK=$LOCAL_RANK ROLE_RANK=$ROLE_RANK GROUP_RANK=$GROUP_RANK"
 		XFFL_TASKSET="taskset --cpu-list "$(( LOCAL_RANK * OMP_NUM_THREADS ))"-"$(( LOCAL_RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
 
-		# Python virtual environment
-		if [ -n "$XFFL_VENV" ] ; then
-			COMMAND="${XFFL_SCRIPTS_FOLDER}/run.sh $*"
-		else
-		# Container image
-			COMMAND="${CONTAINER_PLT} exec \
+		if [ -n "$XFFL_VENV" ] ; then # Python virtual environment
+			XFFL_RANKS="RANK=$RANK LOCAL_RANK=$LOCAL_RANK ROLE_RANK=$ROLE_RANK GROUP_RANK=$GROUP_RANK"
+
+			COMMAND="${XFFL_RANKS} ${XFFL_TASKSET} ${XFFL_SCRIPTS_FOLDER}/run.sh $*"
+		else # Container image
+			export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}XFFL_IMAGE=${XFFL_IMAGE}"
+			
+			XFFL_RANKS="${PREFIX}RANK=${RANK} ${PREFIX}LOCAL_RANK=${LOCAL_RANK} ${PREFIX}ROLE_RANK=${ROLE_RANK} ${PREFIX}GROUP_RANK=${GROUP_RANK}"
+
+			COMMAND="
+${ENVIRONMENT} \
+${XFFL_RANKS} \
+${XFFL_TASKSET} \
+${CONTAINER_PLT} exec \
 --mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
 --mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/dataset/ \
 --mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
 --mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
 --mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
+--cleanenv \
 --home /code/ \
-$GPU_FLAG \
+${GPU_FLAG} \
 ${XFFL_IMAGE} \
 bash -c \"python /code/$* --model /model/ --dataset /dataset/\""
 		fi
 
 		# Run the local simulation process
-		eval "${XFFL_RANKS} ${XFFL_TASKSET} $COMMAND" &
+		eval "$COMMAND" &
 		pids[_RANK]=$!
 	done
 
@@ -93,6 +101,19 @@ else
 		--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
 		--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
 		--mount type=bind,src=${XFFL_RESOLVED_CODE_FOLDER}/,dst=/code \
+		--env RANK=${RANK} \
+		--env XFFL_IMAGE=${XFFL_IMAGE} \
+		--env SLURM_JOB_NODELIST=${SLURM_JOB_NODELIST} \
+		--env HIP_VISIBLE_DEVICES=${VISIBLE_DEVICES} \
+		--env ROCR_VISIBLE_DEVICES=${VISIBLE_DEVICES} \
+		--env CUDA_VISIBLE_DEVICES=${VISIBLE_DEVICES} \
+		--env MASTER_ADDR=${MASTER_ADDR} \
+		--env MASTER_PORT=${MASTER_PORT} \
+		--env WORLD_SIZE=${WORLD_SIZE} \
+		--env LOCAL_RANK=${LOCAL_RANK} \
+		--env LOCAL_WORLD_SIZE=${LOCAL_WORLD_SIZE} \
+		--env GROUP_RANK=${GROUP_RANK} \
+		--env GROUP_WORLD_SIZE=${GROUP_WORLD_SIZE} \
 		--home /home/ \
 		${GPU_FLAG} \
 		${XFFL_IMAGE} \
