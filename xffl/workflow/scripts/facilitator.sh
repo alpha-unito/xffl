@@ -57,7 +57,7 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 			COMMAND="${XFFL_RANKS} ${XFFL_TASKSET} ${XFFL_SCRIPTS_FOLDER}/run.sh $*"
 		else # Container image
 			export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}XFFL_IMAGE=${XFFL_IMAGE}"
-			
+
 			XFFL_RANKS="${PREFIX}RANK=${RANK} ${PREFIX}LOCAL_RANK=${LOCAL_RANK} ${PREFIX}ROLE_RANK=${ROLE_RANK} ${PREFIX}GROUP_RANK=${GROUP_RANK}"
 
 			COMMAND="
@@ -89,35 +89,29 @@ bash -c \"python /code/$* --model /model/ --dataset /dataset/\""
 
 # StreamFlow execution
 else
+	export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}XFFL_IMAGE=${XFFL_IMAGE}"
+	export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}SLURM_JOB_NODELIST=${SLURM_JOB_NODELIST}"
+
 	XFFL_RESOLVED_MODEL_FOLDER=$(readlink -f "${XFFL_MODEL_FOLDER}")
 	XFFL_RESOLVED_DATASET_FOLDER=$(readlink -f "${XFFL_DATASET_FOLDER}")
 	XFFL_RESOLVED_CODE_FOLDER=$(readlink -f "$1")
 	XFFL_RESOLVED_CODE_FOLDER=$(dirname "${XFFL_RESOLVED_CODE_FOLDER}")
 	# TODO: mount the whole workdir. It avoids to mount each single path to include the data are created by the step
 	#	however, if the data are not in the workdir (e.g. the dataset). It is necessary to mount also the real path
-	COMMAND="${CONTAINER_PLT} exec \
-		--mount type=bind,src=${XFFL_RESOLVED_MODEL_FOLDER}/,dst=/model/ \
-		--mount type=bind,src=${XFFL_RESOLVED_DATASET_FOLDER}/,dst=/dataset/ \
-		--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
-		--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
-		--mount type=bind,src=${XFFL_RESOLVED_CODE_FOLDER}/,dst=/code \
-		--env RANK=${RANK} \
-		--env XFFL_IMAGE=${XFFL_IMAGE} \
-		--env SLURM_JOB_NODELIST=${SLURM_JOB_NODELIST} \
-		--env HIP_VISIBLE_DEVICES=${VISIBLE_DEVICES} \
-		--env ROCR_VISIBLE_DEVICES=${VISIBLE_DEVICES} \
-		--env CUDA_VISIBLE_DEVICES=${VISIBLE_DEVICES} \
-		--env MASTER_ADDR=${MASTER_ADDR} \
-		--env MASTER_PORT=${MASTER_PORT} \
-		--env WORLD_SIZE=${WORLD_SIZE} \
-		--env LOCAL_RANK=${LOCAL_RANK} \
-		--env LOCAL_WORLD_SIZE=${LOCAL_WORLD_SIZE} \
-		--env GROUP_RANK=${GROUP_RANK} \
-		--env GROUP_WORLD_SIZE=${GROUP_WORLD_SIZE} \
-		--home /home/ \
-		${GPU_FLAG} \
-		${XFFL_IMAGE} \
-		bash -c \"python /code/$(basename $1)\""
+	COMMAND="
+${ENVIRONMENT} \
+${CONTAINER_PLT} exec \
+--mount type=bind,src=${XFFL_RESOLVED_MODEL_FOLDER}/,dst=/model/ \
+--mount type=bind,src=${XFFL_RESOLVED_DATASET_FOLDER}/,dst=/dataset/ \
+--mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
+--mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
+--mount type=bind,src=${XFFL_RESOLVED_CODE_FOLDER}/,dst=/code \
+--cleanenv \
+--home /home/ \
+${GPU_FLAG} \
+${XFFL_IMAGE} \
+bash -c \"python /code/$(basename $1)\""
+
 	echo "[Rank $RANK] Executing: $COMMAND"		# TODO: potremmo anche sbarazzarci di run.sh
 	eval "$COMMAND"
 fi

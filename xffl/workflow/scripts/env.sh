@@ -26,6 +26,7 @@ Derive_env () {
     elif command -v srun > /dev/null ; then # Check SLURM
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_NAME=default"
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_PORT=29500"
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_ADDR=${MASTER_ADDR}"
 
         if [ -z "${SLURM_NTASKS_PER_NODE+x}" ]; then 
             echo "SLURM_NTASKS_PER_NODE is unset"
