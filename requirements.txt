@@ -1,6 +1,7 @@
 accelerate>=0.26.0
 datasets
 numpy
+pynvml>=12.0.0
 PyYAML==6.0.2
 streamflow@git+https://github.com/alpha-unito/streamflow.git@3f759b2156b755c9071646e41b93f0b7c0e54f98
 torch>=2.2
@@ -8,3 +9,4 @@ transformers
 tqdm
 wheel
 wandb
+
