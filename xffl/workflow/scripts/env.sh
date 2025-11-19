@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 # The PyTorch's FSDP runtime requires the following environment variables to be correctly set to operate correctly.
 # These environment variables are very similar to those used by other distributed systems (i.e., MPI)

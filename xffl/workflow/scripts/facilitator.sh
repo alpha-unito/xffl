@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 # input environment variables: 
 #  - XFFL_MODEL_FOLDER
@@ -54,7 +54,7 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 		if [ -n "$XFFL_VENV" ] ; then # Python virtual environment
 			XFFL_RANKS="RANK=$RANK LOCAL_RANK=$LOCAL_RANK ROLE_RANK=$ROLE_RANK GROUP_RANK=$GROUP_RANK"
 
-			COMMAND="${XFFL_RANKS} ${XFFL_TASKSET} ${XFFL_SCRIPTS_FOLDER}/run.sh $*"
+			COMMAND="${XFFL_RANKS} ${XFFL_TASKSET} python $*"
 		else # Container image
 			export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}XFFL_IMAGE=${XFFL_IMAGE}"
 
