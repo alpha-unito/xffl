@@ -26,7 +26,7 @@ logger: Logger = getLogger(__name__)
 def create_fsdp_model(
     module: nn.Module | AutoModel,
     state: DistributedState,
-    wrapping_policy: Callable,
+    wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
 ) -> FullyShardedDataParallel:
     """Creates an FSDP model
@@ -35,8 +35,8 @@ def create_fsdp_model(
     :type module: nn.Module | AutoModel
     :param state: Instantiated distributed state
     :type state: DistributedState
-    :param wrapping_policy: Model's wrapping policy
-    :type wrapping_policy:  Callable
+    :param wrapping_policy: Model's wrapping policy, defaults to None
+    :type wrapping_policy:  Optional[Callable], optional
     :param mixed_precision: Precision to use for the module, defaults to None
     :type mixed_precision: Optional[MixedPrecision], optional
     :return: The original module wrapped by FSDP
