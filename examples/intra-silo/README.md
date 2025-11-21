@@ -10,16 +10,12 @@ The available examples are:
 
 Each example demonstrates best practices for scaling and orchestrating training inside a single silo.
 
----
-
 ## Requirements
 
 * Python **3.8+** (Python **3.11 recommended**)
 * Access to an HPC cluster managed by **SLURM**
 * A Python virtual environment *(recommended)* or a Docker/Singularity container
 * SSH connectivity available among compute nodes
-
----
 
 ## Folder Structure
 
@@ -28,8 +24,6 @@ Each example folder contains:
 * **training.py** – main training script that demonstrates how to use the xFFL API to build automatically scalable deployments.
 * **config.py** – training configuration, including model, dataset, hyperparameters, and execution strategy.
 * **requirements.txt** – additional Python dependencies required by the example (optional; extends the main xFFL `requirements.txt`).
-
----
 
 ## How to Run an Example
 
@@ -55,8 +49,6 @@ Install xFFL:
 pip install .
 ```
 
----
-
 ### 2. Install example‑specific dependencies
 
 Move into the target example folder and install optional dependencies:
@@ -65,8 +57,6 @@ Move into the target example folder and install optional dependencies:
 cd examples/intra-silo/01_simple-MLP/
 pip install -r requirements.txt
 ```
-
----
 
 ### 3. Acquire HPC nodes via SLURM
 
@@ -79,8 +69,6 @@ srun --job-name=xFFL-example --nodes=2 --exclusive --pty bash
 > ⚠️ **Important:** SLURM configurations vary across HPC systems. Adjust flags according to your cluster's requirements.
 
 If accessing the nodes resets your environment, re‑activate the virtual environment containing xFFL and navigate back to the example folder.
-
----
 
 ### 4. Run the example
 
@@ -106,7 +94,6 @@ xffl exec --debug training.py config.py
 
 *TODO:* Add documentation for facility configuration.
 
----
 
 ## Notes
 

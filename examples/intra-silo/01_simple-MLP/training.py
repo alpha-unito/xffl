@@ -6,7 +6,6 @@ import time
 
 import torch
 import torch.nn as nn
-import wandb
 from torch.optim import Adadelta
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.distributed import DistributedSampler
@@ -47,6 +46,7 @@ def pretraining(config: xffl_config) -> None:
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
         hsdp=config.hsdp,
+        federated=config.federated_scaling,
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -191,7 +191,6 @@ def pretraining(config: xffl_config) -> None:
         [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
 
     # PyTorch's distributed backend cleanup
-    wandb.finish()
     distributed.cleanup_distributed_process_group(
         state=state, del_obj=[model, optimizer]
     )
