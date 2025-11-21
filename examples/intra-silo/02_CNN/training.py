@@ -46,7 +46,9 @@ def pretraining(config: xffl_config) -> None:
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
         hsdp=config.hsdp if hasattr(config, "hsdp") else None,
-        federated=config.federated_scaling if hasattr(config, "federated_scaling") else None,
+        federated=(
+            config.federated_scaling if hasattr(config, "federated_scaling") else None
+        ),
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -119,8 +121,12 @@ def pretraining(config: xffl_config) -> None:
             dataset.targets = dataset.targets[dataset.targets == state.rank % 10]
 
     if hasattr(config, "subsampling"):
-        xffl_datasets["train"] = Subset(xffl_datasets["train"], range(config.subsampling[0]))
-        xffl_datasets["test"] = Subset(xffl_datasets["train"], range(config.subsampling[1]))
+        xffl_datasets["train"] = Subset(
+            xffl_datasets["train"], range(config.subsampling[0])
+        )
+        xffl_datasets["test"] = Subset(
+            xffl_datasets["train"], range(config.subsampling[1])
+        )
 
     if state.rank == 0:
         logger.debug(
@@ -155,7 +161,9 @@ def pretraining(config: xffl_config) -> None:
             worker_init_fn=(
                 utils.seed_dataloader_worker if config.seed else None
             ),  # Necessary for reproducibility
-            generator=generator if config.seed else None,  # Necessary for reproducibility
+            generator=(
+                generator if config.seed else None
+            ),  # Necessary for reproducibility
         )
 
         if state.rank == 0:
@@ -170,7 +178,9 @@ def pretraining(config: xffl_config) -> None:
 
     # Optimizer and lr scheduler creation
     optimizer: SGD = SGD(
-        params=model.parameters(), lr=config.learning_rate, momentum=config.momentum,
+        params=model.parameters(),
+        lr=config.learning_rate,
+        momentum=config.momentum,
     )
 
     # Clear GPU cache and reset peak memory stats

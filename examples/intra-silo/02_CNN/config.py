@@ -4,16 +4,18 @@ import logging
 from dataclasses import dataclass
 
 from torch import nn
-import torch.nn.functional as F  
+import torch.nn.functional as F
 from torchvision import models
 
 from xffl.custom.config_info import DatasetInfo, ModelInfo
+
 
 @dataclass
 class Cnn(ModelInfo):
     name = "CNN"
     model_type = nn.Module
     class_ = models.resnet18
+
 
 @dataclass
 class Cifar(DatasetInfo):

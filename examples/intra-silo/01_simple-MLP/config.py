@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from torch import nn
-import torch.nn.functional as F  
+import torch.nn.functional as F
 
 from xffl.custom.config_info import DatasetInfo, ModelInfo
 
@@ -23,11 +23,13 @@ class Net(nn.Module):
         output = F.log_softmax(self.fc3(x), dim=1)
         return output
 
+
 @dataclass
 class Mlp(ModelInfo):
     name = "simple_MLP"
     model_type = nn.Module
     class_ = Net
+
 
 @dataclass
 class Mnist(DatasetInfo):

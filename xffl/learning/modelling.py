@@ -8,7 +8,13 @@ from typing import Callable, Optional
 import torch
 from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
-from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision, FullStateDictConfig, FullOptimStateDictConfig, StateDictType
+from torch.distributed.fsdp import (
+    FullyShardedDataParallel,
+    MixedPrecision,
+    FullStateDictConfig,
+    FullOptimStateDictConfig,
+    StateDictType,
+)
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.optim import Optimizer
 from transformers import AutoModel
@@ -110,10 +116,7 @@ def save_fsdp_model(
     state_dict, _ = get_state_dict(
         model=model,
         optimizers=optimizer,
-        options=StateDictOptions(
-            full_state_dict=True,
-            cpu_offload=True
-        ),
+        options=StateDictOptions(full_state_dict=True, cpu_offload=True),
     )
 
     # Only rank 0 saves the model
