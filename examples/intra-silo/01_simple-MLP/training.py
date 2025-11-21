@@ -45,8 +45,8 @@ def pretraining(config: xffl_config) -> None:
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
-        hsdp=config.hsdp,
-        federated=config.federated_scaling,
+        hsdp=config.hsdp if hasattr(config, "hsdp") else None,
+        federated=config.federated_scaling if hasattr(config, "federated_scaling") else None,
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -162,7 +162,7 @@ def pretraining(config: xffl_config) -> None:
         lr=config.learning_rate,
     )
 
-     # Clear GPU cache and reset peak memory stats
+    # Clear GPU cache and reset peak memory stats
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
         torch.cuda.empty_cache()
