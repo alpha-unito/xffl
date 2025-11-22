@@ -1,6 +1,6 @@
 # xFFL – Cross-Facility LLM Example
 
-This directory contains a fully functional **cross-facility federated learning (FL) example** built with **xFFL**, designed to train a Large Language Model (LLM) across **multiple heterogeneous HPC facilities**.
+This directory contains a **cross-facility federated learning (FL) example** built with **xFFL**, designed to train a Large Language Model (LLM) across **multiple heterogeneous HPC facilities**.
 
 It demonstrates how xFFL leverages:
 
@@ -11,10 +11,10 @@ It demonstrates how xFFL leverages:
 This example has been successfully tested on all **EuroHPC** systems:
 **Deucalion, Discoverer, Karolina, Leonardo, LUMI, MareNostrum5, MeluXina, and Vega.**
 
-## Folder Structure
+## Example structure
 
 ```
-llm/
+01_LLM/
 │
 ├── aggregator/
 │   ├── container/
@@ -35,9 +35,8 @@ The aggregator is responsible for:
 * Coordinating federated learning rounds
 * Receiving and aggregating client model updates
 * Managing communication across HPC facilities
-* Orchestrating workflow execution via StreamFlow
 
-> The aggregator runs inside a Singularity/Apptainer container to ensure portability across different HPC systems.
+Usually, the aggregator is run on the same machine used to launch the entire xFFL deployment (usually a cloud VM). In this case, the aggregator infrastructure also orchestrates the workflow execution via StreamFlow.
 
 ### Client
 
@@ -49,16 +48,17 @@ Each client:
 * Sends model updates back to the aggregator
 * Is launched via SLURM using the provided templates
 
-## ⚙️ Requirements
+> The clients runs inside a Singularity/Apptainer container to ensure portability across different HPC systems.
+
+## Requirements
 
 Before running this example, you need:
 
-* Access to **two or more HPC facilities**
+* Access to **one or more HPC facilities**
 * Working **SLURM accounts** on each cluster
 * **Singularity/Apptainer** installed on every HPC system
 * SSH connectivity from the aggregator node to all client clusters
-* Python environment with **xFFL** installed (on aggregator)
-* StreamFlow configured for remote job submission (recommended for multi-facility orchestration)
+* Working **xFFL** installation (on aggregator)
 
 ## Building the Containers
 
@@ -76,20 +76,20 @@ cd client/container
 sudo singularity build client.sif client.def
 ```
 
-> After building, transfer the `*.sif` images to their respective HPC clusters.
+> It's not necessary to manually move the images to the clusters, StreamFlow will take care of it
 
 ## SLURM Templates
 
 The directory `client/slurm_templates/` contains ready-to-use SLURM scripts for the tested EuroHPC systems:
 
-* deucalion
-* discoverer
-* karolina
-* leonardo
-* lumi
-* marenostrum5
-* meluxina
-* vega
+* Deucalion
+* Discoverer
+* Karolina
+* Leonardo
+* LUMI
+* MareNostrum5
+* MeluXina
+* Vega
 
 Each template includes:
 
@@ -98,7 +98,7 @@ Each template includes:
 * Container execution commands
 * Cluster-specific job parameters
 
-> Edit only if your allocation or environment differs from the defaults.
+> Edit these files to suite your account and needs.
 
 ## Federated Learning Workflow
 
@@ -116,8 +116,3 @@ Each template includes:
 * Model architecture, dataset handling, and training specifics are defined in `src/` for both aggregator and clients.
 * Modify the Singularity recipes to include additional libraries or dependencies if needed.
 * Real-world performance depends on network throughput, inter-facility connectivity, and SLURM queue times.
-* Use debug flags to monitor job execution across clusters:
-
-```bash
-xffl --debug exec training.py config.py
-```
