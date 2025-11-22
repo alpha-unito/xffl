@@ -2,7 +2,7 @@
 
 This repository provides **two categories of xFFL examples**, designed to demonstrate how xFFL can be used for federated and distributed training workflows in both cross-facility and intra-silo scenarios.
 
-## 1. Cross-Facility Federated Learning Example
+## 1. [Cross-Facility Federated Learning Example](cross-facility/)
 
 This example targets **federated pre‑training of LLaMA or Mixtral models across multiple HPC facilities**.
 
@@ -15,7 +15,7 @@ xFFL
 
 This is the most advanced example and reflects a real multi‑HPC federated setup.
 
-## 2. Intra‑Silo Distributed Training Examples (Three Levels)
+## 2. [Intra‑Silo Distributed Training Examples (Three Levels)](intra-silo/)
 
 Three increasingly complex intra‑silo (single‑facility) examples are provided to show how xFFL can be used to deploy distributed training workflows **within a single HPC or cluster**.
 
