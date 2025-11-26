@@ -52,12 +52,15 @@ def _get_default_nodelis() -> Tuple[str]:
     )
 
 
-def _get_default_ppn() -> int:
-    return (
-        len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
-        if "CUDA_VISIBLE_DEVICES" in os.environ
-        else len(os.environ["ROCR_VISIBLE_DEVICES"].split(","))
-    )
+def _get_default_ppn() -> int:  # TODO: questo si rompe se non ci sono GPU sul nodo
+    ppn: int = 1
+    if "CUDA_VISIBLE_DEVICES" in os.environ:
+        ppn = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+    if "ROCR_VISIBLE_DEVICES" in os.environ:
+        ppn = len(os.environ["ROCR_VISIBLE_DEVICES"].split(","))
+    if "HIP_VISIBLE_DEVICES" in os.environ:
+        ppn = len(os.environ["HIP_VISIBLE_DEVICES"].split(","))
+    return ppn
 
 
 def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:

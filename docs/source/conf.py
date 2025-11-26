@@ -16,9 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 project = "Cross-Facility Federated Learning"
 copyright = "2024, Gianluca Mittone, Alberto Mulone, Giulio Malenza, Iacopo Colonnelli, Robert Birke, Marco Aldinucci"
-author = (
-    "Gianluca Mittone, Alberto Mulone, Giulio Malenza, Iacopo Colonnelli, Robert Birke, Marco Aldinucci"
-)
+author = "Gianluca Mittone, Alberto Mulone, Giulio Malenza, Iacopo Colonnelli, Robert Birke, Marco Aldinucci"
 release = VERSION
 
 # -- General configuration ---------------------------------------------------

@@ -6,7 +6,6 @@ offering a homogeneous interface with xFFL.
 
 import argparse
 import importlib.util
-import shlex
 import socket
 import subprocess
 import sys
@@ -172,6 +171,8 @@ def exec(args: argparse.Namespace) -> int:
                 node,
                 '"',
                 " ".join(
+                '"',
+                " ".join(
                     [
                         env_str,
                         f"XFFL_NODEID={index}",
@@ -179,6 +180,7 @@ def exec(args: argparse.Namespace) -> int:
                         str(args.executable),
                     ]
                 ),
+                '"',
                 '"',
             ]
             logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))

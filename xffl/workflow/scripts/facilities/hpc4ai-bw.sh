@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export GLOO_SOCKET_IFNAME=ibs1
+
 # C3S specific environment variables
 export XFFL_LOCAL_TMPDIR=${TMPDIR}
 
