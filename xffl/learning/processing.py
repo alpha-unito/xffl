@@ -38,6 +38,8 @@ def distributed_training(
     lr_scheduler: Optional[LRScheduler] = None,
     wandb_run: Optional[Run] = None,
     criterion=None,
+    gradient_clipping=None,
+    accumulation_steps=None,
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
 
@@ -118,6 +120,11 @@ def distributed_training(
                         non_blocking=True,
                     )
                 loss: torch.Tensor = model(**batch).loss
+                # loss: torch.Tensor = model(
+                #     input_ids=batch["input_ids"],
+                #     attention_mask=batch["attention_mask"],
+                #     labels=batch["input_ids"],
+                # ).loss
             else:
                 data, target = batch
                 data, target = data.to(
@@ -135,6 +142,8 @@ def distributed_training(
                 batch_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
+            if accumulation_steps is not None:
+                loss = loss / accumulation_steps
             loss.backward()
 
             if logging.root.level == logging.DEBUG:
@@ -143,10 +152,20 @@ def distributed_training(
                 back_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
-            optimizer.step()  # TODO: average optimizer?
-            optimizer.zero_grad()
-            if lr_scheduler:
-                lr_scheduler.step()
+            if (
+                accumulation_steps is not None
+                and (step + 1) % accumulation_steps == 0
+                or (step + 1) == len(train_dataloader)
+            ):
+                if gradient_clipping is not None:
+                    torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), gradient_clipping
+                    )
+                optimizer.step()
+                optimizer.zero_grad()
+
+                if lr_scheduler:
+                    lr_scheduler.step()
             pbar.update(1)
 
             if logging.root.level == logging.DEBUG:
@@ -183,6 +202,7 @@ def distributed_training(
                         "train/step": epoch * total_length + step,
                         "train/loss": train_step_loss[-1],
                         "train/perplexity": train_step_perplexity[-1],
+                        #"train/learning rate": lr_scheduler.get_lr()
                     }
                 )
 
