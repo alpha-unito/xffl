@@ -39,7 +39,7 @@ def distributed_training(
     wandb_run: Optional[Run] = None,
     criterion=None,
     gradient_clipping=None,
-    accumulation_steps=None,
+    accumulation_steps=None
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
 
@@ -119,12 +119,12 @@ def distributed_training(
                         device=state.current_device,
                         non_blocking=True,
                     )
-                loss: torch.Tensor = model(**batch).loss
-                # loss: torch.Tensor = model(
-                #     input_ids=batch["input_ids"],
-                #     attention_mask=batch["attention_mask"],
-                #     labels=batch["input_ids"],
-                # ).loss
+                #loss: torch.Tensor = model(**batch).loss
+                loss: torch.Tensor = model(
+                    input_ids=batch["input_ids"],
+                    attention_mask=batch["attention_mask"],
+                    labels=batch["input_ids"],
+                ).loss
             else:
                 data, target = batch
                 data, target = data.to(
@@ -191,6 +191,8 @@ def distributed_training(
                 comm_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
+            if accumulation_steps is not None:
+                loss = loss * accumulation_steps
             total_loss += loss.detach().float()
             train_step_perplexity.append(float(torch.exp(loss.detach().float())))
             train_step_loss.append(loss.detach().float().item())
@@ -202,7 +204,8 @@ def distributed_training(
                         "train/step": epoch * total_length + step,
                         "train/loss": train_step_loss[-1],
                         "train/perplexity": train_step_perplexity[-1],
-                        #"train/learning rate": lr_scheduler.get_lr()
+                        "train/learning rate": lr_scheduler.get_lr(),
+                        "train/gradient_accumulation": accumulation_steps
                     }
                 )
 
