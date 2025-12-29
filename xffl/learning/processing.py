@@ -204,7 +204,7 @@ def distributed_training(
                         "train/step": epoch * total_length + step,
                         "train/loss": train_step_loss[-1],
                         "train/perplexity": train_step_perplexity[-1],
-                        "train/learning rate": lr_scheduler.get_lr(),
+                        "train/learning rate": lr_scheduler.get_lr() if lr_scheduler is not None else None,
                         "train/gradient_accumulation": accumulation_steps
                     }
                 )
