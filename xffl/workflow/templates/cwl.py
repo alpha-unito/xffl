@@ -32,7 +32,7 @@ class CWLConfig(YamlConfig):
         }
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Adds the CWL inputs to the YAML content
 
@@ -72,7 +72,7 @@ class Workflow(ABC):
 
     @abstractmethod
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the Workflow definition
 
@@ -146,7 +146,7 @@ class AggregateStep(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the AggregateStep definition
 
@@ -251,7 +251,7 @@ class MainWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the MainWorkflow definition
 
@@ -265,12 +265,13 @@ class MainWorkflow(Workflow):
             "facility": "string",
             "dataset": "Directory",
         }
-        for key in mandatory_inputs.keys():
-            if key in extra_inputs.keys():
-                logger.warning(
-                    f"{type(self).__name__}: The {key} input will be override"
-                )
-        inputs = dict(extra_inputs) | mandatory_inputs
+        if extra_inputs:
+            for key in mandatory_inputs.keys():
+                if key in extra_inputs.keys():
+                    logger.warning(
+                        f"{type(self).__name__}: The {key} input will be override"
+                    )
+            inputs = dict(extra_inputs) | mandatory_inputs
 
         self.cwl.inputs.extend(
             [
@@ -414,7 +415,7 @@ class RoundWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the RoundWorkflow definition
 
@@ -428,12 +429,13 @@ class RoundWorkflow(Workflow):
             "facility": "string",
             "dataset": "Directory",
         }
-        for key in mandatory_inputs.keys():
-            if key in extra_inputs.keys():
-                logger.warning(
-                    f"{type(self).__name__}: The {key} input will be override"
-                )
-        inputs = dict(extra_inputs) | mandatory_inputs
+        if extra_inputs:
+            for key in mandatory_inputs.keys():
+                if key in extra_inputs.keys():
+                    logger.warning(
+                        f"{type(self).__name__}: The {key} input will be override"
+                    )
+            inputs = dict(extra_inputs) | mandatory_inputs
 
         self.cwl.inputs.extend(
             [
@@ -590,7 +592,7 @@ class TrainingStep(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the TrainingStep definition
 
@@ -599,23 +601,24 @@ class TrainingStep(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
-        i = self.get_available_position()
-        for name, values in extra_inputs.items():
-            input_binding = None
-            if "prefix" in values.keys():
-                input_binding = cwl.CommandLineBinding(
-                    position=i,
-                    prefix=values["prefix"],
+        if extra_inputs:
+            i = self.get_available_position()
+            for name, values in extra_inputs.items():
+                input_binding = None
+                if "prefix" in values.keys():
+                    input_binding = cwl.CommandLineBinding(
+                        position=i,
+                        prefix=values["prefix"],
+                    )
+                    i += 1
+                self.cwl.inputs.append(
+                    cwl.WorkflowInputParameter(
+                        id=name,
+                        type_=values["type"],
+                        inputBinding=input_binding,
+                        default=values.get("default", None),
+                    )
                 )
-                i += 1
-            self.cwl.inputs.append(
-                cwl.WorkflowInputParameter(
-                    id=name,
-                    type_=values["type"],
-                    inputBinding=input_binding,
-                    default=values.get("default", None),
-                )
-            )
 
     def get_available_position(self) -> int:
         position = 0

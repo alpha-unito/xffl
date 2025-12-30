@@ -14,7 +14,7 @@ from typing import Tuple
 
 import yaml
 
-from xffl.cli.parser import subparsers
+import xffl.cli.parser as cli_parser
 from xffl.cli.utils import check_and_create_dir
 from xffl.custom.types import FileLike, FolderLike, PathLike
 from xffl.utils.constants import DEFAULT_xFFL_DIR
@@ -27,7 +27,6 @@ from xffl.workflow.templates.cwl import (
     TrainingStep,
 )
 from xffl.workflow.templates.streamflow import StreamFlowFile
-from xffl.workflow.utils import from_args_to_cwl, import_from_path
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -47,20 +46,7 @@ def _get_training_info() -> Tuple[FileLike, FileLike, str]:
         is_path=True,
     )
 
-    parser_path: FileLike = check_input(
-        text="Custom arguments parser path: ",
-        warning_msg="File {} does not exist.",
-        control=lambda path: path.is_file(),
-        is_path=True,
-    )
-
-    parser_name: str = check_input(
-        text="Arguments parser module name: ",
-        warning_msg="Invalid name (letters, numbers, dashes, underscores, must start with alnum).",
-        control=lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
-    )
-
-    return executable_path, parser_path, parser_name
+    return executable_path  # , parser_path, parser_name
 
 
 def _get_model_info() -> Tuple[PathLike, str]:
@@ -83,9 +69,9 @@ def _get_model_info() -> Tuple[PathLike, str]:
 
 def _configure_facility(
     facility: str,
-    parser_name: str,
-    parser_path: FileLike,
-    args: argparse.Namespace,
+    # parser_name: str,
+    # parser_path: FileLike,
+    # args: argparse.Namespace,
     streamflow_config: StreamFlowFile,
     main_cwl: MainWorkflow,
     round_cwl: RoundWorkflow,
@@ -130,44 +116,16 @@ def _configure_facility(
         is_path=True,
     )
 
-    # --- Re-import user ArgumentParser and extract args for this facility ---
-    logger.debug(
-        f"Dynamically loading ArgumentParser '{parser_name}' from file '{parser_path}' (facility {facility})"
-    )
-    try:
-        executable_parser_module = import_from_path(
-            module_name=parser_name, file_path=parser_path
-        )
-        logger.info(
-            f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
-        )
-
-        arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-            parser=executable_parser_module.parser, arguments=args.arguments
-        )
-    except SystemExit as se:
-        # The user parser called sys.exit (probably missing required args)
-        logger.error(
-            "The script requires some parameters. Add them using the --arguments option"
-        )
-        raise se
-    except Exception:
-        logger.exception(
-            "Error while importing or parsing the user ArgumentParser for facility %s",
-            facility,
-        )
-        raise
-
     # Populate CWL config for this facility
-    main_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
-    round_cwl.add_inputs(facility_name=facility, extra_inputs=arg_to_type)
+    main_cwl.add_inputs(facility_name=facility)  # , extra_inputs=arg_to_type)
+    round_cwl.add_inputs(facility_name=facility)  # , extra_inputs=arg_to_type)
     cwl_config.add_inputs(
         facility_name=facility,
         extra_inputs={
             "image": {"class": "File", "path": image_path.name},
             "dataset": {"class": "Directory", "path": dataset_path.name},
-        }
-        | arg_to_value,
+        },
+        # | arg_to_value,
     )
 
     # Populate StreamFlow config for this facility
@@ -293,36 +251,20 @@ def config(args: argparse.Namespace) -> int:
     }
 
     # --- User-provided training/parser info ---
-    executable_path, parser_path, parser_name = _get_training_info()
-
-    # --- First import: extract arguments mapping to populate training inputs ---
-    logger.debug(
-        f"Dynamically loading ArgumentParser '{parser_name}' from file '{parser_path}' (initial import)"
+    executable_path = check_input(
+        text="Training script path: ",
+        warning_msg="File {} does not exist.",
+        control=lambda path: path.is_file(),
+        is_path=True,
     )
-    try:
-        executable_parser_module = import_from_path(
-            module_name=parser_name, file_path=parser_path
-        )
-        logger.info(
-            f"Command line argument parser '{parser_name}' from file '{parser_path}' correctly imported"
-        )
 
-        arg_to_bidding, arg_to_type, arg_to_value = from_args_to_cwl(
-            parser=executable_parser_module.parser, arguments=args.arguments
-        )
-    except SystemExit as se:
-        logger.error(
-            "The script requires some parameters. Add them using the --arguments option"
-        )
-        raise se
-    except Exception:
-        logger.exception(
-            "Error importing or parsing the user ArgumentParser (initial import)"
-        )
-        raise
-
-    # Populate training step with the "bidding" info (inputs used by training)
-    training_cwl.add_inputs(facility_name=None, extra_inputs=arg_to_bidding)
+    # Config file
+    config_file: FileLike = check_input(
+        text="Configuration file path: ",
+        warning_msg="File {} does not exist.",
+        control=lambda path: path.is_file(),
+        is_path=True,
+    )
 
     # Model info
     model_path, new_model_name = _get_model_info()
@@ -354,7 +296,7 @@ def config(args: argparse.Namespace) -> int:
         "executable": {
             "class": "File",
             "path": str(executable_path),
-            "secondaryFiles": [{"class": "File", "path": str(parser_path)}],
+            "secondaryFiles": [{"class": "File", "path": str(config_file)}],
         },
         "model": {
             "class": "Directory" if model_path.is_dir() else "File",
@@ -376,9 +318,9 @@ def config(args: argparse.Namespace) -> int:
 
         _configure_facility(
             facility=facility,
-            parser_name=parser_name,
-            parser_path=parser_path,
-            args=args,
+            # parser_name=parser_name,
+            # parser_path=parser_path,
+            # args=args,
             streamflow_config=streamflow_config,
             main_cwl=main_cwl,
             round_cwl=round_cwl,
@@ -425,4 +367,4 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    main(args=subparsers.choices["config"].parse_args())
+    main(args=cli_parser.subparsers.choices["config"].parse_args())

@@ -4,7 +4,7 @@ import argparse
 import inspect
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, List
 
 from xffl.custom.types import FileLike, FolderLike, PathLike
 from xffl.utils.utils import check_input
@@ -25,7 +25,7 @@ def get_facilitator_path() -> FileLike:
     return workflow_dir / "scripts" / "facilitator.sh"
 
 
-def check_default_value(
+def _check_default_value(
     argument_name: str, argument_value: Any, parser: argparse.ArgumentParser
 ) -> None:
     """Check if a CLI argument value equals its default.
@@ -65,19 +65,6 @@ def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
             expanded_args.append(arg)
 
     return expanded_args
-
-
-def setup_env(args: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, str]:
-    """Create a mapping between CLI arguments and environment variables.
-
-    :param args: CLI arguments.
-    :type args: Dict[str, Any]
-    :param mapping: Mapping between environment variables and CLI argument names.
-    :type mapping: Dict[str, str]
-    :return: New environment variables dictionary.
-    :rtype: Dict[str, str]
-    """
-    return {env_var: str(args[parse_var]) for env_var, parse_var in mapping.items()}
 
 
 def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderLike:

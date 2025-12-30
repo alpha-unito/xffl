@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
-# LEONARDO specific environment variables
+# LOCAL specific environment variables
 export XFFL_LOCAL_TMPDIR=${TMPDIR}

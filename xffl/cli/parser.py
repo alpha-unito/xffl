@@ -9,6 +9,7 @@ Advanced features are provided by subcommands and their specific options.
 import argparse
 import logging
 import os
+import subprocess
 from typing import Tuple
 
 from xffl.custom.types import FileLike, FolderLike
@@ -37,21 +38,29 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_arguments_option(subparser: argparse.ArgumentParser) -> None:
-    """Add the --arguments passthrough option to a subparser.
-
-    :param subparser: The argparse subparser to extend
-    :type subparser: argparse.ArgumentParser
-    """
-    subparser.add_argument(
-        "-args",
-        "--arguments",
-        help="Additional command line arguments to pass directly to the "
-        "executable script or experiment runner.",
-        type=str,
-        nargs="+",
-        default=[],
+def _get_default_nodelis() -> Tuple[str]:
+    return (
+        tuple(
+            subprocess.run(
+                ["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]],
+                capture_output=True,
+                text=True,
+            ).stdout.split("\n")[:-1]
+        )
+        if "SLURM_JOB_NODELIST" in os.environ
+        else None
     )
+
+
+def _get_default_ppn() -> int:  # TODO: questo si rompe se non ci sono GPU sul nodo
+    ppn: int = 1
+    if "CUDA_VISIBLE_DEVICES" in os.environ:
+        ppn = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+    if "ROCR_VISIBLE_DEVICES" in os.environ:
+        ppn = len(os.environ["ROCR_VISIBLE_DEVICES"].split(","))
+    if "HIP_VISIBLE_DEVICES" in os.environ:
+        ppn = len(os.environ["HIP_VISIBLE_DEVICES"].split(","))
+    return ppn
 
 
 def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
@@ -108,7 +117,6 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         help="Execute an experiment using xFFL.",
     )
     _add_common_project_options(run_parser)
-    _add_arguments_option(run_parser)
 
     run_parser.add_argument(
         "-o",
@@ -135,13 +143,27 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         description="Execute a Python script or experiment locally through xFFL.",
         help="Run a local script with xFFL execution framework.",
     )
-    _add_arguments_option(exec_parser)
 
     exec_parser.add_argument(
         "executable",
         help="Path to the Python script or executable to run.",
         type=FileLike,
     )
+
+    exec_parser.add_argument(
+        "configuration",
+        help="Path to the run configuration file.",
+        type=FileLike,
+    )
+
+    exec_parser.add_argument(
+        "-c",
+        "--config",
+        help="Desired configuration to be instantiated from the configuration file.",
+        type=str,
+        default="xffl_config",
+    )
+
     exec_parser.add_argument(
         "-f",
         "--facility",
@@ -149,13 +171,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         type=str,
         default="leonardo",
     )
-    exec_parser.add_argument(
-        "-n",
-        "--nodelist",
-        help="List of compute nodes available for the execution. Default is ['localhost'].",
-        nargs="+",
-        default=["localhost"],
-    )
+
     exec_parser.add_argument(
         "-fs",
         "--federated-scaling",
@@ -182,11 +198,19 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     )
 
     exec_parser.add_argument(
-        "-p",
+        "-n",
+        "--nodelist",
+        help="List of compute nodes available for the execution. Default is ['localhost'].",
+        nargs="+",
+        default=_get_default_nodelis(),
+    )
+
+    exec_parser.add_argument(
+        "-ppn",
         "--processes-per-node",
         help="Number of GPUs or processes available per compute node. Default is 1.",
         type=int,
-        default=1,
+        default=_get_default_ppn(),
     )
 
     return parser, subparsers

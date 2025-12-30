@@ -78,7 +78,7 @@ def setup_distributed_process_group(
     :type device: Optional[torch.device], optional
     :param hsdp: Activate Hybrid Sharding Distributed Parallelism with specified replica group size, defaults to None
     :type hsdp: Optional[int], optional
-    :param federated:Activate Federated Scaling with specified federated group size, defaults to None
+    :param federated: Activate Federated Scaling with specified federated group size, defaults to None
     :type federated: Optional[int], optional
     :param streams: Number of CUDA streams to instantiate, defaults to None
     :type streams: Optional[int]
@@ -219,7 +219,7 @@ def cleanup_distributed_process_group(
     :param state: Instantiated distributed state
     :type state: DistributedState
     :param del_obj: Objects to be deleted before destroying the process group, defaults to []
-    :type state: Tuple[Any]
+    :type del_obj: Tuple[Any]
     """
     for obj in del_obj:
         del obj
@@ -308,13 +308,13 @@ def _setup_devices(
 ]:
     """PyTorch device setup
 
-        Sets the GPU for the current process and empties its cache
-        Also, returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
-    s
-        :param state: Instantiated distributed state
-        :type state: DistributedState
-        :return: Two devices, one for computation and the other for model initialisation, and if meta initialisation is enabled
-        :rtype: tuple[int, torch.device | int, bool]
+    Sets the GPU for the current process and empties its cache
+    Also, returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
+
+    :param state: Instantiated distributed state
+    :type state: DistributedState
+    :return: Two devices, one for computation and the other for model initialisation, and if meta initialisation is enabled
+    :rtype: tuple[int, torch.device | int, bool]
     """
 
     current_device: torch.device | int = torch.device("cpu")

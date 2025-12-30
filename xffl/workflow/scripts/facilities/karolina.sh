@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 # KAROLINA specific environment variables
 export CONTAINER="apptainer"

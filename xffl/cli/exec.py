@@ -5,18 +5,19 @@ offering a homogeneous interface with xFFL.
 """
 
 import argparse
-import shlex
+import importlib.util
 import socket
 import subprocess
 import sys
 import time
 from logging import Logger, getLogger
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Dict, List
+from types import ModuleType, SimpleNamespace
+from typing import Any, Dict, List
 
-from xffl.cli.parser import subparsers
-from xffl.cli.utils import get_facilitator_path, setup_env
+import xffl.cli.parser as cli_parser
+from xffl.cli.utils import get_facilitator_path
+from xffl.custom.types import FileLike, PathLike
 from xffl.distributed.networking import get_cells_ids
 
 logger: Logger = getLogger(__name__)
@@ -28,7 +29,44 @@ logger: Logger = getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-def setup_execution_env(args: SimpleNamespace) -> Dict[str, str]:
+def _import_from_path(module_name: str, file_path: FileLike):
+    logger.debug(f"Importing {module_name} from {file_path}")
+    spec = importlib.util.spec_from_file_location(module_name, str(file_path))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _setup_env(args: argparse.Namespace, mapping: Dict[str, str]) -> Dict[str, str]:
+    """Create a mapping between CLI arguments and environment variables.
+
+    :param args: CLI arguments.
+    :type args: Dict[str, Any]
+    :param mapping: Mapping between environment variables and CLI argument names.
+    :type mapping: Dict[str, str]
+    :return: New environment variables dictionary.
+    :rtype: Dict[str, str]
+    """
+    args_dict: Dict[str, Any] = vars(args)
+    env: Dict[str, Any] = {
+        env_var: str(args_dict[parse_var]) if parse_var in args_dict else None
+        for env_var, parse_var in mapping.items()
+    }
+    if args.image:
+        config_module: ModuleType = _import_from_path(
+            "configuration", args.configuration
+        )
+        config = getattr(config_module, args.config)()
+
+        env["XFFL_MODEL_FOLDER"] = config.model.path + config.model.name
+        env["XFFL_DATASET_FOLDER"] = config.dataset.path + config.dataset.name
+        env["XFFL_CODE_FOLDER"] = str(PathLike(args.executable).parent)
+
+    return env
+
+
+def _setup_execution_env(args: SimpleNamespace) -> Dict[str, str]:
     """Setup the environment variables for the execution.
 
     :param args: CLI arguments
@@ -50,7 +88,7 @@ def setup_execution_env(args: SimpleNamespace) -> Dict[str, str]:
     elif args.image:
         logger.debug("Using container image: %s", args.image)
         env_mapping = {
-            "CODE_FOLDER": "workdir",
+            "XFFL_CODE_FOLDER": "workdir",
             "XFFL_MODEL_FOLDER": "model",
             "XFFL_DATASET_FOLDER": "dataset",
             "XFFL_IMAGE": "image",
@@ -63,7 +101,7 @@ def setup_execution_env(args: SimpleNamespace) -> Dict[str, str]:
     else:
         raise ValueError("No execution environment specified [container/virtual env]")
 
-    env = setup_env(args=vars(args), mapping=env_mapping)
+    env: Dict[str, Any] = _setup_env(args=args, mapping=env_mapping)
     env["XFFL_EXECUTION"] = "true"
 
     if args.image:
@@ -90,7 +128,7 @@ def exec(args: argparse.Namespace) -> int:
     """
 
     # Replace localhost with actual hostname
-    if args.nodelist == ["localhost"]:
+    if args.nodelist == []:
         args.nodelist = [socket.gethostname()]
 
     args.num_nodes = len(args.nodelist)
@@ -98,7 +136,7 @@ def exec(args: argparse.Namespace) -> int:
     args.world_size = args.num_nodes * args.processes_per_node
 
     try:
-        env = setup_execution_env(args=args)
+        env = _setup_execution_env(args=args)
     except ValueError as err:
         logger.error("Failed to setup execution environment: %s", err)
         raise
@@ -116,8 +154,8 @@ def exec(args: argparse.Namespace) -> int:
         else:
             env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = str(args.federated_scaling)
 
-    # Environment string (safer join)
-    env_str = " ".join(f"{k}={shlex.quote(v)}" for k, v in env.items())
+    # Environment string
+    env_str = " ".join(f"{k}={v}" for k, v in env.items())
 
     logger.info("Running local execution...")
     start_time = time.perf_counter()
@@ -131,15 +169,16 @@ def exec(args: argparse.Namespace) -> int:
                 "ssh",
                 "-oStrictHostKeyChecking=no",
                 node,
-                shlex.join(
+                '"',
+                " ".join(
                     [
                         env_str,
                         f"XFFL_NODEID={index}",
                         str(facilitator_script),
                         str(args.executable),
                     ]
-                    + list(map(str, args.arguments))
                 ),
+                '"',
             ]
             logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))
 
@@ -179,7 +218,7 @@ def main(args: argparse.Namespace) -> int:
         return exec(args=args)
     except Exception as exception:
         logger.exception("Execution failed: %s", exception)
-        raise exception
+        # raise exception
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Execution finished ***"
@@ -187,4 +226,4 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    main(subparsers.choices["exec"].parse_args())
+    main(cli_parser.subparsers.choices["exec"].parse_args())

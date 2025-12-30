@@ -6,7 +6,7 @@ import sys
 from xffl.custom.formatter import CustomFormatter, ExcludeLoggerFilter
 
 # Logger names to exclude from formatting
-EXCLUDED_LOGGERS = ["asyncio", "git"]
+EXCLUDED_LOGGERS = ["asyncio", "git", "asyncssh"]
 
 
 def setup_logging(log_level: int = logging.INFO) -> None:

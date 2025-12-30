@@ -155,7 +155,7 @@ def preload(files: List[PathLike]) -> None:
         command = " ".join(
             [
                 "find",
-                file,
+                str(file),
                 "-type",
                 "f",
                 "-exec",

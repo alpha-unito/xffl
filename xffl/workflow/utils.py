@@ -1,5 +1,7 @@
 """Utility methods for the workflow configuration creation"""
 
+from __future__ import annotations
+
 import argparse
 import importlib.util
 import sys
