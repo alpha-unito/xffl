@@ -9,7 +9,7 @@ import sys
 from logging import Logger, getLogger
 from typing import Callable, Dict, List
 
-from xffl.cli.parser import parser
+import xffl.cli.parser as cli_parser
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -32,7 +32,7 @@ def dispatch_command(command: str, args: argparse.Namespace) -> int:
     """
     module_path = COMMANDS.get(command)
     if not module_path:
-        parser.print_help()
+        cli_parser.parser.print_help()
         return 1
 
     try:
@@ -50,7 +50,7 @@ def main(arguments: List[str]) -> int:
     :return: Exit code
     """
 
-    args: argparse.Namespace = parser.parse_args(arguments)
+    args: argparse.Namespace = cli_parser.parser.parse_args(arguments)
 
     # Setup logging
     setup_logging(args.loglevel)

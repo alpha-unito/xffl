@@ -9,8 +9,8 @@ Derive_env () {
         export ROLE_NAME="default"
         export MASTER_PORT=29500
         export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # We assume an equal allocation
-        export WORLD_SIZE=$XFFL_WORLD_SIZE		 					
-        export GROUP_WORLD_SIZE=$XFFL_NUM_NODES				
+        export WORLD_SIZE=$XFFL_WORLD_SIZE
+        export GROUP_WORLD_SIZE=$XFFL_NUM_NODES
         export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE
 
         if [ -n "$CONTAINER_PLT" ] ; then
@@ -21,18 +21,18 @@ Derive_env () {
             export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}WORLD_SIZE=${WORLD_SIZE}"
             export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_WORLD_SIZE=${GROUP_WORLD_SIZE}"
             export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=${ROLE_WORLD_SIZE}"
-        fi					
+        fi
 
     elif command -v srun > /dev/null ; then # Check SLURM
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_NAME=default"
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_PORT=29500"
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_ADDR=${MASTER_ADDR}"
 
-        if [ -z "${SLURM_NTASKS_PER_NODE+x}" ]; then 
+        if [ -z "${SLURM_NTASKS_PER_NODE+x}" ]; then
             echo "SLURM_NTASKS_PER_NODE is unset"
             exit 1
         fi
-        if [ -z "${SLURM_NTASKS+x}" ]; then 
+        if [ -z "${SLURM_NTASKS+x}" ]; then
             echo "SLURM_NTASKS is unset"
             exit 1
         fi
@@ -43,7 +43,7 @@ Derive_env () {
         fi
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_WORLD_SIZE=${LOCAL_WORLD_SIZE}"
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}WORLD_SIZE=$SLURM_NTASKS"			 					# OMPI_COMM_WORLD_SIZE
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES"				# OMPI_MCA_orte_num_nodes 
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES"				# OMPI_MCA_orte_num_nodes
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=$SLURM_NTASKS" 						# OMPI_COMM_WORLD_SIZE
 
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_RANK=$SLURM_LOCALID" 							# OMPI_COMM_WORLD_LOCAL_RANK
@@ -51,7 +51,7 @@ Derive_env () {
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_RANK=$RANK"										# $OMPI_COMM_WORLD_RANK
         GROUP_RANK=$(( RANK / SLURM_NTASKS_PER_NODE ))
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_RANK=${GROUP_RANK}"
-        
+
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_ADDR=$SLURM_SRUN_COMM_HOST"
     fi
 
@@ -72,7 +72,7 @@ Limit_PyTorch_threads () {
         exit 1
     fi
 
-    if [ -z ${OMP_NUM_THREADS+x} ]; then 
+    if [ -z ${OMP_NUM_THREADS+x} ]; then
         echo "Variable OMP_NUM_THREADS is unset"
         exit 1
     fi
@@ -119,8 +119,8 @@ LLaMA_default_env () {
 # Check which GPU architecture is available on the current computing node
 Gpu_detection () {
     # Check Nvidia GPU
-    if command -v nvidia-smi > /dev/null ; then 
-        export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES	
+    if command -v nvidia-smi > /dev/null ; then
+        export CUDA_VISIBLE_DEVICES=$VISIBLE_DEVICES
         export GPU_FLAG="--nv"
 
         if [ -n "$CONTAINER_PLT" ] ; then
@@ -128,12 +128,12 @@ Gpu_detection () {
         fi
 
         return 0
-    fi 
+    fi
 
     # Check AMD GPU
-    if command -v rocm-smi > /dev/null ; then 
+    if command -v rocm-smi > /dev/null ; then
         export HIP_VISIBLE_DEVICES=$VISIBLE_DEVICES
-        export ROCR_VISIBLE_DEVICES=$VISIBLE_DEVICES		
+        export ROCR_VISIBLE_DEVICES=$VISIBLE_DEVICES
         export GPU_FLAG="--rocm"
 
         if [ -n "$CONTAINER_PLT" ] ; then
@@ -155,23 +155,23 @@ Container_platform_detection () {
     unset CONTAINER_PLT
 
     # Check if `singularity` command exists
-    if command -v singularity > /dev/null ; then 
+    if command -v singularity > /dev/null ; then
         export CONTAINER_PLT="singularity"
         export PREFIX="SINGULARITYENV_"
         return 0
-    fi 
+    fi
 
     # Check if `apptainer` command exists
-    if command -v apptainer > /dev/null ; then 
+    if command -v apptainer > /dev/null ; then
         export CONTAINER_PLT="apptainer"
         return 0
-    fi 
+    fi
 
     # Check if `docker` command exists
-    if command -v docker > /dev/null ; then 
+    if command -v docker > /dev/null ; then
         export CONTAINER_PLT="docker"
         return 0
-    fi 
+    fi
 
     echo "No container platform detected - falling back to local environment"
     return 0

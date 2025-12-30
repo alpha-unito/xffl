@@ -8,7 +8,7 @@ import argparse
 import asyncio
 from logging import Logger, getLogger
 
-from xffl.cli.parser import subparsers
+import xffl.cli.parser as cli_parser
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -49,4 +49,4 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    main(subparsers.choices["run"].parse_args())
+    main(cli_parser.subparsers.choices["run"].parse_args())

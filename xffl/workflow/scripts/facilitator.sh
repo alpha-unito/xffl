@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# input environment variables: 
+# input environment variables:
 #  - XFFL_MODEL_FOLDER
 #  - XFFL_DATASET_FOLDER
 #  - XFFL_IMAGE
@@ -31,7 +31,7 @@ Reset_visible_devices
 LLaMA_default_env
 Gpu_detection
 
-if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then 
+if [ -z "${XFFL_OUTPUT_FOLDER}" ] ; then
 	XFFL_OUTPUT_FOLDER=$XFFL_LOCAL_TMPDIR
 fi
 

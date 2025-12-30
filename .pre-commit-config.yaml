@@ -1,14 +1,23 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:
       - id: black
+        args: [--diff, --check]
         language_version: python3
 
   - repo: https://github.com/PyCQA/isort
     rev: 7.0.0
     hooks:
       - id: isort
+        args: [--check-only]
 
   - repo: https://github.com/PyCQA/flake8
     rev: 7.0.0
@@ -19,3 +28,12 @@ repos:
     rev: v2.3.0
     hooks:
       - id: codespell
+        args: [-L astroid]
+
+  - repo: local
+    hooks:
+      - id: docs-check
+        name: Docs check
+        entry: make docs-check
+        language: system
+        pass_filenames: false

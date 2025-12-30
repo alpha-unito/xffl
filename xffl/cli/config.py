@@ -14,7 +14,7 @@ from typing import Tuple
 
 import yaml
 
-from xffl.cli.parser import subparsers
+import xffl.cli.parser as cli_parser
 from xffl.cli.utils import check_and_create_dir
 from xffl.custom.types import FileLike, FolderLike, PathLike
 from xffl.utils.constants import DEFAULT_xFFL_DIR
@@ -367,4 +367,4 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    main(args=subparsers.choices["config"].parse_args())
+    main(args=cli_parser.subparsers.choices["config"].parse_args())

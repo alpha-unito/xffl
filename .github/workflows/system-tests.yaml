@@ -34,7 +34,7 @@ jobs:
           HASH="$(make checksum-config | tail -n 1)"
           echo "Project checksum is ${HASH}"
           test "${HASH}" == "${CHECKSUM}"
-          
+
       - name: "Validate project"
         run: |
           cd test/system_test/cli

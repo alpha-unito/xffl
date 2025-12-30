@@ -14,7 +14,7 @@ From: {{ BASE_IMAGE }}
 %files
 	#{{ WORKDIR }}/{{ REQUIREMENTS_FILE }} /{{ REQUIREMENTS_FOLDER }}/
 
-%post	
+%post
 	# Requirements.txt installation
 	python3 -m pip install --no-cache-dir --upgrade pip && \
 	python3 -m pip install --no-cache-dir -r /{{ REQUIREMENTS_FOLDER }}/{{ REQUIREMENTS_FILE }} && \

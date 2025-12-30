@@ -12,29 +12,29 @@ The **local simulation** feature is especially useful for testing and validating
 Both local and remote deployments require:
 
 ### **Model**
-A LLaMA model directory.  
+A LLaMA model directory.
 You may download it from:
 
 - Meta’s official website: https://www.llama.com/llama-downloads/
-- HuggingFace: https://huggingface.co/docs/transformers/model_doc/llama  
+- HuggingFace: https://huggingface.co/docs/transformers/model_doc/llama
 
 This example has been tested with **LLaMA-3.1 8B**.
 
 ### **Dataset**
-A tokenized dataset compatible with the training script.  
+A tokenized dataset compatible with the training script.
 This example uses the *tiny* split of:
 
-**clean_mc4_it**  
-https://huggingface.co/datasets/gsarti/clean_mc4_it  
+**clean_mc4_it**
+https://huggingface.co/datasets/gsarti/clean_mc4_it
 
 ### **Runtime Environment**
 Each site must provide:
 
-- A **Python virtual environment** (for local simulations)  
+- A **Python virtual environment** (for local simulations)
   **or**
 - A **Singularity/Apptainer container** (.sif) with:
   - xFFL installed
-  - all project-specific libraries installed  
+  - all project-specific libraries installed
 
 ### **Custom Argument Parser**
 
@@ -46,14 +46,14 @@ xffl.custom.parser
 
 This is:
 
-- **mandatory** for cross-facility deployments  
-- **recommended** for local simulations  
+- **mandatory** for cross-facility deployments
+- **recommended** for local simulations
 
 The parser extends a standard Python `ArgumentParser` with additional arguments required by xFFL.
 
 ## Local Simulation (single-node, multi-GPU)
 
-Local simulation is the easiest way to validate your LLaMA training script.  
+Local simulation is the easiest way to validate your LLaMA training script.
 It uses the `xffl simulate` command to spawn multiple training processes that collaboratively train the model using **PyTorch FSDP**.
 
 ### 1. Clone the repository
@@ -105,11 +105,11 @@ xffl simulate examples/llama/client/src/training.py     --world-size <NUM_GPUS> 
 
 Local simulation is ideal to debug:
 
-- dataset loading  
-- distributed initialization  
-- FSDP wrapping  
-- memory usage  
-- training correctness  
+- dataset loading
+- distributed initialization
+- FSDP wrapping
+- memory usage
+- training correctness
 
 before deploying across multiple facilities.
 
@@ -122,7 +122,7 @@ This section describes how to run **federated LLaMA training across multiple HPC
 - **StreamFlow** (workflow orchestration)
 - **SSH** access (from aggregator to each client facility)
 
-This example mirrors real multi-facility deployments such as:  
+This example mirrors real multi-facility deployments such as:
 https://hpc4ai.unito.it/hpc-federation/
 
 ---
@@ -161,11 +161,11 @@ xffl config
 
 Follow the prompts to define:
 
-- facilities  
-- SLURM settings  
-- container locations  
-- dataset/model paths  
-- authentication methods  
+- facilities
+- SLURM settings
+- container locations
+- dataset/model paths
+- authentication methods
 
 A fully-configured **project folder** is then created automatically.
 
@@ -179,16 +179,16 @@ xffl run -p <project_folder>
 
 xFFL will:
 
-1. Start StreamFlow  
-2. Connect to all client HPCs  
-3. Submit SLURM jobs  
-4. Exchange model parameters across facilities  
-5. Synchronize training rounds  
-6. Manage failures and retries  
+1. Start StreamFlow
+2. Connect to all client HPCs
+3. Submit SLURM jobs
+4. Exchange model parameters across facilities
+5. Synchronize training rounds
+6. Manage failures and retries
 
 ## Final Notes
 
-- This example serves as a **reference implementation** for LLaMA training using xFFL in both local and cross-facility modes.  
-- Model and dataset paths must be configured manually based on your environment.  
-- Singularity definitions can be extended with additional libraries depending on your needs.  
-- Cross-facility performance depends heavily on network connectivity, remote queue times, and facility load.  
+- This example serves as a **reference implementation** for LLaMA training using xFFL in both local and cross-facility modes.
+- Model and dataset paths must be configured manually based on your environment.
+- Singularity definitions can be extended with additional libraries depending on your needs.
+- Cross-facility performance depends heavily on network connectivity, remote queue times, and facility load.

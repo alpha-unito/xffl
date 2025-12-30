@@ -15,7 +15,7 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any, Dict, List
 
-from xffl.cli.parser import subparsers
+import xffl.cli.parser as cli_parser
 from xffl.cli.utils import get_facilitator_path
 from xffl.custom.types import FileLike, PathLike
 from xffl.distributed.networking import get_cells_ids
@@ -226,4 +226,4 @@ def main(args: argparse.Namespace) -> int:
 
 
 if __name__ == "__main__":
-    main(subparsers.choices["exec"].parse_args())
+    main(cli_parser.subparsers.choices["exec"].parse_args())

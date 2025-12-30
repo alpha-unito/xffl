@@ -6,7 +6,7 @@ ifeq ($(UNAME_S),Darwin)
 	SHASUM = shasum -a 256
 endif
 
-PROJECT=test 
+PROJECT=test
 WORKDIR="workdir"
 MODEL_PATH="${WORKDIR}/llama3-1-8b"
 TEMPDIR="${WORKDIR}/tmp"
