@@ -37,8 +37,12 @@ logger: Logger = getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-def _get_training_info() -> Tuple[FileLike, FileLike, str]:
-    """Prompt user for training script path, parser path and parser name."""
+def _get_training_info() -> FileLike:
+    """Prompt user for training script path, parser path and parser name.
+
+    :return: The executable file path
+    :rtype: FileLike
+    """
     executable_path: FileLike = check_input(
         text="Training script path: ",
         warning_msg="File {} does not exist.",
@@ -46,7 +50,7 @@ def _get_training_info() -> Tuple[FileLike, FileLike, str]:
         is_path=True,
     )
 
-    return executable_path  # , parser_path, parser_name
+    return executable_path
 
 
 def _get_model_info() -> Tuple[PathLike, str]:
