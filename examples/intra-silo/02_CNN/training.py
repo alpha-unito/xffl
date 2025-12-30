@@ -7,15 +7,15 @@ from typing import Dict, Optional
 import torch
 import torch.nn as nn
 import wandb
+from config import xffl_config
+from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import SGD
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.distributed import DistributedSampler
-from torch.distributed.fsdp import FullyShardedDataParallel
 from torchvision import datasets, transforms
 
-from config import xffl_config
 from xffl.distributed import distributed
-from xffl.learning import processing, utils, modelling
+from xffl.learning import modelling, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -61,7 +61,7 @@ def pretraining(config: xffl_config) -> None:
         project=config.wandb_project,
         group=config.wandb_group,
         name=f"client_{state.rank}",
-        notes=f"CNN training on CIFAR10",
+        notes="CNN training on CIFAR10",
         tags=["xFFL", "CNN", "CIFAR10"],
         mode=config.wandb_mode,  # Set to "disable" to execute without wandb
     )
@@ -143,18 +143,18 @@ def pretraining(config: xffl_config) -> None:
             batch_size=(
                 config.train_batch_size if split == "train" else config.val_batch_size
             ),
-            # sampler=(
-            #     DistributedSampler(
-            #         dataset=dataset,
-            #         num_replicas=state.world_size,
-            #         rank=state.rank,
-            #         shuffle=split == "train",
-            #         seed=config.seed if config.seed else None,
-            #         drop_last=True,
-            #     )
-            #     if not config.one_class
-            #     else None
-            # ),
+            sampler=(
+                DistributedSampler(
+                    dataset=dataset,
+                    num_replicas=state.world_size,
+                    rank=state.rank,
+                    shuffle=split == "train",
+                    seed=config.seed if config.seed else None,
+                    drop_last=True,
+                )
+                if not config.one_class
+                else None
+            ),
             num_workers=config.workers,
             pin_memory=True,
             drop_last=True,

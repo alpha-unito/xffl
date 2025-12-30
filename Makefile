@@ -14,3 +14,6 @@ format:
 format-check:
 	isort --check-only  examples/ tests/ xffl/
 	black --diff --check examples/ tests/ xffl/
+
+all:
+	make codespell codespell-check flake8 format format-check
