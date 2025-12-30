@@ -2,17 +2,17 @@ name: Docs
 
 on:
   push:
-    branches: [main, docs]
+    branches: [main]
     paths:
       - "docs/**"
       - "**/*.py"
       - "pyproject.toml"
       - "setup.cfg"
       - "setup.py"
-      - ".github/workflows/sphinx.yaml"
+      - ".github/workflows/docs.yaml"
 
   pull_request:
-    branches: [main, docs]
+    branches: [main]
     paths:
       - "docs/**"
       - "**/*.py"
