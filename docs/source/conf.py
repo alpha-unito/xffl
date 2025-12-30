@@ -7,6 +7,7 @@
 # add these directories to sys.path here.
 import sys
 from pathlib import Path
+
 from xffl.utils.constants import VERSION
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
