@@ -47,6 +47,7 @@ def main(arguments: List[str]) -> int:
     """xFFL command line interface.
 
     :param arguments: Command line arguments
+    :type arguments: List[str]
     :return: Exit code
     """
 
