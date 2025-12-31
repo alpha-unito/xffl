@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import MutableMapping
 from logging import Logger, getLogger
-from typing import Any
+from typing import Any, Optional
 
 import cwl_utils.parser.cwl_v1_2 as cwl
 
@@ -251,7 +251,9 @@ class MainWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
+        self,
+        facility_name: str,
+        extra_inputs: Optional[MutableMapping[str, Any]] = None,
     ) -> None:
         """Add the given extra inputs to the MainWorkflow definition
 
@@ -260,18 +262,21 @@ class MainWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
+        if extra_inputs is None:
+            extra_inputs = {}
+
         mandatory_inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
-        if extra_inputs is not None:
-            for key in mandatory_inputs.keys():
-                if key in extra_inputs.keys():
-                    logger.warning(
-                        f"{type(self).__name__}: The {key} input will be override"
-                    )
-            inputs = dict(extra_inputs) | mandatory_inputs
+
+        for key in mandatory_inputs.keys():
+            if key in extra_inputs.keys():
+                logger.warning(
+                    f"{type(self).__name__}: The {key} input will be override"
+                )
+        inputs = dict(extra_inputs) | mandatory_inputs
 
         self.cwl.inputs.extend(
             [
@@ -416,7 +421,9 @@ class RoundWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
+        self,
+        facility_name: str,
+        extra_inputs: Optional[MutableMapping[str, Any]] = None,
     ) -> None:
         """Add the given extra inputs to the RoundWorkflow definition
 
@@ -425,18 +432,21 @@ class RoundWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
+        if extra_inputs is None:
+            extra_inputs = {}
+
         mandatory_inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
-        if extra_inputs is not None:
-            for key in mandatory_inputs.keys():
-                if key in extra_inputs.keys():
-                    logger.warning(
-                        f"{type(self).__name__}: The {key} input will be override"
-                    )
-            inputs = dict(extra_inputs) | mandatory_inputs
+
+        for key in mandatory_inputs.keys():
+            if key in extra_inputs.keys():
+                logger.warning(
+                    f"{type(self).__name__}: The {key} input will be override"
+                )
+        inputs = dict(extra_inputs) | mandatory_inputs
 
         self.cwl.inputs.extend(
             [
