@@ -28,6 +28,7 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
         type=str,
         default="project",
     )
+
     subparser.add_argument(
         "-w",
         "--workdir",

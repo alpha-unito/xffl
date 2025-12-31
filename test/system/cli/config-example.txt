@@ -1,6 +1,5 @@
-../../../examples/llm/client/src/training.py
-../../../examples/llm/client/src/parser.py
-parser
+../../../examples/intra-silo/03_LLM/training.py
+../../../examples/intra-silo/03_LLM/config.py
 workdir/llama3-1-8b/
 new-llama
 workdir/tmp
@@ -9,7 +8,7 @@ leonardo
 login.leonardo.cineca.it
 myusername
 workdir/ecdsa
-../../../examples/llm/client/slurm_templates/leonardo.slurm
+../../../examples/cross-facility/01_LLM/client/slurm_templates/leonardo.slurm
 /leonardo_scratch/fast/PROJECT/tmp/
 /leonardo_scratch/fast/PROJECT/client.sif
 /leonardo_scratch/fast/PROJECT/datasets
@@ -18,7 +17,7 @@ lumi
 lumi.csc.fi
 myotherusername
 workdir/id_rsa
-../../../examples/llm/client/slurm_templates/lumi.slurm
+../../../examples/cross-facility/01_LLM/client/slurm_templates/lumi.slurm
 /flash/PROJECT/tmp/
 /flash/PROJECT/client.sif
 /flash/PROJECT/datasets

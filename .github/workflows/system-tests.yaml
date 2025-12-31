@@ -28,7 +28,7 @@ jobs:
 
       - name: "Create an xffl project using the config CLI interface."
         env:
-          CHECKSUM: "2962309eecc0505d112d1eeb4bbdbe4d06e91f136f72a187a520dd68a5c11f03"
+          CHECKSUM: "c50ba4cfa1a5d47b4b705d2216010a31211bd2b21f77f9a9717f352edafaa9a9"
         run: |
           cd test/system_test/cli
           HASH="$(make checksum-config | tail -n 1)"

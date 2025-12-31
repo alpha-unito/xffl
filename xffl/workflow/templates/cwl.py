@@ -260,18 +260,18 @@ class MainWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
-        mandatory_inputs = {
+        inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
         if extra_inputs:
-            for key in mandatory_inputs.keys():
+            for key in inputs.keys():
                 if key in extra_inputs.keys():
                     logger.warning(
                         f"{type(self).__name__}: The {key} input will be override"
                     )
-            inputs = dict(extra_inputs) | mandatory_inputs
+            inputs = dict(extra_inputs) | inputs
 
         self.cwl.inputs.extend(
             [
@@ -424,18 +424,18 @@ class RoundWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
-        mandatory_inputs = {
+        inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
         if extra_inputs:
-            for key in mandatory_inputs.keys():
+            for key in inputs.keys():
                 if key in extra_inputs.keys():
                     logger.warning(
                         f"{type(self).__name__}: The {key} input will be override"
                     )
-            inputs = dict(extra_inputs) | mandatory_inputs
+            inputs = dict(extra_inputs) | inputs
 
         self.cwl.inputs.extend(
             [
@@ -448,7 +448,7 @@ class RoundWorkflow(Workflow):
         training_step.in_.extend(
             [
                 cwl.WorkflowStepInput(id=name, source=f"{name}_{facility_name}")
-                for name in extra_inputs.keys()
+                for name in inputs.keys()
             ]
         )
         self.cwl.steps.append(training_step)

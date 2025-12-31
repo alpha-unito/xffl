@@ -84,7 +84,7 @@ def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderL
         logger.error(f"The provided working directory path {dir_path} does not exist.")
         raise FileNotFoundError(dir_path)
 
-    target_dir: Path = dir_path / folder_name
+    target_dir: Path = Path(dir_path) / folder_name
     logger.debug(f"Attempting to create directory {target_dir}")
 
     try:
