@@ -30,14 +30,14 @@ jobs:
         env:
           CHECKSUM: "c50ba4cfa1a5d47b4b705d2216010a31211bd2b21f77f9a9717f352edafaa9a9"
         run: |
-          cd test/system_test/cli
+          cd test/system/cli
           HASH="$(make checksum-config | tail -n 1)"
           echo "Project checksum is ${HASH}"
           test "${HASH}" == "${CHECKSUM}"
 
       - name: "Validate project"
         run: |
-          cd test/system_test/cli
+          cd test/system/cli
           make setup
           make generate-project
           xffl run --project test --validate
