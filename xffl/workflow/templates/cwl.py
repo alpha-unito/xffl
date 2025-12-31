@@ -251,7 +251,7 @@ class MainWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Add the given extra inputs to the MainWorkflow definition
 
@@ -260,18 +260,18 @@ class MainWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
-        inputs = {
+        mandatory_inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
-        if extra_inputs:
-            for key in inputs.keys():
+        if extra_inputs is not None:
+            for key in mandatory_inputs.keys():
                 if key in extra_inputs.keys():
                     logger.warning(
                         f"{type(self).__name__}: The {key} input will be override"
                     )
-            inputs = dict(extra_inputs) | inputs
+            inputs = dict(extra_inputs) | mandatory_inputs
 
         self.cwl.inputs.extend(
             [
@@ -279,6 +279,7 @@ class MainWorkflow(Workflow):
                 for name, _type in inputs.items()
             ]
         )
+
         iteration_step = next(elem for elem in self.cwl.steps if elem.id == "iteration")
         iteration_step.in_.extend(
             cwl.WorkflowStepInput(
@@ -415,7 +416,7 @@ class RoundWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = {}
     ) -> None:
         """Add the given extra inputs to the RoundWorkflow definition
 
@@ -424,18 +425,18 @@ class RoundWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
-        inputs = {
+        mandatory_inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
-        if extra_inputs:
-            for key in inputs.keys():
+        if extra_inputs is not None:
+            for key in mandatory_inputs.keys():
                 if key in extra_inputs.keys():
                     logger.warning(
                         f"{type(self).__name__}: The {key} input will be override"
                     )
-            inputs = dict(extra_inputs) | inputs
+            inputs = dict(extra_inputs) | mandatory_inputs
 
         self.cwl.inputs.extend(
             [
@@ -448,9 +449,10 @@ class RoundWorkflow(Workflow):
         training_step.in_.extend(
             [
                 cwl.WorkflowStepInput(id=name, source=f"{name}_{facility_name}")
-                for name in inputs.keys()
+                for name in extra_inputs.keys()
             ]
         )
+
         self.cwl.steps.append(training_step)
         merge_step = next(elem for elem in self.cwl.steps if elem.id == "merge")
         merge_step.in_.append(
