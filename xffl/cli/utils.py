@@ -5,7 +5,7 @@ from logging import Logger, getLogger
 from pathlib import Path
 from typing import List
 
-from xffl.custom.types import FileLike, FolderLike, PathLike
+from xffl.custom.types import FileLike, FolderLike
 from xffl.utils.utils import check_input
 
 logger: Logger = getLogger(__name__)
@@ -48,13 +48,13 @@ def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
     return expanded_args
 
 
-def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderLike:
+def check_and_create_dir(dir_path: FolderLike, folder_name: str) -> FolderLike:
     """Check the base directory and create a subfolder.
 
     :param dir_path: Base directory path.
     :type dir_path: FolderLike
     :param folder_name: Name of the subfolder to create.
-    :type folder_name: PathLike
+    :type folder_name: str
     :raises FileNotFoundError: If the base directory path does not exist.
     :raises FileExistsError: If the target directory already exists and overwrite is denied.
     :return: Absolute path to the created (or existing) folder.
@@ -65,7 +65,7 @@ def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderL
         logger.error(f"The provided working directory path {dir_path} does not exist.")
         raise FileNotFoundError(dir_path)
 
-    target_dir: FolderLike = dir_path / folder_name
+    target_dir: Path = Path(dir_path) / folder_name
     logger.debug(f"Attempting to create directory {target_dir}")
 
     try:
@@ -80,4 +80,4 @@ def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderL
         )
         if answer.lower() in ("n", "no"):
             raise
-    return target_dir.resolve()
+    return FolderLike(target_dir)

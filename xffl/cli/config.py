@@ -96,7 +96,8 @@ def _configure_facility(
             text="Facility working directory: ",
             warning_msg="Invalid path.",
             is_path=True,
-        )
+        ),
+        local=False,
     )
 
     image_path: FileLike = FileLike(
@@ -104,14 +105,16 @@ def _configure_facility(
             text="Facility image file path: ",
             warning_msg="Invalid path.",
             is_path=True,
-        )
+        ),
+        local=False,
     )
     dataset_path: PathLike = PathLike(
         check_input(
             text="Facility dataset directory path: ",
             warning_msg="Invalid path.",
             is_path=True,
-        )
+        ),
+        local=False,
     )
 
     # Populate CWL config for this facility
@@ -131,15 +134,15 @@ def _configure_facility(
         address=address,
         username=username,
         ssh_key=FileLike(ssh_key),
-        step_workdir=FolderLike(step_workdir),
+        step_workdir=FolderLike(step_workdir, local=False),
         slurm_template=FileLike(slurm_template),
     )
 
     streamflow_config.add_training_step(
         facility_name=facility,
         mapping={
-            f"dataset_{facility}": str(dataset_path.parent),
-            f"image_{facility}": str(image_path.parent),
+            f"dataset_{facility}": str(Path(dataset_path).parent),
+            f"image_{facility}": str(Path(image_path).parent),
         },
     )
     streamflow_config.add_inputs(facility_name=facility)
@@ -167,33 +170,33 @@ def _write_output_files(
     """Write StreamFlow, CWL and config files to disk."""
 
     # StreamFlow file
-    with (workdir / "streamflow.yml").open("w") as f:
+    with (Path(workdir) / "streamflow.yml").open("w") as f:
         yaml.dump(
             streamflow_config.save(), f, default_flow_style=False, sort_keys=False
         )
 
     # CWL files
-    cwl_dir: FolderLike = workdir / "cwl"
-    clt_dir: FolderLike = cwl_dir / "clt"
+    cwl_dir: Path = Path(workdir) / "cwl"
+    clt_dir: Path = Path(cwl_dir) / "clt"
     cwl_dir.mkdir(parents=True, exist_ok=True)
     clt_dir.mkdir(parents=True, exist_ok=True)
 
-    def _dump_cwl(path: FileLike, data: MutableMapping[str, Any]) -> None:
+    def _dump_cwl(path: Path, data: MutableMapping[str, Any]) -> None:
         with path.open("w") as f:
             f.write("#!/usr/bin/env cwl-runner\n")
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
-    _dump_cwl(FileLike(cwl_dir / "main.cwl"), main_cwl.save())
-    _dump_cwl(FileLike(cwl_dir / "round.cwl"), round_cwl.save())
-    _dump_cwl(FileLike(clt_dir / "aggregate.cwl"), aggregate_cwl.save())
-    _dump_cwl(FileLike(clt_dir / "training.cwl"), training_cwl.save())
+    _dump_cwl(cwl_dir / "main.cwl", main_cwl.save())
+    _dump_cwl(cwl_dir / "round.cwl", round_cwl.save())
+    _dump_cwl(clt_dir / "aggregate.cwl", aggregate_cwl.save())
+    _dump_cwl(clt_dir / "training.cwl", training_cwl.save())
 
-    with (cwl_dir / "config.yml").open("w") as f:
+    with (Path(cwl_dir) / "config.yml").open("w") as f:
         yaml.dump(cwl_config.save(), f, default_flow_style=False, sort_keys=False)
 
     # Scripts and py_scripts
     shutil.copytree(
-        Path(DEFAULT_xFFL_DIR) / "workflow" / "scripts", cwl_dir / "scripts"
+        Path(DEFAULT_xFFL_DIR) / "workflow" / "scripts", Path(cwl_dir) / "scripts"
     )
     (cwl_dir / "py_scripts").mkdir(exist_ok=True)
     shutil.copy(

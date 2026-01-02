@@ -86,15 +86,15 @@ class StreamFlowFile(YamlConfig):
                 "config": {
                     "nodes": [address],
                     "username": username,
-                    "sshKey": ssh_key,
+                    "sshKey": str(ssh_key),
                 },
-                "workdir": step_workdir,
+                "workdir": str(step_workdir),
             },
             facility_name: {
                 "type": "slurm",
-                "config": {"services": {"pragma": {"file": slurm_template}}},
+                "config": {"services": {"pragma": {"file": str(slurm_template)}}},
                 "wraps": f"{facility_name}-ssh",
-                "workdir": step_workdir,
+                "workdir": str(step_workdir),
             },
         }
 
