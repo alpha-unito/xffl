@@ -4,8 +4,8 @@ This script wraps StreamFlow with a simple Python CLI,
 offering a homogeneous interface with xFFL.
 """
 
-import argparse
 import asyncio
+from argparse import Namespace
 from logging import Logger, getLogger
 
 import xffl.cli.parser as cli_parser
@@ -14,11 +14,16 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def run(args: argparse.Namespace) -> int:
+# --------------------------------------------------------------------------- #
+#                                   Entrypoint                                #
+# --------------------------------------------------------------------------- #
+
+
+def run(args: Namespace) -> int:
     """Run an xFFL project.
 
     :param args: Command line arguments.
-    :type args: argparse.Namespace
+    :type args: Namespace
     :return: Exit code (0 if success).
     :rtype: int
     """
@@ -30,11 +35,11 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(args: argparse.Namespace) -> int:
+def main(args: Namespace) -> int:
     """xFFL project run entrypoint.
 
     :param args: Command line arguments.
-    :type args: argparse.Namespace
+    :type args: Namespace
     :return: Exit code (0 if success, 1 if error).
     :rtype: int
     """

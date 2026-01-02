@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import torch.nn.functional as F
 from torch import nn
 
-from xffl.custom.config_info import DatasetInfo, ModelInfo
+from xffl.custom.config_info import DatasetInfo, ModelInfo, XFFLConfig
 
 
 class Net(nn.Module):
@@ -38,7 +38,7 @@ class Mnist(DatasetInfo):
 
 
 @dataclass
-class xffl_config:
+class xffl_config(XFFLConfig):
     model: ModelInfo = Mlp
     dataset: DatasetInfo = Mnist
     loglevel: int = logging.DEBUG

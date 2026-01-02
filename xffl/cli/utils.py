@@ -1,10 +1,9 @@
 """CLI utility methods for xFFL."""
 
-import argparse
 import inspect
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 from xffl.custom.types import FileLike, FolderLike, PathLike
 from xffl.utils.utils import check_input
@@ -21,27 +20,9 @@ def get_facilitator_path() -> FileLike:
     """
     import xffl.workflow
 
-    workflow_dir = Path(inspect.getfile(xffl.workflow)).parent
-    return workflow_dir / "scripts" / "facilitator.sh"
-
-
-def _check_default_value(
-    argument_name: str, argument_value: Any, parser: argparse.ArgumentParser
-) -> None:
-    """Check if a CLI argument value equals its default.
-
-    :param argument_name: Variable name of the argument.
-    :type argument_name: str
-    :param argument_value: Actual value of the argument.
-    :type argument_value: Any
-    :param parser: Parser from which the argument originated.
-    :type parser: argparse.ArgumentParser
-    """
-    default_value = parser.get_default(dest=argument_name)
-    if argument_value == default_value:
-        logger.debug(
-            f'CLI argument "{argument_name}" has default value "{default_value}"'
-        )
+    print(inspect.getfile(xffl.workflow))
+    workflow_dir: Path = Path(inspect.getfile(xffl.workflow)).parent
+    return FileLike(workflow_dir / "scripts" / "facilitator.sh")
 
 
 def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
@@ -84,16 +65,18 @@ def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderL
         logger.error(f"The provided working directory path {dir_path} does not exist.")
         raise FileNotFoundError(dir_path)
 
-    target_dir: Path = Path(dir_path) / folder_name
+    target_dir: FolderLike = dir_path / folder_name
     logger.debug(f"Attempting to create directory {target_dir}")
 
     try:
         target_dir.mkdir(parents=True, exist_ok=False)
     except FileExistsError:
-        answer = check_input(
-            f"Directory {target_dir} already exists. Overwrite it? [y/n]: ",
-            "Answer not accepted.",
-            lambda reply: reply.lower() in ("y", "yes", "n", "no"),
+        answer: str = str(
+            check_input(
+                f"Directory {target_dir} already exists. Overwrite it? [y/n]: ",
+                "Answer not accepted.",
+                lambda reply: reply.lower() in ("y", "yes", "n", "no"),
+            )
         )
         if answer.lower() in ("n", "no"):
             raise

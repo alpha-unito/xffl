@@ -4,8 +4,8 @@ This is the main entrypoint of the xFFL CLI.
 Argument parsing takes place here and the various xFFL subcommands are dispatched.
 """
 
-import argparse
 import sys
+from argparse import Namespace
 from logging import Logger, getLogger
 from typing import Callable, Dict, List
 
@@ -23,11 +23,11 @@ COMMANDS: Dict[str, str] = {
 }
 
 
-def dispatch_command(command: str, args: argparse.Namespace) -> int:
+def dispatch_command(command: str, args: Namespace) -> int:
     """Dispatch a subcommand safely, logging errors.
 
     :param command: Subcommand name
-    :param args: Parsed argparse.Namespace
+    :param args: Parsed Namespace
     :return: Exit code
     """
     module_path = COMMANDS.get(command)
@@ -51,7 +51,7 @@ def main(arguments: List[str]) -> int:
     :return: Exit code
     """
 
-    args: argparse.Namespace = cli_parser.parser.parse_args(arguments)
+    args: Namespace = cli_parser.parser.parse_args(arguments)
 
     # Setup logging
     setup_logging(args.loglevel)

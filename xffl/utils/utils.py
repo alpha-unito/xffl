@@ -39,14 +39,15 @@ def get_param_name(flag_list: Sequence[str], prefix: str = "-") -> str:
     return get_param_flag(flag_list=flag_list).lstrip(prefix).replace(prefix, "_")
 
 
-def resolve_path(path: str) -> Path:
+def resolve_path(path: str | Path) -> Path:
     """Check the path is well formatted, otherwise tries to fix it.
 
     :param path: abbreviated path
-    :type path: str
+    :type path: str or Path
     :return: expanded path
-    :rtype: str
+    :rtype: Path
     """
+    logger.debug(f"Expanding {path} path...")
     return Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
 
 
@@ -71,9 +72,9 @@ def check_input(
     :return: The value inserted from the user satisfying the condition
     :rtype: str
     """
-
+    # TODO: Risolviamo troppe volte lo stesso path
     condition: bool = False
-    value: str = ""
+    value: str | Path = ""
     while not condition:
         value = input(text)
         if is_path:

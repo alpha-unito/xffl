@@ -39,3 +39,9 @@ class DatasetInfo:
     name: str
     splits: Mapping[str, str]
     path: str = "/dataset/"
+
+
+@dataclass
+class XFFLConfig:
+    model: ModelInfo
+    dataset: DatasetInfo
