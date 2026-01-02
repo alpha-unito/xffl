@@ -33,12 +33,12 @@ def _add_common_project_options(subparser: argparse.ArgumentParser) -> None:
         "--workdir",
         help="Working directory where the experiment files are stored. "
         "Defaults to the current working directory.",
-        type=FolderLike,
+        type=str,
         default=os.getcwd(),
     )
 
 
-def _get_default_nodelis() -> Tuple[str]:
+def _get_default_nodelist() -> Tuple[str] | None:
     return (
         tuple(
             subprocess.run(
@@ -69,7 +69,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     :return: Configured argparse parser
     :rtype: argparse.ArgumentParser
     """
-    parser = argparse.ArgumentParser(
+    parser_ = argparse.ArgumentParser(
         prog="xffl",
         description=(
             "Cross-Facility Federated Learning (xFFL) is a federated learning (FL) "
@@ -80,13 +80,13 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     )
 
     # Global options
-    parser.add_argument(
+    parser_.add_argument(
         "-v",
         "--version",
         help="Display the current version of xFFL and exit.",
         action="store_true",
     )
-    parser.add_argument(
+    parser_.add_argument(
         "-dbg",
         "--debug",
         help="Enable debug logging to show detailed messages for troubleshooting. "
@@ -98,7 +98,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     )
 
     # Subparsers
-    subparsers = parser.add_subparsers(
+    subparsers = parser_.add_subparsers(
         dest="command", help="Choose one of the available xFFL subcommands to execute."
     )
 
@@ -118,6 +118,13 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
     )
     _add_common_project_options(run_parser)
 
+    run_parser.add_argument(
+        "-c",
+        "--clients",
+        help="List of clients to use in the federation",
+        type=str,
+        required=True,
+    )
     run_parser.add_argument(
         "-o",
         "--outdir",
@@ -202,7 +209,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         "--nodelist",
         help="List of compute nodes available for the execution. Default is ['localhost'].",
         nargs="+",
-        default=_get_default_nodelis(),
+        default=_get_default_nodelist(),
     )
 
     exec_parser.add_argument(
@@ -213,7 +220,7 @@ def build_parser() -> Tuple[argparse.ArgumentParser, argparse.ArgumentParser]:
         default=_get_default_ppn(),
     )
 
-    return parser, subparsers
+    return parser_, subparsers
 
 
 # Export the parser instance

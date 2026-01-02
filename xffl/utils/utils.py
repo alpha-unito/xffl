@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import glob
 import os
-from collections.abc import Callable
+from collections.abc import Callable, MutableSequence
 from datetime import timedelta
+from importlib.resources import files
 from logging import Logger, getLogger
 from pathlib import Path
 from typing import Optional, Sequence
@@ -39,7 +41,7 @@ def get_param_name(flag_list: Sequence[str], prefix: str = "-") -> str:
     return get_param_flag(flag_list=flag_list).lstrip(prefix).replace(prefix, "_")
 
 
-def resolve_path(path: str) -> Path:
+def resolve_path(path: str) -> str:
     """Check the path is well formatted, otherwise tries to fix it.
 
     :param path: abbreviated path
@@ -47,15 +49,15 @@ def resolve_path(path: str) -> Path:
     :return: expanded path
     :rtype: str
     """
-    return Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
+    return str(Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve())
 
 
 def check_input(
     text: str,
     warning_msg: str,
     control: Optional[Callable] = lambda _: True,
-    is_path: bool = False,
-) -> str | Path:
+    is_local_path: bool = False,
+) -> str:
     """Receives and checks a user input based on the specified condition
 
     :param text: Question to be asked to the user
@@ -76,7 +78,7 @@ def check_input(
     value: str = ""
     while not condition:
         value = input(text)
-        if is_path:
+        if is_local_path:
             value = resolve_path(path=value)
         if not (condition := control(value)):
             logger.warning(warning_msg.format(value))
@@ -113,3 +115,16 @@ def get_default_nccl_process_group_options(
     options._timeout = get_timeout()
 
     return options
+
+
+def get_facility_types() -> MutableSequence[str]:
+    scripts_path = str(
+        files(__package__)
+        .joinpath("workflow")
+        .joinpath("scripts")
+        .joinpath("facilities")
+    )
+    return [
+        os.path.basename(path)[:-3]
+        for path in glob.glob(os.path.join(scripts_path, "*.sh"))
+    ]

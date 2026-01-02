@@ -169,7 +169,7 @@ def exec(args: argparse.Namespace) -> int:
                 "ssh",
                 "-oStrictHostKeyChecking=no",
                 node,
-                "\"",
+                '"',
                 " ".join(
                     [
                         env_str,
@@ -178,7 +178,7 @@ def exec(args: argparse.Namespace) -> int:
                         str(args.executable),
                     ]
                 ),
-                "\"",
+                '"',
             ]
             logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))
 

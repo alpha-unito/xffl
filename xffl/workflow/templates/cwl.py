@@ -1,48 +1,51 @@
-"""Collection of CWL-related template code"""
-
+import json
 from abc import ABC, abstractmethod
 from collections.abc import MutableMapping
 from logging import Logger, getLogger
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 import cwl_utils.parser.cwl_v1_2 as cwl
+import yaml
 
+from xffl.utils.constants import XFFL_CACHE_DIR
 from xffl.workflow.config import YamlConfig
 
 logger: Logger = getLogger(__name__)
-"""Default xFFL logger"""
+
+
+def _dump_cwl(path: Path, data: MutableMapping[str, Any]) -> None:
+    """Helper to write CWL files with the correct shebang."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        f.write("#!/usr/bin/env cwl-runner\n")
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
+def cwl_client_record_type() -> cwl.CWLRecordSchema:
+    return cwl.CWLRecordSchema(
+        type_="record",
+        fields=[
+            cwl.CWLRecordField(name="dataset", type_="Directory"),
+            cwl.CWLRecordField(name="facility", type_="string"),
+            cwl.CWLRecordField(name="image", type_="File"),
+        ],
+    )
 
 
 class CWLConfig(YamlConfig):
     """Class modelling a CWL configuration file as a YamlConfig object"""
 
-    def __init__(self):
-        """Creates a new CWLConfig instance with empty facilities data"""
-        super().__init__()
-
     @classmethod
     def get_default_content(cls) -> MutableMapping[str, Any]:
-        """Returns a basic CWL configuration to be updated and saved into a .yml
-
-        :return: Basic CWL configuration for xFFL
-        :rtype: MutableMapping[str, Any]
-        """
-        return {
-            "script_train": {"class": "Directory", "path": "scripts"},
-        }
+        return {"script_train": {"class": "Directory", "path": "scripts"}}
 
     def add_inputs(
         self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
-        """Adds the CWL inputs to the YAML content
-
-        :param facility_name: Facility's name
-        :param extra_inputs: Extra inputs
-        :type facility_name: str
-        :type extra_inputs: MutableMapping[str, Any]
-        """
+        extra = extra_inputs or {}
         self.content |= {f"facility_{facility_name}": facility_name} | {
-            f"{name}_{facility_name}": value for name, value in extra_inputs.items()
+            f"{name}_{facility_name}": value for name, value in extra.items()
         }
 
 
@@ -50,42 +53,40 @@ class Workflow(ABC):
     """Abstract base class describing workflow-like objects"""
 
     def __init__(self):
-        """Creates a new Workflow instance with empty cwl data"""
         self.cwl: cwl.Process = type(self).get_default_definition()
+        self.workflow_dir: Path = self._workdir()
+        self.workflow_dir.mkdir(parents=True, exist_ok=True)
+
+    def _workdir(self) -> Path:
+        return Path(XFFL_CACHE_DIR, "workflow")
 
     @classmethod
+    @abstractmethod
     def get_default_definition(cls) -> cwl.Process:
-        """Returns the default workflow definition
-
-        :return: Default workflow definition
-        :rtype: cwl.Process()
-        """
-        return cwl.Process()
-
-    def save(self) -> MutableMapping[str, Any]:
-        """Returns the current CWL Workflow definition
-
-        :return: Current CWL Workflow definition
-        :rtype: MutableMapping[str, Any]
-        """
-        return self.cwl.save(top=True)
+        """Subclasses must define their CWL structure here."""
+        pass
 
     @abstractmethod
-    def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
-    ) -> None:
-        """Add the given extra inputs to the Workflow definition
+    def dumps(self) -> None:
+        """Subclasses define where and how to save their CWL files."""
+        pass
 
-        :param facility_name: Facility's name
-        :type facility_name: str
-        :param extra_inputs: Command line argument required by the executable script
-        :type extra_inputs: MutableMapping[str, str]
-        """
-        ...
+    def _safe_dump(self, filename: str) -> None:
+        """Internal helper to avoid code duplication in subclasses."""
+        target_path = self.workflow_dir / filename
+        if not target_path.exists():
+            _dump_cwl(target_path, self.save())
+
+    def save(self) -> MutableMapping[str, Any]:
+        return self.cwl.save(top=True)
 
 
 class AggregateStep(Workflow):
-    """Workflow describing the Federated Learning aggregation step"""
+    def _workdir(self) -> Path:
+        return super()._workdir() / "clt"
+
+    def dumps(self) -> None:
+        self._safe_dump("aggregate.cwl")
 
     @classmethod
     def get_default_definition(cls) -> cwl.Process:
@@ -145,30 +146,54 @@ class AggregateStep(Workflow):
             ],
         )
 
-    def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
-    ) -> None:
-        """Add the given extra inputs to the AggregateStep definition
-
-        :param facility_name: Facility's name
-        :type facility_name: str
-        :param extra_inputs: Command line argument required by the executable script
-        :type extra_inputs: MutableMapping[str, str]
-        """
-        pass
-
 
 class MainWorkflow(Workflow):
-    """Main description of a Federated Learning workflow"""
+    def __init__(self, num_clients: int):
+        super().__init__()
+        self.num_clients: int = num_clients
+        self._add_clients()
+
+    def _add_clients(self) -> None:
+        workflow_cwl = cast(cwl.Workflow, self.cwl)
+        record = cwl_client_record_type()
+
+        for i in range(self.num_clients):
+            workflow_cwl.inputs.extend(
+                [
+                    cwl.WorkflowInputParameter(id=f"{f.name}_{i}", type_=f.type_)
+                    for f in record.fields
+                ]
+            )
+            workflow_cwl.steps.append(
+                cwl.WorkflowStep(
+                    id=f"compact_{i}",
+                    in_=[
+                        cwl.WorkflowStepInput(id=f.name, source=f"{f.name}_{i}")
+                        for f in record.fields
+                    ],
+                    out=[cwl.WorkflowStepOutput(id="client")],
+                    run="et/compact.cwl",
+                )
+            )
+
+        # Safer lookup for the loop step
+        loop_step = next((s for s in workflow_cwl.steps if s.id == "loop"), None)
+        if loop_step:
+            loop_step.in_.append(
+                cwl.WorkflowStepInput(
+                    id="clients",
+                    source=[f"compact_{i}/client" for i in range(self.num_clients)],
+                    linkMerge="merge_flattened",
+                )
+            )
+
+    def dumps(self) -> None:
+        self._safe_dump(f"main_{self.num_clients}_clients.cwl")
+        CompactStep().dumps()
+        RoundWorkflow().dumps()
 
     @classmethod
     def get_default_definition(cls) -> cwl.Process:
-        """Get the CWL main file standard content for a xFFL application
-
-        :return: CWL object instance of the xFFL main workflow
-        :rtype: cwl.Process
-        """
-
         loading_options = cwl.LoadingOptions(
             namespaces={"cwltool": "http://commonwl.org/cwltool#"}
         )
@@ -188,12 +213,12 @@ class MainWorkflow(Workflow):
                 cwl.WorkflowOutputParameter(
                     id="new_model",
                     type_="Directory",
-                    outputSource="iteration/new_model",
+                    outputSource="loop/new_model",
                 )
             ],
             steps=[
                 cwl.WorkflowStep(
-                    id="iteration",
+                    id="loop",
                     in_=[
                         cwl.WorkflowStepInput(
                             id="script_train",
@@ -245,60 +270,102 @@ class MainWorkflow(Workflow):
             ],
             requirements=[
                 cwl.InlineJavascriptRequirement(),
+                cwl.MultipleInputFeatureRequirement(),
                 cwl.StepInputExpressionRequirement(),
                 cwl.SubworkflowFeatureRequirement(),
             ],
         )
 
-    def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
-    ) -> None:
-        """Add the given extra inputs to the MainWorkflow definition
-
-        :param facility_name: Facility's name
-        :type facility_name: str
-        :param extra_inputs: Command line argument required by the executable script [name: cwl type]
-        :type extra_inputs: MutableMapping[str, str]
-        """
-        mandatory_inputs = {
-            "image": "File",
-            "facility": "string",
-            "dataset": "Directory",
-        }
-        if extra_inputs:
-            for key in mandatory_inputs.keys():
-                if key in extra_inputs.keys():
-                    logger.warning(
-                        f"{type(self).__name__}: The {key} input will be override"
-                    )
-            inputs = dict(extra_inputs) | mandatory_inputs
-
-        self.cwl.inputs.extend(
-            [
-                cwl.WorkflowInputParameter(id=f"{name}_{facility_name}", type_=_type)
-                for name, _type in inputs.items()
-            ]
-        )
-        iteration_step = next(elem for elem in self.cwl.steps if elem.id == "iteration")
-        iteration_step.in_.extend(
-            cwl.WorkflowStepInput(
-                id=f"{name}_{facility_name}",
-                source=f"{name}_{facility_name}",
-            )
-            for name, _type in inputs.items()
-        )
-
 
 class RoundWorkflow(Workflow):
-    """Round workflow CWL description"""
+    def dumps(self) -> None:
+        self._safe_dump("round.cwl")
+        AggregateStep().dumps()
+        TrainingStep().dumps()
 
     @classmethod
     def get_default_definition(cls) -> cwl.Process:
-        """Get the CWL round file standard content for a xFFL application
+        check_step = cwl.CommandLineTool(
+            baseCommand=["true"],
+            cwlVersion="v1.2",
+            id="check",
+            inputs=[
+                cwl.CommandInputParameter(
+                    id="model",
+                    type_="Directory",
+                ),
+            ],
+            outputs=[],
+        )
 
-        :return: round.cwl template
-        :rtype: cwl.Process
-        """
+        training_subworkflow = cwl.Workflow(
+            id="training",
+            inputs=[
+                cwl.WorkflowInputParameter(id="script", type_="Directory"),
+                cwl.WorkflowInputParameter(id="model", type_="Directory"),
+                cwl.WorkflowInputParameter(id="executable", type_="File"),
+                cwl.WorkflowInputParameter(id="facility", type_="string"),
+                cwl.WorkflowInputParameter(id="client",type_=cwl_client_record_type()),
+                cwl.WorkflowInputParameter(id="model_basename", type_="string"),
+                cwl.WorkflowInputParameter(id="round", type_="int"),
+            ],
+            outputs=[
+                cwl.WorkflowOutputParameter(
+                    id="new_model",
+                    type_="Directory",
+                    outputSource="client/new_model",
+                )
+            ],
+            steps=[
+                cwl.WorkflowStep(
+                    id="client",
+                    in_=[
+                        cwl.WorkflowStepInput(
+                            id="executable",
+                            source="executable",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model",
+                            source="model",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="script",
+                            source="script",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="facility",
+                            valueFrom="$(inputs.client.facility)",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="client",
+                            source="client",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model_basename",
+                            source="model_basename",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="round",
+                            source="round",
+                        ),
+                    ],
+                    out=[cwl.WorkflowStepOutput(id="new_model")],
+                    run="clt/training.cwl",
+                ),
+                cwl.WorkflowStep(
+                    id="check",
+                    in_=[
+                        cwl.WorkflowStepInput(
+                            id="model",
+                            source="client/new_model",
+                        ),
+                    ],
+                    out=[],
+                    run=check_step,
+                ),
+            ],
+        )
+
         return cwl.Workflow(
             cwlVersion="v1.2",
             id="round",
@@ -310,6 +377,12 @@ class RoundWorkflow(Workflow):
                 cwl.WorkflowInputParameter(id="model_basename", type_="string"),
                 cwl.WorkflowInputParameter(id="max_rounds", type_="int"),
                 cwl.WorkflowInputParameter(id="round", type_="int"),
+                cwl.WorkflowInputParameter(
+                    id="clients",
+                    type_=cwl.CWLArraySchema(
+                        type_="array", items=cwl_client_record_type()
+                    ),
+                ),
             ],
             outputs=[
                 cwl.WorkflowOutputParameter(
@@ -319,26 +392,6 @@ class RoundWorkflow(Workflow):
                 )
             ],
             steps=[
-                cwl.WorkflowStep(
-                    id="merge",
-                    in_=[],
-                    out=[cwl.WorkflowStepOutput(id="models")],
-                    run=cwl.ExpressionTool(
-                        id="merge",
-                        inputs=[],
-                        outputs=[
-                            cwl.ExpressionToolOutputParameter(
-                                id="models",
-                                type_=cwl.OutputArraySchema(
-                                    name="models",
-                                    type_="array",
-                                    items="Directory",
-                                ),
-                            )
-                        ],
-                        expression=[],
-                    ),
-                ),
                 cwl.WorkflowStep(
                     id="aggregate",
                     in_=[
@@ -356,126 +409,59 @@ class RoundWorkflow(Workflow):
                         ),
                         cwl.WorkflowStepInput(
                             id="models",
-                            source="merge/models",
+                            source="training/new_model",
                         ),
                     ],
                     out=[cwl.WorkflowStepOutput(id="new_model")],
                     run="clt/aggregate.cwl",
                 ),
-            ],
-        )
-
-    @classmethod
-    def get_training_step(cls, name: str) -> cwl.Process:
-        """Get the CWL file standard content for a xFFL application step
-
-        :param name: Name of the facility on which the step will be executed
-        :type name: str
-        :return: Dict template of a CWL xFFL step
-        :rtype: cwl.Process
-        """
-        return cwl.WorkflowStep(
-            id=f"training_on_{name}",
-            in_=[
-                cwl.WorkflowStepInput(
-                    id="executable",
-                    source="executable",
-                ),
-                cwl.WorkflowStepInput(
-                    id="model",
-                    source="model",
-                ),
-                cwl.WorkflowStepInput(
-                    id="script",
-                    source="script_train",
-                ),
-                cwl.WorkflowStepInput(
-                    id="facility",
-                    source=f"facility_{name}",
-                ),
-                cwl.WorkflowStepInput(
-                    id="image",
-                    source=f"image_{name}",
-                ),
-                cwl.WorkflowStepInput(
-                    id="dataset",
-                    source=f"dataset_{name}",
-                ),
-                cwl.WorkflowStepInput(
-                    id="model_basename",
-                    source="model_basename",
-                ),
-                cwl.WorkflowStepInput(
-                    id="round",
-                    source="round",
+                cwl.WorkflowStep(
+                    id="training",
+                    in_=[
+                        cwl.WorkflowStepInput(
+                            id="executable",
+                            source="executable",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model",
+                            source="model",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="script",
+                            source="script_train",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="client",
+                            source="clients",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model_basename",
+                            source="model_basename",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="round",
+                            source="round",
+                        ),
+                    ],
+                    out=[cwl.WorkflowStepOutput(id="new_model")],
+                    run=training_subworkflow,
+                    scatter=["client"]
                 ),
             ],
-            out=[cwl.WorkflowStepOutput(id="new_model")],
-            run="clt/training.cwl",
-        )
-
-    def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
-    ) -> None:
-        """Add the given extra inputs to the RoundWorkflow definition
-
-        :param facility_name: Facility's name
-        :type facility_name: str
-        :param extra_inputs: Command line argument required by the executable script [name: cwl type]
-        :type extra_inputs: MutableMapping[str, str]
-        """
-        mandatory_inputs = {
-            "image": "File",
-            "facility": "string",
-            "dataset": "Directory",
-        }
-        if extra_inputs:
-            for key in mandatory_inputs.keys():
-                if key in extra_inputs.keys():
-                    logger.warning(
-                        f"{type(self).__name__}: The {key} input will be override"
-                    )
-            inputs = dict(extra_inputs) | mandatory_inputs
-
-        self.cwl.inputs.extend(
-            [
-                cwl.WorkflowInputParameter(id=f"{name}_{facility_name}", type_=_type)
-                for name, _type in inputs.items()
+            requirements=[
+                cwl.ScatterFeatureRequirement()
             ]
-        )
-
-        training_step = RoundWorkflow.get_training_step(facility_name)
-        training_step.in_.extend(
-            [
-                cwl.WorkflowStepInput(id=name, source=f"{name}_{facility_name}")
-                for name in extra_inputs.keys()
-            ]
-        )
-        self.cwl.steps.append(training_step)
-        merge_step = next(elem for elem in self.cwl.steps if elem.id == "merge")
-        merge_step.in_.append(
-            cwl.WorkflowStepInput(
-                id=facility_name, source=f"training_on_{facility_name}/new_model"
-            )
-        )
-        merge_step.run.inputs.append(
-            cwl.WorkflowInputParameter(id=facility_name, type_="Directory")
-        )
-        merge_step.run.expression.append(f"inputs.{facility_name}")
-
-    def update_merge_step(self) -> None:
-        """Updates the merge step"""
-        merge_step = next(elem for elem in self.cwl.steps if elem.id == "merge")
-        merge_step.run.expression = (
-            "$({'models': [" + ",".join(merge_step.run.expression) + "] })"
         )
 
 
 class TrainingStep(Workflow):
     """Workflow modelling a training step"""
 
-    def __init__(self):
-        super().__init__()
+    def _workdir(self) -> Path:
+        return super()._workdir() / "clt"
+
+    def dumps(self):
+        self._safe_dump("training.cwl")
 
     @classmethod
     def get_default_definition(cls) -> cwl.Process:
@@ -489,22 +475,7 @@ class TrainingStep(Workflow):
                 cwl.CommandLineBinding(
                     position=1,
                     valueFrom="$(inputs.script.path)/facilitator.sh",
-                ),
-                cwl.CommandLineBinding(
-                    position=5,
-                    prefix="--output-model",
-                    valueFrom="$(inputs.model_basename)",
-                ),
-                cwl.CommandLineBinding(
-                    position=6,
-                    prefix="--output",
-                    valueFrom="$(runtime.outdir)",
-                ),
-                cwl.CommandLineBinding(
-                    position=7,
-                    prefix="--workspace",
-                    valueFrom="$XFFL_TMPDIR_FOLDER",
-                ),
+                )
             ],
             cwlVersion="v1.2",
             id="training",
@@ -518,29 +489,53 @@ class TrainingStep(Workflow):
                     type_="File",
                     inputBinding=cwl.CommandLineBinding(
                         position=2,
+                        prefix="--executable",
                     ),
-                ),
-                cwl.CommandInputParameter(
-                    id="image",
-                    type_="File",
                 ),
                 cwl.CommandInputParameter(
                     id="facility",
                     type_="string",
+                    inputBinding=cwl.CommandLineBinding(
+                        position=4, prefix="--facility"
+                    ),
                 ),
                 cwl.CommandInputParameter(
                     id="model",
                     type_="Directory",
-                    inputBinding=cwl.CommandLineBinding(position=3, prefix="--model"),
+                    inputBinding=cwl.CommandLineBinding(position=5, prefix="--model"),
                 ),
                 cwl.CommandInputParameter(
-                    id="dataset",
-                    type_="Directory",
-                    inputBinding=cwl.CommandLineBinding(position=4, prefix="--dataset"),
+                    id="client",
+                    type_=cwl.RecordSchema(
+                        type_="record",
+                        fields=[
+                            cwl.CommandInputRecordField(
+                                name="dataset",
+                                type_="Directory",
+                                inputBinding=cwl.CommandLineBinding(
+                                    position=6, prefix="--dataset"
+                                ),
+                            ),
+                            cwl.CommandInputRecordField(
+                                name="facility", type_="string"
+                            ),
+                            cwl.CommandInputRecordField(
+                                name="image",
+                                type_="File",
+                                inputBinding=cwl.CommandLineBinding(
+                                    position=3,
+                                    prefix="--singularity-image",
+                                ),
+                            ),
+                        ],
+                    ),
                 ),
                 cwl.CommandInputParameter(
                     id="model_basename",
                     type_="string",
+                    inputBinding=cwl.CommandLineBinding(
+                        position=7, prefix="--output-model"
+                    ),
                 ),
                 cwl.CommandInputParameter(
                     id="round",
@@ -561,73 +556,43 @@ class TrainingStep(Workflow):
                 cwl.EnvVarRequirement(
                     envDef=[
                         cwl.EnvironmentDef(
-                            envName="XFFL_MODEL_FOLDER",
-                            envValue="$(inputs.model.path)",
-                        ),
-                        cwl.EnvironmentDef(
-                            envName="XFFL_DATASET_FOLDER",
-                            envValue="$(inputs.dataset.path)",
-                        ),
-                        cwl.EnvironmentDef(
-                            envName="XFFL_IMAGE",
-                            envValue="$(inputs.image.path)",
-                        ),
-                        cwl.EnvironmentDef(
-                            envName="XFFL_FACILITY",
-                            envValue="$(inputs.facility)",
-                        ),
-                        cwl.EnvironmentDef(
-                            envName="XFFL_OUTPUT_FOLDER",
+                            envName="XFFL_OUTDIR",
                             envValue="$(runtime.outdir)",
                         ),
                         cwl.EnvironmentDef(
-                            envName="XFFL_TMPDIR_FOLDER",
-                            envValue="/tmp",
-                            # "$(inputs.workspace == null ? runtime.tmpdir : inputs.workspace)",
-                            # TODO: an error is raised from torch when the tmp path is too long
+                            envName="XFFL_TMPDIR",
+                            envValue="$(runtime.tmpdir)",
                         ),
                     ]
                 ),
             ],
         )
 
-    def add_inputs(
-        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any] = None
-    ) -> None:
-        """Add the given extra inputs to the TrainingStep definition
 
-        :param facility_name: Facility's name
-        :type facility_name: str
-        :param extra_inputs: Command line argument required by the executable script [name: cwl type]
-        :type extra_inputs: MutableMapping[str, str]
-        """
-        if extra_inputs:
-            i = self.get_available_position()
-            for name, values in extra_inputs.items():
-                input_binding = None
-                if "prefix" in values.keys():
-                    input_binding = cwl.CommandLineBinding(
-                        position=i,
-                        prefix=values["prefix"],
-                    )
-                    i += 1
-                self.cwl.inputs.append(
-                    cwl.WorkflowInputParameter(
-                        id=name,
-                        type_=values["type"],
-                        inputBinding=input_binding,
-                        default=values.get("default", None),
-                    )
-                )
+class CompactStep(Workflow):
+    def _workdir(self) -> Path:
+        return super()._workdir() / "et"
 
-    def get_available_position(self) -> int:
-        position = 0
-        for _input in self.cwl.inputs:
-            if _input.inputBinding and position < (
-                curr_pos := _input.inputBinding.position
-            ):
-                position = curr_pos
-        for _input in self.cwl.arguments:
-            if position < (curr_pos := _input.position):
-                position = curr_pos
-        return position + 1
+    def dumps(self):
+        self._safe_dump("compact.cwl")
+
+    @classmethod
+    def get_default_definition(cls) -> cwl.Process:
+        record = cwl_client_record_type()
+        expr = json.dumps(
+            {"client": {field.name: f"inputs.{field.name}" for field in record.fields}}
+        )
+        for field in record.fields:
+            expr = expr.replace(f'"inputs.{field.name}"', f"inputs.{field.name}")
+        return cwl.ExpressionTool(
+            cwlVersion="v1.2",
+            id="compact",
+            inputs=[
+                cwl.WorkflowInputParameter(id=field.name, type_=field.type_)
+                for field in record.fields
+            ],
+            outputs=[
+                cwl.CommandOutputParameter(id="client", type_=cwl_client_record_type())
+            ],
+            expression=f"$({expr})",
+        )

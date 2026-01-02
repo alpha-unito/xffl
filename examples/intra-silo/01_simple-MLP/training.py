@@ -1,20 +1,21 @@
 """Simple MLP training script"""
 
+import time
 from logging import Logger, getLogger
 from typing import Dict, Optional
-import time
 
 import torch
 import torch.nn as nn
+from config import xffl_config
+from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Adadelta
 from torch.utils.data import DataLoader, Dataset, Subset
-from torch.utils.data.distributed import DistributedSampler
-from torch.distributed.fsdp import FullyShardedDataParallel
+
+# from torch.utils.data.distributed import DistributedSampler
 from torchvision import datasets, transforms
 
-from config import xffl_config
 from xffl.distributed import distributed
-from xffl.learning import processing, modelling, utils
+from xffl.learning import modelling, processing, utils
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)

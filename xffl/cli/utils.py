@@ -67,7 +67,7 @@ def expand_paths_in_args(args: List[str], prefix: str = "-") -> List[str]:
     return expanded_args
 
 
-def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderLike:
+def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> str:
     """Check the base directory and create a subfolder.
 
     :param dir_path: Base directory path.
@@ -97,4 +97,4 @@ def check_and_create_dir(dir_path: FolderLike, folder_name: PathLike) -> FolderL
         )
         if answer.lower() in ("n", "no"):
             raise
-    return target_dir.resolve()
+    return str(target_dir.resolve())

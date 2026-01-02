@@ -39,7 +39,7 @@ def distributed_training(
     wandb_run: Optional[Run] = None,
     criterion=None,
     gradient_clipping=None,
-    accumulation_steps=None
+    accumulation_steps=None,
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
 
@@ -205,7 +205,7 @@ def distributed_training(
                         "train/loss": train_step_loss[-1],
                         "train/perplexity": train_step_perplexity[-1],
                         "train/learning rate": lr_scheduler.get_lr(),
-                        "train/gradient_accumulation": accumulation_steps
+                        "train/gradient_accumulation": accumulation_steps,
                     }
                 )
 

@@ -8,14 +8,7 @@ from typing import Callable, Optional
 import torch
 from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
-from torch.distributed.fsdp import (
-    FullyShardedDataParallel,
-    MixedPrecision,
-    FullStateDictConfig,
-    FullOptimStateDictConfig,
-    StateDictType,
-)
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
 from transformers import AutoModel
 

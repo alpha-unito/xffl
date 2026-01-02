@@ -3,8 +3,8 @@
 import logging
 from dataclasses import dataclass
 
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 from xffl.custom.config_info import DatasetInfo, ModelInfo
 
