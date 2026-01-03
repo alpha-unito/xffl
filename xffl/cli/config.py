@@ -4,10 +4,11 @@ This script guides the user in the creation of the StreamFlow and CWL
 configuration files necessary to run xFFL workloads across different HPCs.
 """
 
+import argparse
 import json
+import os.path
 import re
 import shutil
-from argparse import Namespace
 from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, MutableMapping, Tuple
@@ -16,8 +17,7 @@ import yaml
 
 import xffl.cli.parser as cli_parser
 from xffl.cli.utils import check_and_create_dir
-from xffl.custom.types import FileLike, FolderLike, PathLike
-from xffl.utils.constants import DEFAULT_xFFL_DIR
+from xffl.utils.constants import FACILITY_TYPES, DEFAULT_xFFL_DIR
 from xffl.utils.utils import check_input
 from xffl.workflow.templates.cwl import (
     AggregateStep,
@@ -37,30 +37,47 @@ logger: Logger = getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-def _get_model_info() -> Tuple[PathLike, str]:
+def _dump_cwl(path: Path, data: MutableMapping[str, Any]) -> None:
+    with path.open("w") as fd:
+        fd.write("#!/usr/bin/env cwl-runner\n")
+        yaml.dump(data, fd, default_flow_style=False, sort_keys=False)
+
+
+def _get_training_info() -> Tuple[str, str]:
+    executable_path: str = check_input(
+        text="Training script path: ",
+        warning_msg="File {} does not exist.",
+        control=lambda path: Path(path).is_file(),
+        is_local_path=True,
+    )
+    config_file: str = check_input(
+        text="Dataclass file path: ",
+        warning_msg="File {} does not exist.",
+        control=lambda path: Path(path).is_file(),
+        is_local_path=True,
+    )
+    return executable_path, config_file
+
+
+def _get_model_info() -> Tuple[str, str]:
     """Prompt user for model path and new model name."""
-    model_path: PathLike = PathLike(
-        check_input(
-            text="Python model path (file or directory): ",
-            warning_msg="{} does not exist.",
-            control=lambda path: path.exists(),
-            is_path=True,
-        )
+    model_path: str = check_input(
+        text="Python model path (file or directory): ",
+        warning_msg="{} does not exist.",
+        control=lambda path: Path(path).exists(),
+        is_local_path=True,
     )
-
-    new_model_name: str = str(
-        check_input(
-            text="Name of the new model: ",
-            warning_msg="Invalid name (letters, numbers, dashes, underscores, must start with alnum).",
-            control=lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
-        )
+    new_model_name: str = check_input(
+        text="Name of the new model: ",
+        warning_msg="Invalid name (letters, numbers, dashes, underscores, must start with alphanum).",
+        control=lambda x: re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$", x),
     )
-
     return model_path, new_model_name
 
 
 def _configure_facility(
-    facility: str,
+    facility_name: str,
+    facility_type: str,
     streamflow_config: StreamFlowFile,
     main_cwl: MainWorkflow,
     round_cwl: RoundWorkflow,
@@ -69,97 +86,91 @@ def _configure_facility(
     """Configure a single facility interactively."""
 
     # SSH info
-    address: str = input(f"{facility}'s frontend node address [IP:port]: ")
-    username: str = input(f"{facility}'s username: ")
-    ssh_key: FileLike = FileLike(
-        check_input(
-            text=f"Path to {facility}'s SSH key file: ",
-            warning_msg="{} does not exist.",
-            control=lambda p: p.is_file(),
-            is_path=True,
-        )
+    address: str = input(f"{facility_name}'s frontend node address [IP:port]: ")
+    username: str = input(f"{facility_name}'s username: ")
+    ssh_key: str = check_input(
+        text=f"Path to {facility_name}'s SSH key file: ",
+        warning_msg="{} does not exist.",
+        control=lambda p: Path(p).is_file(),
+        is_local_path=True,
     )
 
     # SLURM template
-    slurm_template: FileLike = FileLike(
-        check_input(
-            text=f"Path to {facility}'s SLURM template: ",
-            warning_msg="{} does not exist.",
-            control=lambda p: p.is_file(),
-            is_path=True,
-        )
+    slurm_template: str | None = check_input(
+        text=f"Path to {facility_name}'s SLURM template: ",
+        warning_msg="{} does not exist.",
+        control=lambda p: Path(p).is_file(),
+        is_local_path=True,
+        optional=True,
     )
 
     # Remote paths (must be resolved as remote)
-    step_workdir: FolderLike = FolderLike(
-        check_input(
-            text="Facility working directory: ",
-            warning_msg="Invalid path.",
-            is_path=True,
-        ),
-        local=False,
+    step_workdir: str = check_input(
+        text="Facility working directory: ",
+        warning_msg="Invalid path.",
+        is_local_path=False,
     )
-
-    image_path: FileLike = FileLike(
-        check_input(
-            text="Facility image file path: ",
-            warning_msg="Invalid path.",
-            is_path=True,
-        ),
-        local=False,
+    image_path: str = check_input(
+        text="Facility image file path: ",
+        warning_msg="Invalid path.",
+        is_local_path=False,
     )
-    dataset_path: PathLike = PathLike(
-        check_input(
-            text="Facility dataset directory path: ",
-            warning_msg="Invalid path.",
-            is_path=True,
-        ),
-        local=False,
+    dataset_path: str = check_input(
+        text="Facility dataset directory path: ",
+        warning_msg="Invalid path.",
+        is_local_path=False,
     )
 
     # Populate CWL config for this facility
-    main_cwl.add_inputs(facility_name=facility)
-    round_cwl.add_inputs(facility_name=facility)
+    main_cwl.add_inputs(facility_name=facility_name)
+    round_cwl.add_inputs(facility_name=facility_name)
     cwl_config.add_inputs(
-        facility_name=facility,
-        extra_inputs={
-            "image": {"class": "File", "path": image_path.name},
-            "dataset": {"class": "Directory", "path": dataset_path.name},
-        },
+        inputs={
+            f"facility_{facility_name}": facility_type,
+            f"image_{facility_name}": {
+                "class": "File",
+                "path": os.path.basename(image_path),
+            },
+            f"dataset_{facility_name}": {
+                "class": "Directory",
+                "path": os.path.basename(dataset_path),
+            },
+        }
     )
 
     # Populate StreamFlow config for this facility
     streamflow_config.add_deployment(
-        facility_name=facility,
+        facility_name=facility_name,
+        facility_type=facility_type,
         address=address,
         username=username,
-        ssh_key=FileLike(ssh_key),
-        step_workdir=FolderLike(step_workdir, local=False),
-        slurm_template=FileLike(slurm_template),
+        ssh_key=ssh_key,
+        step_workdir=step_workdir,
+        slurm_template=slurm_template if slurm_template else None,
     )
 
     streamflow_config.add_training_step(
-        facility_name=facility,
+        facility_name=facility_name,
         mapping={
-            f"dataset_{facility}": str(Path(dataset_path).parent),
-            f"image_{facility}": str(Path(image_path).parent),
+            f"dataset_{facility_name}": os.path.dirname(dataset_path),
+            f"image_{facility_name}": os.path.dirname(image_path),
         },
     )
-    streamflow_config.add_inputs(facility_name=facility)
+    streamflow_config.add_inputs(facility_name=facility_name)
 
     logger.debug(
         "\n".join(
             [
-                f"Inserted the following record for {facility} in the StreamFlow file:",
-                json.dumps(streamflow_config.step_bindings[facility], indent=2),
-                json.dumps(streamflow_config.deployments[facility], indent=2),
+                f"Inserted the following record for {facility_name} in the StreamFlow file:",
+                json.dumps(streamflow_config.step_bindings[facility_name], indent=2),
+                json.dumps(streamflow_config.deployments[facility_name], indent=2),
             ]
         )
     )
 
 
 def _write_output_files(
-    workdir: FolderLike,
+    workdir: Path,
     streamflow_config: StreamFlowFile,
     cwl_config: CWLConfig,
     main_cwl: MainWorkflow,
@@ -170,33 +181,28 @@ def _write_output_files(
     """Write StreamFlow, CWL and config files to disk."""
 
     # StreamFlow file
-    with (Path(workdir) / "streamflow.yml").open("w") as f:
+    with (workdir / "streamflow.yml").open("w") as f:
         yaml.dump(
             streamflow_config.save(), f, default_flow_style=False, sort_keys=False
         )
 
     # CWL files
-    cwl_dir: Path = Path(workdir) / "cwl"
-    clt_dir: Path = Path(cwl_dir) / "clt"
+    cwl_dir = workdir / "cwl"
+    clt_dir = cwl_dir / "clt"
     cwl_dir.mkdir(parents=True, exist_ok=True)
     clt_dir.mkdir(parents=True, exist_ok=True)
-
-    def _dump_cwl(path: Path, data: MutableMapping[str, Any]) -> None:
-        with path.open("w") as f:
-            f.write("#!/usr/bin/env cwl-runner\n")
-            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
     _dump_cwl(cwl_dir / "main.cwl", main_cwl.save())
     _dump_cwl(cwl_dir / "round.cwl", round_cwl.save())
     _dump_cwl(clt_dir / "aggregate.cwl", aggregate_cwl.save())
     _dump_cwl(clt_dir / "training.cwl", training_cwl.save())
 
-    with (Path(cwl_dir) / "config.yml").open("w") as f:
+    with (cwl_dir / "config.yml").open("w") as f:
         yaml.dump(cwl_config.save(), f, default_flow_style=False, sort_keys=False)
 
     # Scripts and py_scripts
     shutil.copytree(
-        Path(DEFAULT_xFFL_DIR) / "workflow" / "scripts", Path(cwl_dir) / "scripts"
+        Path(DEFAULT_xFFL_DIR) / "workflow" / "scripts", cwl_dir / "scripts"
     )
     (cwl_dir / "py_scripts").mkdir(exist_ok=True)
     shutil.copy(
@@ -213,7 +219,7 @@ def _write_output_files(
 # --------------------------------------------------------------------------- #
 
 
-def config(args: Namespace) -> int:
+def config(args: argparse.Namespace) -> int:
     """Run guided configuration for xFFL project.
 
     The user parser is imported twice on purpose:
@@ -224,7 +230,7 @@ def config(args: Namespace) -> int:
 
     # Prepare workdir
     try:
-        workdir: FolderLike = check_and_create_dir(
+        workdir: Path = check_and_create_dir(
             dir_path=args.workdir, folder_name=args.project
         )
     except FileExistsError:
@@ -244,7 +250,6 @@ def config(args: Namespace) -> int:
     logger.debug("StreamFlow and CWL templates created")
 
     # Add aggregation script reference
-    cwl_config.content = dict(cwl_config.content)
     cwl_config.content |= {
         "script_aggregation": {
             "class": "File",
@@ -252,99 +257,70 @@ def config(args: Namespace) -> int:
         },
     }
 
-    # --- User-provided training/parser info ---
-    executable_path: FileLike = FileLike(
-        check_input(
-            text="Training script path: ",
-            warning_msg="File {} does not exist.",
-            control=lambda path: path.is_file(),
-            is_path=True,
-        )
-    )
-
-    # Config file
-    config_file: FileLike = FileLike(
-        check_input(
-            text="Configuration file path: ",
-            warning_msg="File {} does not exist.",
-            control=lambda path: path.is_file(),
-            is_path=True,
-        )
-    )
-
-    # Model info
-    model_path: PathLike
-    new_model_name: str
+    # --- User-provided local data info ---
+    executable_path, dataclass_path = _get_training_info()
     model_path, new_model_name = _get_model_info()
-
-    # Local workdir
-    local_workdir: FolderLike = FolderLike(
-        check_input(
-            text="Local workdir (leave blank for $TMPDIR): ",
-            warning_msg="Invalid path or blank.",
-            control=lambda path: path.is_dir(),
-            is_path=True,
-        )
+    local_workdir: str = check_input(
+        text="Local workdir: ",
+        warning_msg="Invalid path or blank.",
+        control=lambda path: Path(path).is_dir(),
+        is_local_path=True,
     )
-
-    local_workdir = FolderLike(
-        (local_workdir if local_workdir else Path.cwd().joinpath("tmp"))
-    )  # TODO: non è coerente con il commento sopra
-    logger.debug("local_workdir: %s", local_workdir)
+    logger.debug(f"local_workdir: {local_workdir}")
     streamflow_config.add_root_step(str(local_workdir))
 
     # Number of iterations
     num_of_iterations: int = int(
-        str(
-            check_input(
-                text="Number of iterations to the federated training: ",
-                warning_msg="Insert an integer",
-                control=lambda x: x.isdigit(),
-            )
+        check_input(
+            text="Number of iterations to the federated training: ",
+            warning_msg="Insert an integer",
+            control=lambda x: x.isdigit(),
         )
     )
 
     # Populate top-level CWL config
-    cwl_config.content |= {
-        "executable": {
-            "class": "File",
-            "path": str(executable_path),
-            "secondaryFiles": [{"class": "File", "path": str(config_file)}],
-        },
-        "model": {
-            "class": "Directory" if model_path.is_dir() else "File",
-            "path": str(model_path),
-        },
-        "model_basename": new_model_name,
-        "max_rounds": num_of_iterations,
-    }
+    cwl_config.add_inputs(
+        {
+            "executable": {
+                "class": "File",
+                "path": executable_path,
+                "secondaryFiles": [{"class": "File", "path": dataclass_path}],
+            },
+            "model": {
+                "class": "Directory" if Path(model_path).is_dir() else "File",
+                "path": model_path,
+            },
+            "model_basename": new_model_name,
+            "max_rounds": num_of_iterations,
+        }
+    )
 
     # Facility loop (each iteration re-imports the parser inside _configure_facility)
     facilities: set[str] = set()
     while True:
-        facility: str = str(
-            check_input(
-                text="Type facility's logic name: ",
-                warning_msg="Already used.",
-                control=lambda f: f not in facilities,
-            )
+        facility_name: str = check_input(
+            text="Facility logic name: ",
+            warning_msg="Already used.",
+            control=lambda f: f not in facilities,
         )
-        facilities.add(facility)
-
+        facility_type: str = check_input(
+            text="Facility type: ",
+            warning_msg=f"Supported facility types: {FACILITY_TYPES}",
+            control=lambda f: f not in FACILITY_TYPES,
+        )
+        facilities.add(facility_name)
         _configure_facility(
-            facility=facility,
+            facility_name=facility_name,
+            facility_type=facility_type,
             streamflow_config=streamflow_config,
             main_cwl=main_cwl,
             round_cwl=round_cwl,
             cwl_config=cwl_config,
         )
-
-        another: str = str(
-            check_input(
-                text="Insert another facility? [y/n]: ",
-                warning_msg="Answer not accepted.",
-                control=lambda reply: reply.lower() in ["y", "yes", "n", "no"],
-            )
+        another: str = check_input(
+            text="Insert another facility? [y/n]: ",
+            warning_msg="Answer not accepted.",
+            control=lambda reply: reply.lower() in ["y", "yes", "n", "no"],
         )
         if another.lower() in ["n", "no"]:
             break
@@ -364,7 +340,7 @@ def config(args: Namespace) -> int:
     return 0
 
 
-def main(args: Namespace) -> int:
+def main(args: argparse.Namespace) -> int:
     """xFFL project's guided configuration entrypoint."""
     logger.info(
         "*** Cross-Facility Federated Learning (xFFL) - Configuration starting ***"

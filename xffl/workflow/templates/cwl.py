@@ -31,19 +31,12 @@ class CWLConfig(YamlConfig):
             "script_train": {"class": "Directory", "path": "scripts"},
         }
 
-    def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
-    ) -> None:
+    def add_inputs(self, inputs: MutableMapping[str, Any]) -> None:
         """Adds the CWL inputs to the YAML content
 
-        :param facility_name: Facility's name
-        :param extra_inputs: Extra inputs
-        :type facility_name: str
-        :type extra_inputs: MutableMapping[str, Any]
+        :type inputs: MutableMapping[str, Any]
         """
-        self.content |= {f"facility_{facility_name}": facility_name} | {
-            f"{name}_{facility_name}": value for name, value in extra_inputs.items()
-        }
+        self.content |= inputs
 
 
 class Workflow(ABC):

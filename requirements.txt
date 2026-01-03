@@ -3,7 +3,7 @@ datasets
 numpy
 pynvml>=12.0.0
 PyYAML==6.0.2
-streamflow@git+https://github.com/alpha-unito/streamflow.git@3f759b2156b755c9071646e41b93f0b7c0e54f98
+streamflow@git+https://github.com/alpha-unito/streamflow.git@8ac001c418a2a72e0f9bd210482feb7adf5c8c89
 torch>=2.2
 transformers
 tqdm

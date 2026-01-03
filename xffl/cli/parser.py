@@ -39,7 +39,7 @@ def _add_common_project_options(subparser: ArgumentParser) -> None:
         "--workdir",
         help="Working directory where the experiment files are stored. "
         "Defaults to the current working directory.",
-        type=FolderLike,
+        type=str,
         default=os.getcwd(),
     )
 
