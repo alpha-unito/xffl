@@ -2,18 +2,17 @@
 
 import os
 from logging import Logger, getLogger
+from pathlib import Path
 from typing import Dict, Mapping
 
 from datasets import Dataset, DatasetDict, load_from_disk
-
-from xffl.custom.types import FolderLike, PathLike
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def load_datasets_from_disk(
-    splits: Mapping[str, PathLike], base_path: FolderLike = ""
+    splits: Mapping[str, Path], base_path: Path
 ) -> Dict[str, Dataset | DatasetDict]:
     """Load multiple datasets from disk
 

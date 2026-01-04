@@ -90,8 +90,8 @@ def check_input(
 
 
 def get_timeout(
-    seconds: Optional[int] = 120,
-) -> timedelta:  # TODO: make this a parameter
+    seconds: float = 120.0,
+) -> timedelta:
     """Maximum allowed timeout for distributed communications
 
     :param seconds: Maximum allowed timeout in seconds, defaults to 12
@@ -103,7 +103,7 @@ def get_timeout(
 
 
 def get_default_nccl_process_group_options(
-    is_high_priority_stream: Optional[bool] = True,
+    is_high_priority_stream: bool = True,
 ):
     """Default NCCL backend configuration for xFFL
 

@@ -1,13 +1,14 @@
 """DNN training utility methods"""
 
 import logging
+import os
 import time
 from logging import Logger, getLogger
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-from torch import nn
+from torch import Tensor, nn, tensor
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -18,14 +19,14 @@ from wandb.wandb_run import Run
 from xffl.custom.types import PathLike
 from xffl.distributed.aggregation import bucket_optimized_coalesced_
 from xffl.distributed.distributed import DistributedState
-from xffl.learning.modelling import save_fsdp_model
+from xffl.learning.modelling import save_model
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def distributed_training(
-    model: nn.Module | FullyShardedDataParallel,
+    model: FullyShardedDataParallel,
     optimizer: Optimizer,
     train_dataloader: DataLoader,
     eval_dataloader: DataLoader,
@@ -85,7 +86,7 @@ def distributed_training(
     epoch_times: List[float] = []
     checkpoint_times: List[float] = []
     results: Dict[str, float] = {}
-    best_val_loss: float = float("inf")
+    best_val_loss: Tensor = tensor(float("inf"))
 
     if torch.distributed.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
@@ -95,7 +96,7 @@ def distributed_training(
 
         model.train()
 
-        total_loss: float = 0.0
+        total_loss: Tensor = tensor(0.0)
         total_length: int = len(train_dataloader)
         pbar: tqdm = tqdm(
             colour="blue",
@@ -104,6 +105,16 @@ def distributed_training(
             dynamic_ncols=True,
             disable=state.rank != 0,
         )
+
+        if (
+            save_path is not None
+            and output_model_name is not None
+            and (not os.path.exists(save_path) or not os.path.isdir(save_path))
+        ):
+            logger.warning(
+                f"Impossible saving the trained model with save dir {save_path}: saving disabled."
+            )
+            save_path, output_model_name = None, None
 
         step: int
         batch: Dict[str, Any]
@@ -175,6 +186,8 @@ def distributed_training(
                 start_time = time.perf_counter()
 
             with torch.no_grad():
+                assert federated_batches is not None
+
                 if state.is_federated_scaling_setup() and (
                     (step + 1) % federated_batches == 0 or step + 1 == total_length
                 ):
@@ -242,6 +255,10 @@ def distributed_training(
         #        op=dist.ReduceOp.SUM,
         #    )
 
+        assert state.federated_local_size is not None
+        assert state.federated_rank is not None
+        assert state.world_size is not None
+
         train_epoch_loss: torch.Tensor = (
             (total_loss / total_length)
             / state.federated_local_size[state.federated_rank]
@@ -268,15 +285,16 @@ def distributed_training(
             val_step_perplexity.extend(temp_step_perplexity)
 
             if eval_epoch_loss < best_val_loss:
-                best_val_loss: torch.Tensor = eval_epoch_loss
+                best_val_loss = eval_epoch_loss
                 # if state.rank == 0:
                 #    logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(best_val_loss))
             val_perp.append(float(eval_ppl))
 
-        if output_model_name:
+        if output_model_name is not None and save_path is not None:
+            assert state.rank is not None
             checkpoint_start_time = time.perf_counter()
-            save_fsdp_model(
+            save_model(
                 model=model,
                 optimizer=optimizer,
                 path=save_path,
@@ -313,7 +331,7 @@ def fsdp_evaluation(
     state: DistributedState,
     wandb_run: Optional[Run] = None,
     criterion=None,
-) -> Tuple[torch.Tensor, torch.Tensor, List[float], List[float]]:
+) -> Tuple[Tensor, Tensor, List[float], List[float], float]:
     """Generic evaluation cycle for FSDP models
 
     :param model: Model to evaluate
@@ -331,7 +349,7 @@ def fsdp_evaluation(
 
     val_step_loss: List[float] = []
     val_step_perplexity: List[float] = []
-    eval_loss: float = 0.0
+    eval_loss: Tensor = tensor(0.0)
     correct: int = 0
 
     with torch.no_grad():
@@ -345,6 +363,8 @@ def fsdp_evaluation(
                 disable=state.rank != 0,
             )
         ):
+            loss: Tensor
+
             if isinstance(batch, dict):
                 for key in batch.keys():
                     batch[key] = batch[key].to(
@@ -352,7 +372,7 @@ def fsdp_evaluation(
                     )
 
                 outputs = model(**batch)
-                loss: torch.Tensor = outputs.loss
+                loss = outputs.loss
 
                 eval_loss += loss.detach().float()
                 val_step_loss.append(loss.detach().float().item())
@@ -368,7 +388,7 @@ def fsdp_evaluation(
                 )
 
                 output: torch.Tensor = model(data)
-                loss: float = criterion(output, target)
+                loss = criterion(output, target)
                 eval_loss += loss
                 pred: int = output.argmax(
                     dim=1, keepdim=True
@@ -377,6 +397,9 @@ def fsdp_evaluation(
 
         if torch.cuda.device_count() > 1:
             dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
+
+    assert state.world_size is not None
+    assert eval_dataloader.batch_size is not None
 
     eval_epoch_loss: torch.Tensor = (
         eval_loss / len(eval_dataloader)
