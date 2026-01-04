@@ -191,7 +191,7 @@ def build_parser() -> Tuple[ArgumentParser, _SubParsersAction]:
         "--facility",
         help="Name of the computational facility to use. Default is 'leonardo'.",
         type=str,
-        default="leonardo",
+        default="local",
     )
 
     exec_parser.add_argument(
