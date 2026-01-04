@@ -5,17 +5,18 @@ offering a homogeneous interface with xFFL.
 """
 
 import importlib.util
+import inspect
 import subprocess
 import sys
 import time
 from argparse import Namespace
 from importlib.machinery import ModuleSpec
 from logging import Logger, getLogger
+from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 import xffl.cli.parser as cli_parser
-from xffl.cli.utils import get_facilitator_path
 from xffl.custom.config_info import XFFLConfig
 from xffl.custom.types import FileLike, PathLike
 from xffl.distributed.networking import get_cells_ids
@@ -138,6 +139,18 @@ def _setup_execution_env(args: SimpleNamespace | Namespace) -> Dict[str, str]:
     return env
 
 
+def _get_facilitator_path() -> FileLike:
+    """Return the absolute path of the facilitator script.
+
+    :return: Facilitator absolute file path.
+    :rtype: Path
+    """
+    import xffl.workflow
+
+    workflow_dir: Path = Path(inspect.getfile(xffl.workflow)).parent
+    return FileLike(workflow_dir / "scripts" / "facilitator.sh")
+
+
 # --------------------------------------------------------------------------- #
 #                             Main Execution                                  #
 # --------------------------------------------------------------------------- #
@@ -162,7 +175,7 @@ def exec(args: Namespace) -> int:
         logger.error("Failed to setup execution environment: %s", err)
         raise
 
-    facilitator_script: FileLike = get_facilitator_path()
+    facilitator_script: FileLike = _get_facilitator_path()
 
     # Federated scaling
     if args.federated_scaling is not None:
@@ -239,7 +252,7 @@ def main(args: Namespace) -> int:
         return exec(args=args)
     except Exception as exception:
         logger.exception("Execution failed: %s", exception)
-        raise exception
+        return 1
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Execution finished ***"

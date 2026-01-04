@@ -11,6 +11,7 @@ import os
 import socket
 import subprocess
 from argparse import ArgumentParser, _MutuallyExclusiveGroup, _SubParsersAction
+from pathlib import Path
 from typing import Tuple
 
 from xffl.custom.types import FileLike, FolderLike
@@ -39,7 +40,7 @@ def _add_common_project_options(subparser: ArgumentParser) -> None:
         "--workdir",
         help="Working directory where the experiment files are stored. "
         "Defaults to the current working directory.",
-        type=str,
+        type=Path,
         default=os.getcwd(),
     )
 

@@ -16,7 +16,6 @@ from typing import Any, MutableMapping, Tuple
 import yaml
 
 import xffl.cli.parser as cli_parser
-from xffl.cli.utils import check_and_create_dir
 from xffl.utils.constants import FACILITY_TYPES, DEFAULT_xFFL_DIR
 from xffl.utils.utils import check_input
 from xffl.workflow.templates.cwl import (
@@ -214,6 +213,38 @@ def _write_output_files(
     )
 
 
+def _check_and_create_dir(dir_path: Path, folder_name: str) -> Path:
+    """Check the base directory and create a subfolder.
+
+    :param dir_path: Base directory path.
+    :type dir_path: FolderLike
+    :param folder_name: Name of the subfolder to create.
+    :type folder_name: str
+    :raises FileNotFoundError: If the base directory path does not exist.
+    :raises FileExistsError: If the target directory already exists and overwrite is denied.
+    :return: Absolute path to the created (or existing) folder.
+    :rtype: Path
+    """
+    if not (dir_path).exists():
+        logger.error(f"The provided working directory path {dir_path} does not exist.")
+        raise FileNotFoundError(dir_path)
+
+    target_dir: Path = dir_path / folder_name
+    logger.debug(f"Attempting to create directory {target_dir}")
+
+    try:
+        target_dir.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        answer = check_input(
+            f"Directory {target_dir} already exists. Overwrite it? [y/n]: ",
+            "Answer not accepted.",
+            lambda reply: reply.lower() in ("y", "yes", "n", "no"),
+        )
+        if answer.lower() in ("n", "no"):
+            raise
+    return target_dir.resolve()
+
+
 # --------------------------------------------------------------------------- #
 #                                   Entrypoint                                #
 # --------------------------------------------------------------------------- #
@@ -230,7 +261,7 @@ def config(args: argparse.Namespace) -> int:
 
     # Prepare workdir
     try:
-        workdir: Path = check_and_create_dir(
+        workdir: Path = _check_and_create_dir(
             dir_path=args.workdir, folder_name=args.project
         )
     except FileExistsError:
@@ -350,7 +381,7 @@ def main(args: argparse.Namespace) -> int:
         return config(args=args)
     except Exception as exception:
         logger.exception("Configuration failed: %s", exception)
-        raise exception
+        return 1
     finally:
         logger.info(
             "*** Cross-Facility Federated Learning (xFFL) - Configuration finished ***"

@@ -48,7 +48,7 @@ def main(args: Namespace) -> int:
         return run(args=args)
     except Exception as exception:  # TODO: narrow down to StreamFlow-specific errors
         logger.exception("Run failed: %s", exception)
-        raise exception
+        return 1
     finally:
         logger.info("*** Cross-Facility Federated Learning (xFFL) - Run finished ***")
 
