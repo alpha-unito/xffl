@@ -54,9 +54,10 @@ def resolve_path(path: str | Path) -> Path:
 def check_input(
     text: str,
     warning_msg: str,
-    control: Optional[Callable] = lambda _: True,
-    is_path: bool = False,
-) -> str | Path:
+    control: Optional[Callable] | None = None,
+    is_local_path: bool = False,
+    optional: bool = False,
+) -> str | None:
     """Receives and checks a user input based on the specified condition
 
     :param text: Question to be asked to the user
@@ -69,19 +70,25 @@ def check_input(
     :type control: Callable
     :param is_local_path: If the provided path is a local path, defaults to True
     :type is_local_path: bool
-    :return: The value inserted from the user satisfying the condition
-    :rtype: str
+    :param optional: If True, the user can leave the input blank, returning None. Defaults to False.
+    :type optional: bool, optional
+    :return: The validated user input, or None if the input was left blank and optional is True.
+    :rtype: str | None
     """
-    # TODO: Risolviamo troppe volte lo stesso path
-    condition: bool = False
-    value: str | Path = ""
-    while not condition:
-        value = input(text)
-        if is_path:
-            value = resolve_path(path=value)
-        if not (condition := control(value)):
-            logger.warning(warning_msg.format(value))
-    return value
+    is_valid = control or (lambda _: True)
+    while True:
+        raw_value = input(text).strip()
+        if not raw_value:
+            if optional:
+                logger.warning("No value provided; skipping.")
+                return None
+            continue
+        processed_value = (
+            str(resolve_path(path=raw_value)) if is_local_path else raw_value
+        )
+        if is_valid(processed_value):
+            return processed_value
+        logger.warning(warning_msg.format(processed_value))
 
 
 def get_timeout(
