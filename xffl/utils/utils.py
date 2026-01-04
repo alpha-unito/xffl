@@ -54,18 +54,16 @@ def resolve_path(path: str | Path) -> Path:
 def check_input(
     text: str,
     warning_msg: str,
-    control: Optional[Callable] | None = None,
+    control: Optional[Callable] = None,
     is_local_path: bool = False,
     optional: bool = False,
-) -> str | None:
+) -> str:
     """Receives and checks a user input based on the specified condition
 
     :param text: Question to be asked to the user
     :type text: str
     :param warning_msg: Error message in case the inserted value does not satisfy the control condition
-    :param warning_msg: Error message in case the inserted value does not satisfy the control condition
     :type warning_msg: str
-    :param control: Control function to be checked on the inserted value
     :param control: Control function to be checked on the inserted value
     :type control: Callable
     :param is_local_path: If the provided path is a local path, defaults to True
@@ -73,7 +71,7 @@ def check_input(
     :param optional: If True, the user can leave the input blank, returning None. Defaults to False.
     :type optional: bool, optional
     :return: The validated user input, or None if the input was left blank and optional is True.
-    :rtype: str | None
+    :rtype: str
     """
     is_valid = control or (lambda _: True)
     while True:
@@ -81,7 +79,7 @@ def check_input(
         if not raw_value:
             if optional:
                 logger.warning("No value provided; skipping.")
-                return None
+                return ""
             continue
         processed_value = (
             str(resolve_path(path=raw_value)) if is_local_path else raw_value

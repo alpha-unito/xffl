@@ -96,7 +96,7 @@ def _configure_facility(
     )
 
     # SLURM template
-    slurm_template: str | None = check_input(
+    slurm_template: str = check_input(
         text=f"Path to {facility_name}'s SLURM template: ",
         warning_msg="{} does not exist.",
         control=lambda p: Path(p).is_file(),
@@ -250,6 +250,7 @@ def config(args: argparse.Namespace) -> int:
     logger.debug("StreamFlow and CWL templates created")
 
     # Add aggregation script reference
+    cwl_config.content = dict(cwl_config.content)
     cwl_config.content |= {
         "script_aggregation": {
             "class": "File",
