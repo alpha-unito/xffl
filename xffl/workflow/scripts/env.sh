@@ -144,7 +144,6 @@ Gpu_detection () {
         return 0
     fi
 
-    echo "No GPU detected - falling back to CPU training"
     return 0
 }
 

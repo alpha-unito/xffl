@@ -186,10 +186,9 @@ def distributed_training(
                 start_time = time.perf_counter()
 
             with torch.no_grad():
-                assert federated_batches is not None
 
                 if state.is_federated_scaling_setup() and (
-                    (step + 1) % federated_batches == 0 or step + 1 == total_length
+                    (step + 1) % federated_batches == 0 or step + 1 == total_length  # type: ignore
                 ):
                     bucket_optimized_coalesced_(
                         model=model,
@@ -255,13 +254,11 @@ def distributed_training(
         #        op=dist.ReduceOp.SUM,
         #    )
 
-        assert state.federated_local_size is not None
-        assert state.federated_rank is not None
         assert state.world_size is not None
 
         train_epoch_loss: torch.Tensor = (
             (total_loss / total_length)
-            / state.federated_local_size[state.federated_rank]
+            / state.federated_local_size[state.federated_rank]  # type: ignore
             if state.is_federated_scaling_setup()
             else (total_loss / total_length) / state.world_size
         )

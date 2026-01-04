@@ -18,7 +18,7 @@ logger: Logger = getLogger(__name__)
 
 def _get_int_from_env(var: Optional[int], env_var: str) -> Optional[int]:
     if var is None:
-        _var: Optional[str] = os.environ.get("env_var")
+        _var: Optional[str] = os.environ.get(env_var)
         if _var is not None:
             var = int(_var)
     return var
