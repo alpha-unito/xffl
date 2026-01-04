@@ -1,4 +1,4 @@
-"""Custom types for better type hints in xFFL."""
+"""Custom types for better type hints in xFFL. Local paths are automatically resolved and expanded."""
 
 from pathlib import Path
 from typing import Union

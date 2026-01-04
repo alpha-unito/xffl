@@ -27,7 +27,7 @@ class ModelInfo(ABC):
 
 
 @dataclass
-class DatasetInfo:
+class DatasetInfo(ABC):
     """Abstract dataset essential information
 
     :param splits: Mapping between the split's name and its location inside the dataset's folder
@@ -42,6 +42,14 @@ class DatasetInfo:
 
 
 @dataclass
-class XFFLConfig:
+class XFFLConfig(ABC):
+    """Abstract base XFFL configuration
+
+    :param model: Model configuration
+    :type model: ModelInfo
+    :param dataset: Dataset configuration
+    :type dataset: DatasetInfo
+    """
+
     model: ModelInfo
     dataset: DatasetInfo
