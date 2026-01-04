@@ -16,6 +16,14 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
+def _get_int_from_env(var: Optional[int], env_var: str) -> Optional[int]:
+    if var is None:
+        _var: Optional[str] = os.environ.get("env_var")
+        if _var is not None:
+            var = int(_var)
+    return var
+
+
 def get_appropriate_sharding_strategy(state: DistributedState) -> ShardingStrategy:
     """Federated averaging of corresponding model's shards on different hosts
 
@@ -46,7 +54,7 @@ def setup_distributed_process_group(
     master_port: Optional[int] = None,
     device: Optional[torch.device] = None,
     hsdp: Optional[int] = None,
-    federated: Optional[Tuple[int]] = None,
+    federated: Optional[Tuple[int, ...]] = None,
     streams: Optional[int] = None,
 ) -> DistributedState:
     """Setup PyTorch's distributed environment
@@ -94,7 +102,7 @@ def setup_distributed_process_group(
         backend=(
             backend
             if backend is not None
-            else Backend("nccl" if torch.cuda.is_available() else "gloo")
+            else "nccl" if torch.cuda.is_available() else "gloo"
         ),
         device_type=(
             device
@@ -104,43 +112,34 @@ def setup_distributed_process_group(
         master_addr=(
             os.environ.get("MASTER_ADDR") if master_addr is None else master_addr
         ),
-        master_port=(
-            int(os.environ.get("MASTER_PORT")) if master_port is None else master_port
-        ),
-        rank=int(os.environ.get("RANK")) if rank is None else rank,
-        world_size=int(
-            os.environ.get("WORLD_SIZE") if world_size is None else world_size
-        ),
+        master_port=_get_int_from_env(var=master_port, env_var="MASTER_PORT"),
+        rank=_get_int_from_env(var=rank, env_var="RANK"),
+        world_size=_get_int_from_env(var=world_size, env_var="WORLD_SIZE"),
     )
 
     # Distributed state local information
     state.set_node(
-        node_local_rank=(
-            int(os.environ.get("LOCAL_RANK"))
-            if group_local_rank is None
-            else group_local_rank
+        node_local_rank=_get_int_from_env(var=group_local_rank, env_var="LOCAL_RANK"),
+        node_local_size=_get_int_from_env(
+            var=group_local_size, env_var="LOCAL_WORLD_SIZE"
         ),
-        node_local_size=(
-            int(os.environ.get("LOCAL_WORLD_SIZE"))
-            if group_local_size is None
-            else group_local_size
-        ),
-        node_rank=(
-            int(os.environ.get("GROUP_RANK")) if group_rank is None else group_rank
-        ),
-        node_world_size=(
-            int(os.environ.get("GROUP_WORLD_SIZE"))
-            if group_world_size is None
-            else group_world_size
+        node_rank=_get_int_from_env(var=group_rank, env_var="GROUP_RANK"),
+        node_world_size=_get_int_from_env(
+            var=group_world_size, env_var="GROUP_WORLD_SIZE"
         ),
     )
 
     # Check if Federated Scaling is required
+    assert state.node_local_size is not None
+    assert state.world_size is not None
+
     if federated is None:
         if "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
             federated = tuple(
                 int(item) * state.node_local_size
-                for item in os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE").split(",")
+                for item in str(
+                    os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE")
+                ).split(",")
             )
     elif len(federated) == 1:
         if state.world_size % federated[0] != 0:
@@ -195,22 +194,27 @@ def init_distributed_process_group(state: DistributedState) -> None:
     :param state: Partially instantiated distributed state (rank, world_size, backend)
     :type state: DistributedState
     """
-    dist.init_process_group(
-        backend=state.backend,
-        world_size=state.world_size,
-        rank=state.rank,
-        pg_options=(
-            get_default_nccl_process_group_options()
-            if state.backend == "nccl"
-            else None
-        ),
-        timeout=get_timeout(),
-        # device_id=state.current_device,  # TODO: this does not seems to work properly with device meshes
-    )
+    if state.world_size is None or state.rank is None:
+        logger.error(
+            f"Impossible setting up the distributed process group: the world size {state.world_size} and/or the rank {state.rank} are not correctly setup."
+        )
+    else:
+        dist.init_process_group(
+            backend=state.backend,
+            world_size=state.world_size,
+            rank=state.rank,
+            pg_options=(
+                get_default_nccl_process_group_options()
+                if state.backend == "nccl"
+                else None
+            ),
+            timeout=get_timeout(),
+            # device_id=state.current_device,  # TODO: this does not seems to work properly with device meshes
+        )
 
 
 def cleanup_distributed_process_group(
-    state: DistributedState, del_obj: Tuple[Any] = ()
+    state: DistributedState, del_obj: Optional[Tuple[Any]] = None
 ) -> None:
     """Cleanup PyTorch's distributed environment
 
@@ -221,8 +225,9 @@ def cleanup_distributed_process_group(
     :param del_obj: Objects to be deleted before destroying the process group, defaults to []
     :type del_obj: Tuple[Any]
     """
-    for obj in del_obj:
-        del obj
+    if del_obj is not None:
+        for obj in del_obj:
+            del obj
 
     if dist.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
@@ -245,6 +250,7 @@ def _get_current_device(
     :return: The computation device
     :rtype: torch.device | int
     """
+    assert state.node_local_rank is not None
 
     current_device: torch.device | int = torch.device("cpu")
     if torch.cuda.is_available():
@@ -297,55 +303,3 @@ def _get_init_device(
             meta_initialization = True
 
     return init_device, meta_initialization
-
-
-def _setup_devices(
-    state: DistributedState,
-) -> tuple[
-    torch.device | int,
-    torch.device,
-    bool,
-]:
-    """PyTorch device setup
-
-    Sets the GPU for the current process and empties its cache
-    Also, returns the best initialisation device to load large model in a distributed way with low RAM usage (in case of "meta" model FSDP initialisation should provide sync_module_states=True)
-
-    :param state: Instantiated distributed state
-    :type state: DistributedState
-    :return: Two devices, one for computation and the other for model initialisation, and if meta initialisation is enabled
-    :rtype: tuple[int, torch.device | int, bool]
-    """
-
-    current_device: torch.device | int = torch.device("cpu")
-    if torch.cuda.is_available():
-        current_device = (
-            torch.device("cuda", state.node_local_rank)
-            if state.is_node_setup()
-            else torch.device("cuda")
-        )
-        torch.cuda.set_device(current_device)
-        torch.cuda.empty_cache()
-
-    init_device: torch.device = torch.device("cpu")
-    meta_initialization: bool = False
-
-    if torch.cuda.is_available():
-        if torch.cuda.device_count() > 1:
-            if (
-                (
-                    state.is_federated_scaling_setup()
-                    and state.is_fsdp_setup()
-                    and state.federated_local_rank != 0
-                )
-                or (
-                    not state.is_federated_scaling_setup()
-                    and state.is_fsdp_setup()
-                    and state.rank != 0
-                )
-                or (state.is_hsdp_setup() and state.replica_local_rank != 0)
-            ):
-                init_device = torch.device("meta")
-            meta_initialization = True
-
-    return current_device, init_device, meta_initialization

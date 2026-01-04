@@ -45,7 +45,7 @@ def _add_common_project_options(subparser: ArgumentParser) -> None:
     )
 
 
-def _get_default_nodelis() -> Tuple[str, ...]:
+def _get_default_nodelist() -> Tuple[str, ...]:
     """Returns the default nodelist. If SLURM is available, xFFL tries to get the SLURM nodelist; else, the local hostname is returned.
 
     :return: Default nodelist
@@ -226,8 +226,8 @@ def build_parser() -> Tuple[ArgumentParser, _SubParsersAction]:
         "--nodelist",
         help="List of compute nodes available for the execution. The default is ['localhost'].",
         nargs="+",
-        type=Tuple[str],
-        default=_get_default_nodelis(),
+        type=str,
+        default=_get_default_nodelist(),
     )
 
     exec_parser.add_argument(
