@@ -60,7 +60,7 @@ def test_dispatch_command_unknown_command(mock_parser):
 @pytest.mark.parametrize("command, module_path", ALL_SUBCOMMANDS)
 def test_dispatch_command_all_subcommands(monkeypatch, command, module_path):
     fake_module = ModuleType(module_path)
-    fake_module.main = MagicMock(return_value=0)
+    fake_module.main = MagicMock(return_value=0)  # type: ignore
 
     import_module = MagicMock(return_value=fake_module)
     monkeypatch.setattr(cli, "import_module", import_module)
@@ -81,7 +81,7 @@ def test_dispatch_command_exception_all_subcommands(monkeypatch, command):
     def boom(_):
         raise RuntimeError("crash")
 
-    fake_module.main = boom
+    fake_module.main = boom  # type: ignore
 
     import_module = MagicMock(return_value=fake_module)
     logger = MagicMock()
