@@ -60,7 +60,7 @@ def main(arguments: List[str]) -> int:
     logger.debug(f"Input arguments: {args}")
 
     # Handle version
-    if getattr(args, "version", False):
+    if args.version:
         from xffl.utils.constants import VERSION
 
         logger.info("xFFL version: %s", VERSION)
