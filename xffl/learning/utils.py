@@ -16,7 +16,7 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     apply_activation_checkpointing,
     checkpoint_wrapper,
 )
-from transformers import AutoModel, PreTrainedModel
+from transformers import PreTrainedModel
 
 from xffl.custom.types import PathLike
 
@@ -44,7 +44,7 @@ def set_deterministic_execution(
     generator = torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    torch.utils.deterministic.fill_uninitialized_memory = (
+    torch.utils.deterministic.fill_uninitialized_memory = (  # type: ignore
         True  # This should be True by default
     )
     torch.use_deterministic_algorithms(mode=True)
@@ -57,11 +57,11 @@ def set_deterministic_execution(
 def set_nondeterministic_execution() -> None:
     """Deactivate deterministic execution and deterministic memory filling to improve performance"""
     logger.debug("Setting PyTorch deterministic execution")
-    torch.utils.deterministic.fill_uninitialized_memory = False
+    torch.utils.deterministic.fill_uninitialized_memory = False  # type: ignore
     torch.use_deterministic_algorithms(mode=False)
 
 
-def get_model_size(model: nn.Module | AutoModel) -> int:
+def get_model_size(model: nn.Module) -> int:
     """Returns the model's trainable parameters number
 
     :param model: PyTorch model
@@ -72,7 +72,7 @@ def get_model_size(model: nn.Module | AutoModel) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def get_model_size_in_bits(model: nn.Module | AutoModel) -> int:
+def get_model_size_in_bits(model: nn.Module) -> int:
     """Returns the model's trainable parameters size in bits
 
     :param model: PyTorch model
@@ -108,7 +108,7 @@ def seed_dataloader_worker(worker_id: int) -> None:
 
 
 def set_activation_checkpointing(
-    model: nn.Module | PreTrainedModel, layer: type = None
+    model: nn.Module | PreTrainedModel, layer: type
 ) -> None:
     """Sets up activation (gradient) checkpointing
 
@@ -155,7 +155,7 @@ def preload(files: List[PathLike]) -> None:
         command = " ".join(
             [
                 "find",
-                file,
+                str(file),
                 "-type",
                 "f",
                 "-exec",

@@ -146,3 +146,8 @@ models/*
 images/*
 *.csv
 *.pstats
+.bash_history
+.local
+.local/
+project/
+*.sif

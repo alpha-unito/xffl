@@ -3,17 +3,15 @@
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import torch
 from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
+from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
-from transformers import AutoModel
 
-from xffl.custom.models import ModelInfo
-from xffl.custom.types import PathLike
 from xffl.distributed.distributed import (
     DistributedState,
     get_appropriate_sharding_strategy,
@@ -24,26 +22,26 @@ logger: Logger = getLogger(__name__)
 
 
 def create_fsdp_model(
-    module: nn.Module | AutoModel,
+    module: nn.Module,
     state: DistributedState,
-    model_info: ModelInfo,
+    wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
-) -> FullyShardedDataParallel:
+) -> FullyShardedDataParallel:  # TODO: Move to FSDP2
     """Creates an FSDP model
 
     :param module: FSDP-wrapped model to be saved
-    :type module: nn.Module | AutoModel
+    :type module: nn.Module
     :param state: Instantiated distributed state
     :type state: DistributedState
-    :param model_info: Dataclass with model's information
-    :type model_info: ModelInfo
+    :param wrapping_policy: Model's wrapping policy, defaults to None
+    :type wrapping_policy:  Optional[Callable], optional
     :param mixed_precision: Precision to use for the module, defaults to None
     :type mixed_precision: Optional[MixedPrecision], optional
     :return: The original module wrapped by FSDP
     :rtype: FullyShardedDataParallel
     """
 
-    device_mesh: Optional[bool] = None
+    device_mesh: Optional[DeviceMesh] = None
     if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
         device_mesh = state.hsdp_mesh
     elif state.is_fsdp_setup():
@@ -52,27 +50,27 @@ def create_fsdp_model(
     model: FullyShardedDataParallel = FullyShardedDataParallel(
         module=module,
         sharding_strategy=get_appropriate_sharding_strategy(state=state),
-        auto_wrap_policy=model_info.wrapping_policy,
+        auto_wrap_policy=wrapping_policy,
         device_id=state.current_device,
         forward_prefetch=True,
         limit_all_gathers=False,
         mixed_precision=mixed_precision,
-        sync_module_states=state.meta_initialization,
+        sync_module_states=bool(state.meta_initialization),
         param_init_fn=lambda layer: (
             layer.to_empty(device=state.current_device, recurse=False)
             if state.meta_initialization
             else None
-        ),
+        ),  # type: ignore
         device_mesh=device_mesh,
     )
 
     return model
 
 
-def save_fsdp_model(
+def save_model(
     model: FullyShardedDataParallel,  # To be generalized (as for now just HF)
     optimizer: Optimizer,
-    path: PathLike,
+    path: Path,
     name: str,
     rank: int,
     epoch: Optional[int] = None,
@@ -88,7 +86,7 @@ def save_fsdp_model(
     :param optimizer: Model optimizer
     :type optimizer: Optimizer
     :param path: Path where to save the model
-    :type path: PathLike
+    :type path: Path
     :param name: Model's name
     :type name: str
     :param rank: Calling process' global rank
@@ -101,13 +99,16 @@ def save_fsdp_model(
     :type precision: Optional[torch.dtype], optional
     """
 
+    # Clear GPU cache and reset peak memory stats
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
+
     # Gather the full, un-sharded state dict
     state_dict, _ = get_state_dict(
         model=model,
         optimizers=optimizer,
-        options=StateDictOptions(
-            full_state_dict=True,
-        ),
+        options=StateDictOptions(full_state_dict=True, cpu_offload=True),
     )
 
     # Only rank 0 saves the model
@@ -128,7 +129,7 @@ def save_fsdp_model(
         # Saving state_dict changing precision
         if precision:
             for param_tensor in state_dict:
-                state_dict[param_tensor] = state_dict[param_tensor].to(
+                state_dict[param_tensor] = state_dict[param_tensor].to(  # type: ignore
                     device="cpu",
                     dtype=precision,
                     non_blocking=True,

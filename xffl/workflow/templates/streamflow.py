@@ -4,7 +4,6 @@ import posixpath
 from collections.abc import MutableMapping
 from typing import Any, Optional
 
-from xffl.custom.types import FileLike, FolderLike
 from xffl.workflow.config import YamlConfig
 
 
@@ -53,26 +52,29 @@ class StreamFlowFile(YamlConfig):
     def add_deployment(
         self,
         facility_name: str,
+        facility_type: str,
         address: str,
         username: str,
-        ssh_key: FileLike,
-        step_workdir: FolderLike,
-        slurm_template: FileLike,
+        ssh_key: str,
+        step_workdir: str,
+        slurm_template: str | None = None,
     ) -> None:
         """Adds a new facility deployment to the StreamFlow configuration
 
         :param facility_name: Facility's name
         :type facility_name: str
+        :param facility_type: Facility's type
+        :type facility_type: str
         :param address: Facility's address (IP, FQDN)
         :type address: str
         :param username: Username to use to log in the facility
         :type username: str
         :param ssh_key: SSH key to use to log in the facility
-        :type ssh_key: FileLike
+        :type ssh_key: str
         :param step_workdir: Directory where to store temporary StreamFlow SSH files
-        :type step_workdir: FolderLike
+        :type step_workdir: str
         :param slurm_template: Facility's SLURM file template
-        :type slurm_template: FileLike
+        :type slurm_template: str | None
         :raises ValueError: If the facility is already present in the StreamFlow configuration
         """
         if facility_name in self.deployments.keys():
@@ -80,23 +82,37 @@ class StreamFlowFile(YamlConfig):
                 f"Facility {facility_name} is already present in the StreamFlow configuration"
             )
 
-        self.deployments[facility_name] = {
-            f"{facility_name}-ssh": {
-                "type": "ssh",
-                "config": {
-                    "nodes": [address],
-                    "username": username,
-                    "sshKey": ssh_key,
+        if slurm_template is not None:
+            self.deployments[facility_name] = {
+                f"{facility_name}-ssh": {
+                    "type": "ssh",
+                    "config": {
+                        "nodes": [address],
+                        "username": username,
+                        "sshKey": ssh_key,
+                    },
+                    "workdir": step_workdir,
                 },
-                "workdir": step_workdir,
-            },
-            facility_name: {
-                "type": "slurm",
-                "config": {"services": {"pragma": {"file": slurm_template}}},
-                "wraps": f"{facility_name}-ssh",
-                "workdir": step_workdir,
-            },
-        }
+                facility_name: {
+                    "type": "slurm",
+                    "config": {"services": {"pragma": {"file": slurm_template}}},
+                    "wraps": f"{facility_name}-ssh",
+                    "workdir": step_workdir,
+                },
+            }
+        else:
+            self.deployments[facility_name] = {
+                f"{facility_name}": {
+                    "type": "ssh",
+                    "config": {
+                        "nodes": [address],
+                        "username": username,
+                        "sshKey": ssh_key,
+                        "checkHostKey": False,
+                    },
+                    "workdir": step_workdir,
+                }
+            }
 
     def add_training_step(
         self,
@@ -163,7 +179,7 @@ class StreamFlowFile(YamlConfig):
         :param name: Name of the StreamFlow binding
         :type name: str
         :param values: Value of the StreamFlow binding
-        :type values: FolderLike
+        :type values: MutableMapping
         :param location: Facility's name, defaults to None
         :type location: Optional[str], optional
         :param _type: Type of StreamFlow binding, defaults to "step"

@@ -22,7 +22,7 @@ class DistributedState:
 
     # GLOBAL
     # These are global information about the distributed processes (invariant to the other groups)
-    backend: Optional[Backend] = None
+    backend: Optional[str] = None
     """Communication backend"""
     master_addr: Optional[str] = None
     """Rendez-vous address"""
@@ -157,18 +157,18 @@ class DistributedState:
 
     def set_global(
         self,
-        backend: Backend,
+        backend: str,
         device_type: torch.device,
-        master_addr: str,
-        master_port: int,
-        rank: int,
-        world_size: int,
+        master_addr: Optional[str],
+        master_port: Optional[int],
+        rank: Optional[int],
+        world_size: Optional[int],
     ) -> None:
         """
         Set global process group information.
 
         :param backend: Communication backend to use
-        :type backend: Backend
+        :type backend: str
         :param device_type: Type of device to use
         :type device_type: Literal["cpu", "cuda"]
         :param master_addr: Address of the master node for the rendez-vous
@@ -204,11 +204,16 @@ class DistributedState:
             logger.error(
                 f"Impossible setting up distributed environment with master address {master_addr}"
             )
-        elif master_port < 0 or master_port > 65535:
+        elif master_port is None or (master_port < 0 or master_port > 65535):
             logger.error(
                 f"Impossible setting up distributed environment with master port {master_port}"
             )
-        elif not 0 <= rank < world_size and world_size < 0:
+        elif (
+            rank is None
+            or world_size is None
+            or not 0 <= rank < world_size
+            and world_size < 0
+        ):
             logger.error(
                 f"Impossible setting up a distributed computation with rank {rank} and world size {world_size}"
             )
@@ -278,10 +283,10 @@ class DistributedState:
 
     def set_node(
         self,
-        node_local_rank: int,
-        node_local_size: int,
-        node_rank: int,
-        node_world_size: int,
+        node_local_rank: Optional[int],
+        node_local_size: Optional[int],
+        node_rank: Optional[int],
+        node_world_size: Optional[int],
     ) -> None:
         """
         Set the process' information relative to the local node.
@@ -295,12 +300,23 @@ class DistributedState:
         :param node_world_size: Number of compute nodes involved in the training process
         :type node_world_size: int
         """
-        if node_local_rank < 0 or node_local_rank >= node_local_size:
+        if (
+            node_local_rank is None
+            or node_local_size is None
+            or node_rank is None
+            or node_world_size is None
+        ):
+            logger.error(
+                f"Impossible setting up distributed environment on local node with local rank {node_local_rank} and local world size {node_local_size}"
+            )
+        elif node_local_rank < 0 or node_local_rank >= node_local_size:
             logger.error(
                 f"Impossible setting up distributed environment on local node with local rank {node_local_rank} and local world size {node_local_size}"
             )
         elif (
-            self.world_size % node_local_size != 0
+            self.world_size is None
+            or self.world_size is None
+            or self.world_size % node_local_size != 0
             or self.world_size // node_local_size != node_world_size
         ):
             logger.error(
@@ -340,6 +356,8 @@ class DistributedState:
         """
         mesh: Optional[DeviceMesh] = None
         if torch.distributed.is_initialized():
+            assert self.world_size is not None
+
             mesh = init_device_mesh(
                 device_type=str(self.device_type),
                 mesh_shape=(self.world_size,),
@@ -379,7 +397,11 @@ class DistributedState:
         :return: A global HSDP device mesh if the distributed PyTorch environment is initialized, None otherwise
         :rtype: Optional[DeviceMesh]
         """
-        if torch.distributed.is_initialized():
+        if (
+            torch.distributed.is_initialized()
+            and self.replica_world_size is not None
+            and self.replica_local_size is not None
+        ):
             self.hsdp_mesh = init_device_mesh(
                 device_type=str(self.device_type),
                 mesh_shape=(self.replica_world_size[0], self.replica_local_size),
@@ -407,12 +429,20 @@ class DistributedState:
         :param hsdp: Size of an HSDP replica
         :type hsdp: int
         """
-        self._partial_hsdp_setup_manual(
-            replica_local_rank=self.rank % hsdp,
-            replica_local_size=hsdp,
-            replica_rank=self.rank // hsdp,
-            replica_world_size=(self.world_size // hsdp,),
-        )
+        if torch.distributed.is_initialized():
+            assert self.rank is not None
+            assert self.world_size is not None
+
+            self._partial_hsdp_setup_manual(
+                replica_local_rank=self.rank % hsdp,
+                replica_local_size=hsdp,
+                replica_rank=self.rank // hsdp,
+                replica_world_size=(self.world_size // hsdp,),
+            )
+        else:
+            logger.error(
+                "Impossible setting up HSDP partially: the distributed environment is not initialized"
+            )
 
     def _partial_hsdp_setup_manual(
         self,
@@ -434,10 +464,14 @@ class DistributedState:
         :type replica_world_size: Tuple[int,...]
         """
         if torch.distributed.is_initialized():
+            assert self.world_size is not None
 
             _world_size: int
             _replica_world_size: int
             if self.is_federated_scaling_setup():
+                assert self.federated_local_size is not None
+                assert self.federated_rank
+
                 _world_size = self.federated_local_size[self.federated_rank]
                 _replica_world_size = replica_world_size[self.federated_rank]
             else:
@@ -495,6 +529,9 @@ class DistributedState:
         self.hsdp_mesh = None
 
     def _set_rank_role(self) -> None:
+        assert self.federated_rank is not None
+        assert self.replica_group is not None
+
         if self.is_hsdp_setup():
             federated_group_communicating_processes: Tuple[int, ...] = (
                 self._get_communicating_processes(federated_rank=self.federated_rank)
@@ -510,7 +547,7 @@ class DistributedState:
             self.is_sender = True
 
     def set_federated_scaling(
-        self, federated_group_size: Tuple[int], hsdp: Optional[int] = None
+        self, federated_group_size: Tuple[int, ...], hsdp: Optional[int] = None
     ) -> None:
         if hsdp is not None:  # Setting HSDP if needed
             self._partial_hsdp_setup(hsdp=hsdp)
@@ -534,6 +571,10 @@ class DistributedState:
         self._set_rank_role()  # Establishing the communicating processes
 
     def _get_communicating_processes(self, federated_rank: int) -> Tuple[int, ...]:
+        assert self.replica_local_size is not None
+        assert self.replica_world_size is not None
+        assert self.federated_local_size is not None
+
         communicating_processes: List[int] = []
         for process in range(self.replica_local_size):
             communicating_processes.append(
@@ -547,7 +588,7 @@ class DistributedState:
         return tuple(communicating_processes)
 
     def _set_symmetric_federated_scaling(
-        self, federated_group_size: Tuple[int]
+        self, federated_group_size: Tuple[int, ...]
     ) -> None:
         """
         Create the federated scaling process groups
@@ -556,6 +597,8 @@ class DistributedState:
         :type federated_group_size: int
         """
         if torch.distributed.is_initialized():
+            assert self.rank is not None
+            assert self.world_size is not None
 
             federated_local_rank: int = self.rank % federated_group_size[0]
             federated_local_size: Tuple[int, ...] = federated_group_size
@@ -591,6 +634,10 @@ class DistributedState:
                 if (
                     self.is_hsdp_setup()
                 ):  # Check that HSDP and federated configurations are interoperable
+                    assert self.federated_local_size is not None
+                    assert self.replica_local_size is not None
+                    assert self.replica_world_size is not None
+
                     if (
                         self.federated_local_size[self.federated_rank]
                         % self.replica_local_size
@@ -623,6 +670,9 @@ class DistributedState:
                         )
 
                 if self.is_hsdp_setup():  # HSDP federation
+                    assert self.replica_world_size
+                    assert self.replica_local_size
+
                     mesh: torch.Tensor = create_device_mesh(
                         mesh_shape=(
                             self.federated_world_size,
@@ -716,6 +766,9 @@ class DistributedState:
                         )  # Multiple ProcessGroup handles are needed to communicate with multiple Streams
                     )
 
+            assert self.federated_local_size is not None
+            assert self.federated_rank is not None
+
             # Group of processes participating in the same federated group
             self.federation = self.create_process_group(
                 ranks=tuple(
@@ -737,7 +790,7 @@ class DistributedState:
             )
 
     def _set_asymmetric_federated_scaling(
-        self, federated_group_size: Tuple[int]
+        self, federated_group_size: Tuple[int, ...]
     ) -> None:
         """
         Create the federated scaling process groups
@@ -750,6 +803,7 @@ class DistributedState:
         :type federated_group_size: int
         """
         if torch.distributed.is_initialized():
+            assert self.rank is not None
 
             _federated_rank: int = -1
             index: int = 0
@@ -791,6 +845,10 @@ class DistributedState:
 
                 # Check that HSDP and federated configurations are interoperable
                 if self.is_hsdp_setup():
+                    assert self.replica_local_size is not None
+                    assert self.replica_world_size is not None
+                    assert self.replica_rank is not None
+
                     if not all(
                         [
                             federated_local_size % self.replica_local_size == 0
@@ -830,6 +888,10 @@ class DistributedState:
 
                 # HSDP asymmetric federation
                 if self.is_federated_scaling_setup():
+                    assert self.replica_world_size is not None
+                    assert self.replica_local_size is not None
+                    assert self.replica_local_rank is not None
+
                     mesh: List[torch.Tensor] = []
                     offset: int = 0
                     for rank in range(self.federated_world_size):
@@ -983,7 +1045,7 @@ class DistributedState:
             pg_options=get_default_nccl_process_group_options(),
             use_local_synchronization=True,
             group_desc=group_desc,
-        )
+        )  # type: ignore
 
 
 def create_device_mesh(mesh_shape: Tuple[int, ...]) -> torch.Tensor:

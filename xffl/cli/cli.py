@@ -4,12 +4,12 @@ This is the main entrypoint of the xFFL CLI.
 Argument parsing takes place here and the various xFFL subcommands are dispatched.
 """
 
-import argparse
 import sys
+from argparse import Namespace
 from logging import Logger, getLogger
 from typing import Callable, Dict, List
 
-from xffl.cli.parser import parser
+import xffl.cli.parser as cli_parser
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -23,16 +23,16 @@ COMMANDS: Dict[str, str] = {
 }
 
 
-def dispatch_command(command: str, args: argparse.Namespace) -> int:
+def dispatch_command(command: str, args: Namespace) -> int:
     """Dispatch a subcommand safely, logging errors.
 
     :param command: Subcommand name
-    :param args: Parsed argparse.Namespace
+    :param args: Parsed Namespace
     :return: Exit code
     """
     module_path = COMMANDS.get(command)
     if not module_path:
-        parser.print_help()
+        cli_parser.parser.print_help()
         return 1
 
     try:
@@ -47,21 +47,15 @@ def main(arguments: List[str]) -> int:
     """xFFL command line interface.
 
     :param arguments: Command line arguments
+    :type arguments: List[str]
     :return: Exit code
     """
 
-    # Split args vs passthrough args
-    args_index: int = len(arguments)
-    if "-args" in arguments:
-        args_index = arguments.index("-args")
-    elif "--arguments" in arguments:
-        args_index = arguments.index("--arguments")
-
-    args: argparse.Namespace = parser.parse_args(arguments[:args_index])
-    args.arguments = arguments[args_index + 1 :]
+    args: Namespace = cli_parser.parser.parse_args(arguments)
 
     # Setup logging
     setup_logging(args.loglevel)
+    logger.debug(f"Input arguments: {args}")
 
     # Handle version
     if getattr(args, "version", False):

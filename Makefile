@@ -1,16 +1,22 @@
 codespell:
-	codespell -w $(shell git ls-files)
+	codespell -L astroid -w $(shell git ls-files)
 
 codespell-check:
-	codespell $(shell git ls-files)
+	codespell -L astroid $(shell git ls-files)
 
 flake8:
-	flake8 examples/ tests/ xffl
+	flake8 $(shell git ls-files | grep .py)
 
 format:
-	isort examples/ tests/ xffl/
-	black examples/ tests/ xffl/
+	isort $(shell git ls-files | grep .py)
+	black $(shell git ls-files | grep .py)
 
 format-check:
-	isort --check-only  examples/ tests/ xffl/
-	black --diff --check examples/ tests/ xffl/
+	isort --check-only $(shell git ls-files | grep .py)
+	black --diff --check $(shell git ls-files | grep .py)
+
+docs-check:
+	sphinx-build -b html -W --keep-going docs/source docs/build/html
+
+lint:
+	make format-check codespell-check flake8 docs-check

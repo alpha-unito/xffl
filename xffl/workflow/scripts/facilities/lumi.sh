@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/bash -ex
+
+module load cray-python/3.11.7
 
 # LUMI specific environment variables
 export XFFL_LOCAL_TMPDIR="/tmp/"
