@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Union
 
-from xffl.utils.utils import resolve_path
+from xffl.custom.utils import resolve_path
 
 
 class PathLike(Path):

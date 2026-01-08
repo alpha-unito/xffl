@@ -4,13 +4,11 @@ This script wraps StreamFlow with a simple Python CLI,
 offering a homogeneous interface with xFFL.
 """
 
-import importlib.util
 import inspect
 import subprocess
 import sys
 import time
 from argparse import Namespace
-from importlib.machinery import ModuleSpec
 from logging import Logger, getLogger
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -20,6 +18,7 @@ import xffl.cli.parser as cli_parser
 from xffl.custom.config_info import XFFLConfig
 from xffl.custom.types import FileLike, PathLike
 from xffl.distributed.networking import get_cells_ids
+from xffl.utils.utils import import_from_path
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -28,37 +27,6 @@ logger: Logger = getLogger(__name__)
 # --------------------------------------------------------------------------- #
 #                             Environment Setup                               #
 # --------------------------------------------------------------------------- #
-
-
-def _import_from_path(module_name: str, file_path: FileLike) -> Optional[ModuleType]:
-    """Dynamically imports a module from a file path
-
-    :param module_name: Name of the module to import
-    :type module_name: str
-    :param file_path: Path to the module's file
-    :type file_path: FileLike
-    :return: The imported module
-    :rtype: Optional[ModuleType]
-    """
-    logger.debug(f"Importing {module_name} from {file_path}")
-    spec: Optional[ModuleSpec] = importlib.util.spec_from_file_location(
-        module_name, str(file_path)
-    )
-    module: Optional[ModuleType] = None
-    if spec is not None:
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = module
-        if spec.loader is not None:
-            spec.loader.exec_module(module)
-        else:
-            logger.warning(
-                f"Impossible to load {module_name} from {file_path}. Loading interrupted."
-            )
-    else:
-        logger.warning(
-            f"{module_name} from {file_path} not found. Loading interrupted."
-        )
-    return module
 
 
 def _setup_env(
@@ -80,7 +48,7 @@ def _setup_env(
     }
 
     if args.image:
-        config_module: Optional[ModuleType] = _import_from_path(
+        config_module: Optional[ModuleType] = import_from_path(
             "configuration", args.configuration
         )
         if config_module is not None:

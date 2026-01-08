@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-import os
+import importlib
+import importlib.util
+import sys
 from collections.abc import Callable
 from datetime import timedelta
+from importlib.machinery import ModuleSpec
 from logging import Logger, getLogger
-from pathlib import Path
+from types import ModuleType
 from typing import Optional, Sequence
+
+from xffl.custom.types import FileLike
+from xffl.custom.utils import resolve_path
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -37,18 +43,6 @@ def get_param_name(flag_list: Sequence[str], prefix: str = "-") -> str:
     :rtype: str
     """
     return get_param_flag(flag_list=flag_list).lstrip(prefix).replace(prefix, "_")
-
-
-def resolve_path(path: str | Path) -> Path:
-    """Check the path is well formatted, otherwise tries to fix it.
-
-    :param path: abbreviated path
-    :type path: str or Path
-    :return: expanded path
-    :rtype: Path
-    """
-    logger.debug(f"Expanding {path} path...")
-    return Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
 
 
 def check_input(
@@ -119,3 +113,34 @@ def get_default_nccl_process_group_options(
     options._timeout = get_timeout()
 
     return options
+
+
+def import_from_path(module_name: str, file_path: FileLike) -> Optional[ModuleType]:
+    """Dynamically imports a module from a file path
+
+    :param module_name: Name of the module to import
+    :type module_name: str
+    :param file_path: Path to the module's file
+    :type file_path: FileLike
+    :return: The imported module
+    :rtype: Optional[ModuleType]
+    """
+    logger.debug(f"Importing {module_name} from {file_path}")
+    spec: Optional[ModuleSpec] = importlib.util.spec_from_file_location(
+        module_name, str(file_path)
+    )
+    module: Optional[ModuleType] = None
+    if spec is not None:
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        if spec.loader is not None:
+            spec.loader.exec_module(module)
+        else:
+            logger.warning(
+                f"Impossible to load {module_name} from {file_path}. Loading interrupted."
+            )
+    else:
+        logger.warning(
+            f"{module_name} from {file_path} not found. Loading interrupted."
+        )
+    return module

@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
-import sys
-import types
 from argparse import _HelpAction, _StoreConstAction
 from logging import Logger, getLogger
 from types import MappingProxyType
@@ -113,21 +110,3 @@ def from_args_to_cwl(
                         )
                     )
     return arg_to_bidding, arg_to_type, arg_to_value
-
-
-def import_from_path(module_name: str, file_path: FileLike) -> types.ModuleType:
-    """Dynamically import a module from a file
-
-    :param module_name: Name of the module to be imported
-    :type module_name: str
-    :param file_path: Absolute path to the file containing the module
-    :type file_path: FileLike
-    :return: Imported Python module
-    :rtype: types.ModuleType
-    """
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-
-    return module
