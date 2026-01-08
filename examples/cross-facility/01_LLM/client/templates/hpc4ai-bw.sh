@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 #SBATCH --job-name=xFFL
 #SBATCH --error=xFFL.err
@@ -7,14 +7,14 @@
 #SBATCH --ntasks=2
 #SBATCH --time=00:15:00
 #SBATCH --account=gmittone
-#SBATCH --partition=gracehopper
+#SBATCH --partition=broadwell
 #SBATCH --gpus-per-node=1
 #SBATCH --tasks-per-node=1
 #SBATCH --exclusive
 
-# TODO: move these inside facilitator script
-cd /beegfs/home/gmittone/xffl && \
-source .venv-gh/bin/activate && \
-spack load python@3.12.1 cuda@12.3.2 cudnn@8.9.5.30-12 && \
+export GLOO_SOCKET_IFNAME=ibs1
+
+#spack load /a4nuuh6
+#spack load /bl3nmno # Apptainer
 
 srun bash -c "{{ streamflow_command }}" 2>&1

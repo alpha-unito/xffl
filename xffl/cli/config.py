@@ -16,7 +16,7 @@ from typing import Any, MutableMapping, Tuple
 import yaml
 
 import xffl.cli.parser as cli_parser
-from xffl.utils.constants import FACILITY_TYPES, DEFAULT_xFFL_DIR
+from xffl.utils.constants import SUPPORTED_QUEUE_MANAGERS, DEFAULT_xFFL_DIR
 from xffl.utils.utils import check_input
 from xffl.workflow.templates.cwl import (
     AggregateStep,
@@ -76,7 +76,6 @@ def _get_model_info() -> Tuple[str, str]:
 
 def _configure_facility(
     facility_name: str,
-    facility_type: str,
     streamflow_config: StreamFlowFile,
     main_cwl: MainWorkflow,
     round_cwl: RoundWorkflow,
@@ -94,9 +93,17 @@ def _configure_facility(
         is_local_path=True,
     )
 
-    # SLURM template
-    slurm_template: str = check_input(
-        text=f"Path to {facility_name}'s SLURM template: ",
+    available_queue_manager = ["none", *SUPPORTED_QUEUE_MANAGERS]
+    queue_manager = check_input(
+        text=f"Queue manager in the facility (choices {available_queue_manager}): ",
+        warning_msg="{} did not in the available queue managers.",
+        control=lambda p: p in available_queue_manager,
+        is_local_path=False,
+    )
+
+    # template
+    template: str = check_input(
+        text=f"Path to {facility_name}'s template (optional): ",
         warning_msg="{} does not exist.",
         control=lambda p: Path(p).is_file(),
         is_local_path=True,
@@ -125,7 +132,7 @@ def _configure_facility(
     round_cwl.add_inputs(facility_name=facility_name)
     cwl_config.add_inputs(
         inputs={
-            f"facility_{facility_name}": facility_type,
+            f"facility_{facility_name}": facility_name,
             f"image_{facility_name}": {
                 "class": "File",
                 "path": os.path.basename(image_path),
@@ -140,12 +147,12 @@ def _configure_facility(
     # Populate StreamFlow config for this facility
     streamflow_config.add_deployment(
         facility_name=facility_name,
-        facility_type=facility_type,
         address=address,
         username=username,
         ssh_key=ssh_key,
         step_workdir=step_workdir,
-        slurm_template=slurm_template if slurm_template else None,
+        queue_manager=queue_manager if queue_manager != "none" else None,
+        template=template if template else None,
     )
 
     streamflow_config.add_training_step(
@@ -327,7 +334,6 @@ def config(args: argparse.Namespace) -> int:
         }
     )
 
-    # Facility loop (each iteration re-imports the parser inside _configure_facility)
     facilities: set[str] = set()
     while True:
         facility_name: str = check_input(
@@ -335,15 +341,9 @@ def config(args: argparse.Namespace) -> int:
             warning_msg="Already used.",
             control=lambda f: f not in facilities,
         )
-        facility_type: str = check_input(
-            text="Facility type: ",
-            warning_msg=f"Supported facility types: {FACILITY_TYPES}",
-            control=lambda f: f not in FACILITY_TYPES,
-        )
         facilities.add(facility_name)
         _configure_facility(
             facility_name=facility_name,
-            facility_type=facility_type,
             streamflow_config=streamflow_config,
             main_cwl=main_cwl,
             round_cwl=round_cwl,

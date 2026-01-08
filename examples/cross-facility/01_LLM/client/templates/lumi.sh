@@ -1,9 +1,20 @@
-#!/bin/bash -ex
+#!/bin/bash
+
+#SBATCH --job-name=llama
+#SBATCH --error=llama
+#SBATCH --output=llama
+#SBATCH --time=01:00:00
+#SBATCH --nodes=2
+#SBATCH --ntasks=16
+#SBATCH --account=project_465002202
+#SBATCH --partition=dev-g
+#SBATCH --ntasks-per-node=8
+#SBATCH --cpus-per-task=4
+#SBATCH --gpus-per-node=8
+#SBATCH --mem=0
+#SBATCH --exclusive
 
 module load cray-python/3.11.7
-
-# LUMI specific environment variables
-export XFFL_LOCAL_TMPDIR="/tmp/"
 
 # MIOPEN needs some initialisation for the cache as the default location
 # does not work on LUMI as Lustre does not provide the necessary features.
@@ -20,3 +31,5 @@ fi
 # no access to on LUMI.
 export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
 export NCCL_NET_GDR_LEVEL=3
+
+srun bash -c "{{ streamflow_command }}" 2>&1
