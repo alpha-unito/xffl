@@ -41,7 +41,9 @@ def _dispatch_command(command: str, args: Namespace) -> int:
         module: ModuleType = import_module(module_path)
         return module.main(args)
     except Exception as e:
-        logger.exception("Unhandled exception in %s: %s", command, e)
+        logger.exception(
+            f"Error while importing xFFL module {module_path} to execute xffl {command}: {e}"
+        )
         return 1
 
 
