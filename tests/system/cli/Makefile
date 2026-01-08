@@ -1,6 +1,6 @@
 PROJECT   := ptest
 CLIENTS   := 2
-LLAMA_DIR := tiny-LlamaForCausalLM-3
+LLAMA_DIR := tiny-random-llama-3
 SETUP_OUT := config.txt
 
 .PHONY: all clean create run setup

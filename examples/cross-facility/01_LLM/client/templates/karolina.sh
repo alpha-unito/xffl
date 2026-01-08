@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 #SBATCH --job-name=xFFL
 #SBATCH --output=xFFL.out
@@ -11,5 +11,8 @@
 ##SBATCH --cpus-per-task=8			# cores x 1 node / GPUs x 1 node
 #SBATCH --gpus-per-node=8
 #SBATCH --exclusive
+
+export APPTAINER_BINDPATH=$SINGULARITY_BINDPATH
+export APPTAINERENV_LD_PRELOAD=$SINGULARITYENV_LD_PRELOAD
 
 srun bash -c "{{ streamflow_command }}" 2>&1

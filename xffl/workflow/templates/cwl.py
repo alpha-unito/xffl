@@ -497,18 +497,13 @@ class TrainingStep(Workflow):
                 ),
                 cwl.CommandLineBinding(
                     position=5,
-                    prefix="--output-model",
+                    prefix="--out-model-name",
                     valueFrom="$(inputs.model_basename)",
                 ),
                 cwl.CommandLineBinding(
                     position=6,
-                    prefix="--output",
+                    prefix="--outdir",
                     valueFrom="$(runtime.outdir)",
-                ),
-                cwl.CommandLineBinding(
-                    position=7,
-                    prefix="--workspace",
-                    valueFrom="$XFFL_TMPDIR_FOLDER",
                 ),
             ],
             cwlVersion="v1.2",

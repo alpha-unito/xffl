@@ -102,13 +102,11 @@ async def main():
         local_dir_use_symlinks=False,
     )
 
+    repository_root = "../../.."
     xffl_answers = (
-        f"../../../examples/intra-silo/03_LLM/training.py\n"
-        f"../../../examples/intra-silo/03_LLM/config.py\n"
-        f"{model_path}\n"
-        f"output\n"
-        f"/tmp\n"
-        f"2\n"
+        f"{repository_root}/examples/intra-silo/03_LLM/training.py\n"
+        f"{repository_root}/examples/intra-silo/03_LLM/config.py\n"
+        f"{model_path}\noutput\n/tmp\n2\n"
     )
     with open("config.txt", "w") as fd:
         fd.write(xffl_answers)
@@ -119,8 +117,9 @@ async def main():
                 user="linuxserver.io",
             )
             fd.write(
-                f"dummy{res['port']}\ndummy\n127.0.0.1:{res['port']}\n"
-                f"linuxserver.io\n{res['key']}\n \n/tmp/user-{res['port']}/workdir\n"
+                f"dummy{res['port']}\n127.0.0.1:{res['port']}\n"
+                f"linuxserver.io\n{res['key']}\nnone\n \n"
+                f"/tmp/user-{res['port']}/workdir\n"
                 f"/tmp/user-{res['port']}/placeholder.sif\n"
                 f"/tmp/user-{res['port']}/datasets1\n"
             )

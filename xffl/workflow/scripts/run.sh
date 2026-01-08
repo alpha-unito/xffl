@@ -1,4 +1,6 @@
-#!/bin/bash -ex
+#!/bin/bash
+
+set -euo pipefail
 
 ############################################################
 # Main program											   #
