@@ -6,8 +6,10 @@ Argument parsing takes place here and the various xFFL subcommands are dispatche
 
 import sys
 from argparse import Namespace
+from importlib import import_module
 from logging import Logger, getLogger
-from typing import Callable, Dict, List
+from types import ModuleType
+from typing import Dict, List
 
 import xffl.cli.parser as cli_parser
 from xffl.utils.logging import setup_logging
@@ -16,7 +18,7 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 # Mappa subcomandi → modulo main
-COMMANDS: Dict[str, str] = {
+_COMMANDS: Dict[str, str] = {
     "config": "xffl.cli.config",
     "run": "xffl.cli.run",
     "exec": "xffl.cli.exec",
@@ -30,13 +32,13 @@ def dispatch_command(command: str, args: Namespace) -> int:
     :param args: Parsed Namespace
     :return: Exit code
     """
-    module_path = COMMANDS.get(command)
+    module_path = _COMMANDS.get(command)
     if not module_path:
         cli_parser.parser.print_help()
         return 1
 
     try:
-        module: Callable = __import__(module_path, fromlist=["main"])
+        module: ModuleType = import_module(module_path)
         return module.main(args)
     except Exception as e:
         logger.exception("Unhandled exception in %s: %s", command, e)
