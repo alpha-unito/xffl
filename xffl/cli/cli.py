@@ -25,7 +25,7 @@ _COMMANDS: Dict[str, str] = {
 }
 
 
-def dispatch_command(command: str, args: Namespace) -> int:
+def _dispatch_command(command: str, args: Namespace) -> int:
     """Dispatch a subcommand safely, logging errors.
 
     :param command: Subcommand name
@@ -67,7 +67,7 @@ def main(arguments: List[str]) -> int:
         return 0
 
     # Dispatch to subcommand
-    return dispatch_command(args.command, args)
+    return _dispatch_command(args.command, args)
 
 
 def run() -> None:
