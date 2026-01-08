@@ -78,3 +78,11 @@ lint = {file = "lint-requirements.txt"}
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest]
+minversion = "9.0"
+strict = true
+addopts = ["-ra", "-q", "--import-mode=importlib"]
+testpaths = [
+    "tests",
+]
