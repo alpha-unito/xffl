@@ -1,6 +1,7 @@
 """DNN training utility methods"""
 
 import logging
+import math
 import time
 from logging import Logger, getLogger
 from typing import Any, Dict, List, Optional, Tuple
@@ -24,6 +25,13 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
+def _move_opt_to(opt, device):
+    for param in opt.state.values():
+        for k, v in param.items():
+            if torch.is_tensor(v):
+                param[k] = v.to(device, non_blocking=True)
+
+
 def distributed_training(
     model: nn.Module | FullyShardedDataParallel,
     optimizer: Optimizer,
@@ -38,6 +46,7 @@ def distributed_training(
     lr_scheduler: Optional[LRScheduler] = None,
     wandb_run: Optional[Run] = None,
     criterion=None,
+    fedopt=False,
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
 
@@ -84,6 +93,58 @@ def distributed_training(
     checkpoint_times: List[float] = []
     results: Dict[str, float] = {}
     best_val_loss: float = float("inf")
+
+    agg_lr_sched = None
+    if fedopt:
+        _move_opt_to(optimizer, "cpu")
+
+        origin_state_dict = {
+            k: v.detach().clone().to(device="cpu", non_blocking=True)
+            for k, v in model.state_dict().items()
+        }
+        grads = [
+            (torch.zeros_like(p, device="cpu") if p.requires_grad else None)
+            for p in model.parameters()
+        ]
+        optimizer_agg = torch.optim.AdamW(
+            model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-8, fused=True
+        )
+
+        from torch.optim.lr_scheduler import LambdaLR
+
+        def get_cosine_schedule(optimizer, total_steps, warmup_frac=0.1):
+            """
+            Scheduler stile LLaMA3.1 semplificato: warmup -> cosine decay.
+
+            Args:
+                optimizer: torch.optim.Optimizer
+                total_steps (int): passi totali (es. 128)
+                lr_max (float): learning rate massimo
+                warmup_frac (float): frazione di warmup (default 5%)
+            """
+            warmup_steps = int(total_steps * warmup_frac)
+            decay_steps = total_steps - warmup_steps
+
+            def lr_lambda(step):
+                if step < warmup_steps:
+                    # warmup lineare
+                    return step / max(1, warmup_steps)
+                else:
+                    # decadimento coseno
+                    progress = (step - warmup_steps) / max(1, decay_steps)
+                    return 0.5 * (1 + math.cos(math.pi * progress))
+
+            return LambdaLR(optimizer, lr_lambda=lambda step: lr_lambda(step))
+
+        agg_lr_sched = get_cosine_schedule(
+            optimizer_agg,
+            total_steps=len(train_dataloader),
+        )
+        _move_opt_to(optimizer_agg, "cpu")
+        _move_opt_to(optimizer, state.current_device)
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
 
     if torch.distributed.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
@@ -144,9 +205,11 @@ def distributed_training(
                 start_time = time.perf_counter()
 
             optimizer.step()  # TODO: average optimizer?
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             if lr_scheduler:
                 lr_scheduler.step()
+                if agg_lr_sched:
+                    agg_lr_sched.step()
             pbar.update(1)
 
             if logging.root.level == logging.DEBUG:
@@ -155,16 +218,93 @@ def distributed_training(
                 optimizer_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
-            with torch.no_grad():
-                if state.is_federated_scaling_setup() and (
-                    (step + 1) % federated_batches == 0 or step + 1 == total_length
-                ):
+            if state.is_federated_scaling_setup() and (
+                (step + 1) % federated_batches == 0 or step + 1 == total_length
+            ):
+                with torch.no_grad():
                     bucket_optimized_coalesced_(
                         model=model,
                         state=state,
-                        use_multiple_cuda_streams=True,
-                        use_contiguous_memory=True,
+                        use_multiple_cuda_streams=False,
+                        use_contiguous_memory=False,
                     )
+
+                    if fedopt:
+                        _move_opt_to(optimizer, "cpu")
+
+                        current_state_dict = {
+                            k: v.detach().clone().to(device="cpu")
+                            for k, v in model.state_dict().items()
+                        }
+
+                        for g, p_origin, p_current in zip(
+                            grads,
+                            origin_state_dict.values(),
+                            current_state_dict.values(),
+                            strict=True,
+                        ):
+                            if g is not None:
+                                g.copy_(p_origin.data - p_current.data).to(
+                                    device=state.current_device
+                                )
+
+                        if state.rank == 0:
+                            total_norm = sum(
+                                (g.norm().item() if g is not None else torch.tensor(0))
+                                for g in grads
+                            )
+                            print(f"Norma dei cambiamenti: {total_norm}")
+
+                        model.load_state_dict(origin_state_dict, strict=True)
+                        for p, g in zip(model.parameters(), grads, strict=True):
+                            if p.requires_grad:
+                                p.grad = g.detach().to(device=state.current_device)
+
+                        if state.rank == 0:
+                            pre_clipping_norm = torch.nn.utils.clip_grad_norm_(
+                                model.parameters(), max_norm=1.0
+                            )
+                            print(f"Pre-clipping norm: {pre_clipping_norm}")
+
+                            total_norm = torch.sqrt(
+                                sum(
+                                    (
+                                        p.grad.norm() ** 2
+                                        if p.grad is not None
+                                        else torch.tensor(0)
+                                    )
+                                    for p in model.parameters()
+                                )
+                            )
+                            print(f"Norma dei gradienti: {total_norm}")
+
+                        _move_opt_to(optimizer_agg, state.current_device)
+
+                        optimizer_agg.step()
+                        if state.rank == 0:
+                            diff = sum(
+                                (p.detach().clone().to("cpu") - p_before).norm().item()
+                                for p, p_before in zip(
+                                    model.parameters(), current_state_dict.values()
+                                )
+                            )
+                            print("Total change after optimizer.step():", diff)
+
+                        optimizer_agg.zero_grad(set_to_none=True)
+                        # if agg_lr_sched:
+                        #    agg_lr_sched.step()
+                        _move_opt_to(optimizer_agg, "cpu")
+
+                        origin_state_dict = {
+                            k: v.detach().clone().to(device="cpu")
+                            for k, v in model.state_dict().items()
+                        }
+
+                        _move_opt_to(optimizer, state.current_device)
+
+                        if torch.cuda.is_available():
+                            torch.cuda.synchronize()
+                            torch.cuda.empty_cache()
 
             if logging.root.level == logging.DEBUG:
                 if torch.cuda.is_available():
