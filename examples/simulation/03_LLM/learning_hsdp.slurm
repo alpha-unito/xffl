@@ -1,14 +1,16 @@
 #!/bin/bash -e
 
-#SBATCH --chdir=/leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/
+#SBATCH --chdir=/leonardo/home/userexternal/gmittone/xffl/examples/simulation/03_LLM/
 #SBATCH --mail-user=gianluca.mittone@unito.it
-#SBATCH --mail-type=ALL
-#SBATCH --time=00:40:00
-#SBATCH --account=IscrC_NCCL-G
+##SBATCH --mail-type=ALL
+#SBATCH --time=00:20:00
+#SBATCH --account=ICT25_MHPC_0
 #SBATCH --partition=boost_usr_prod
+#SBATCH --qos=boost_qos_dbg
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-node=4
+#SBATCH --mem=0
 #SBATCH --exclusive
 
 NAME=$1
@@ -21,7 +23,7 @@ FB=$7
 
 DATA=65536
 
-source /leonardo_scratch/fast/uToID_bench/xffl/.venv/bin/activate
+source /leonardo/home/userexternal/gmittone/xffl/.venv/bin/activate
 
 xffl --debug \
 	simulate training.py \

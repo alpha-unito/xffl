@@ -15,6 +15,9 @@ MODELS: Final[Mapping[str, ModelInfo]] = {
     "llama3.1-8b": Llama(
         path="/leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b"
     ),
+    "llama3.1-8b-init": Llama(
+        path="/leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-8b-init"
+    ),
     "llama3.1-70b": Llama(
         path="/leonardo_scratch/fast/uToID_bench/xffl/models/llama3.1-70b"
     ),

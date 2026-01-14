@@ -7,6 +7,8 @@ module load cuda/12.2 nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
 export XFFL_LOCAL_TMPDIR=${TMPDIR}
 export PYTHONUNBUFFERED=1
 
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 # export NCCL_DEBUG=INFO
 # export TORCH_NCCL_TRACE_BUFFER_SIZE=1000
 export NCCL_IB_DISABLE=0

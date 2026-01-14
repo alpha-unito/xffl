@@ -61,7 +61,7 @@ def pretraining(
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
         hsdp=args.hsdp,
         federated=args.federated_scaling,
-        streams=args.cuda_streams,
+        # streams=args.cuda_streams,
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -86,12 +86,12 @@ def pretraining(
 
     # The whole training is done in bfloat16
     default_precision: torch.dtype = torch.bfloat16
-    mixed_precision: MixedPrecision = MixedPrecision(
-        param_dtype=default_precision,
-        reduce_dtype=default_precision,
-        buffer_dtype=default_precision,
-        cast_forward_inputs=True,
-    )
+    # mixed_precision: MixedPrecision = MixedPrecision(
+    #     param_dtype=default_precision,
+    #     reduce_dtype=default_precision,
+    #     buffer_dtype=default_precision,
+    #     cast_forward_inputs=True,
+    # )
 
     # LLM loading from saved model
     start_time = time.perf_counter()
@@ -109,13 +109,13 @@ def pretraining(
     )
 
     # Reset model weights
-    def reset_weights(module):
-        if isinstance(module, (nn.Linear, nn.Embedding)):
-            module.reset_parameters()
+    # def reset_weights(module):
+    #     if isinstance(module, (nn.Linear, nn.Embedding)):
+    #         module.reset_parameters()
 
     # TODO: make this an option
-    if state.rank == 0:
-        logger.info("Re-initializing model's weights...")
+    # if state.rank == 0:
+    #     logger.info("Re-initializing model's weights...")
     # model.apply(reset_weights)
 
     # Print model's weights
@@ -133,7 +133,7 @@ def pretraining(
         module=model,
         state=state,
         model_info=model_info,
-        mixed_precision=mixed_precision,
+        # mixed_precision=mixed_precision,
     )  # TODO: try with origin_params
 
     # Activation checkpointing
@@ -288,6 +288,7 @@ def pretraining(
             output_model_name=args.output_model,
             epochs=args.epochs,
             federated_batches=args.federated_batches,
+            fedopt=False,
         )
 
         if state.rank == 0:
