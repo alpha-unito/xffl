@@ -133,6 +133,7 @@ def pretraining(
         module=model,
         state=state,
         model_info=model_info,
+        use_orig_params=state.is_federated_scaling_setup(),
         # mixed_precision=mixed_precision,
     )  # TODO: try with origin_params
 
@@ -219,7 +220,7 @@ def pretraining(
         fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
 
-    def get_llama31_cosine_schedule(optimizer, total_steps, warmup_frac=0.1):
+    def get_llama31_cosine_schedule(optimizer, total_steps, warmup_frac=0.05):
         """
         Scheduler stile LLaMA3.1 semplificato: warmup -> cosine decay.
 

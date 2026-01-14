@@ -226,7 +226,7 @@ def distributed_training(
                         model=model,
                         state=state,
                         use_multiple_cuda_streams=False,
-                        use_contiguous_memory=False,
+                        use_contiguous_memory=True,
                     )
 
                     if fedopt:

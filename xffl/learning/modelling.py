@@ -28,6 +28,7 @@ def create_fsdp_model(
     state: DistributedState,
     model_info: ModelInfo,
     mixed_precision: Optional[MixedPrecision] = None,
+    use_orig_params: bool = False,
 ) -> FullyShardedDataParallel:
     """Creates an FSDP model
 
@@ -64,6 +65,7 @@ def create_fsdp_model(
             else None
         ),
         device_mesh=device_mesh,
+        use_orig_params=use_orig_params,
     )
 
     return model

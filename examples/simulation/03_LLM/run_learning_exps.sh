@@ -18,7 +18,7 @@ if [ "$NODES" -gt 64 ]; then
 	QOS=boost_qos_bprod
 fi
 
-PREFIX="TEST"
+PREFIX="FINAL"
 
 # ----- FSDP ----
 
