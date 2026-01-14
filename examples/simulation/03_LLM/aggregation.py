@@ -4,7 +4,7 @@ import argparse
 
 import torch
 from tqdm import tqdm
-from transformers import AutoModel
+from transformers import LlamaForCausalLM
 
 
 def main(args: argparse.Namespace) -> None:
@@ -17,12 +17,17 @@ def main(args: argparse.Namespace) -> None:
     :type args: argparse.Namespace
     """
     print("Loading base model...")
-    base_model: AutoModel = AutoModel.from_pretrained(args.base_model)
-    optimizer: torch.optim.SGD = torch.optim.SGD(
-        base_model.parameters(),
-        lr=args.learning_rate,
-        momentum=args.momentum,
-        nesterov=True,
+    base_model: LlamaForCausalLM = LlamaForCausalLM.from_pretrained(
+        args.base_model,
+        local_files_only=True,
+        attn_implementation="sdpa",
+        dtype=torch.float32,
+        device_map="cpu",
+        use_safetensors=True,
+    )
+
+    optimizer = torch.optim.AdamW(
+        base_model.parameters(), lr=0.1, betas=(0.9, 0.99), eps=1e-8
     )
     try:
         print("Loading optimizer state...")
@@ -31,38 +36,56 @@ def main(args: argparse.Namespace) -> None:
         print(e)
 
     print("Starting aggregation...")
-    with torch.no_grad():
-        grads = [torch.zeros_like(p) for p in base_model.parameters()]
-        num_models = len(args.model)
+    deltas = [torch.zeros_like(p, dtype=torch.float32) for p in base_model.parameters()]
 
-        for index, name in enumerate(args.model):
-            print(f"\t Loading model {index+1} of {num_models} models...")
-            local = AutoModel.from_pretrained(name)
-            print("Calculating pseudo-gradient...")
-            for g, p_global, p_local in tqdm(
-                zip(grads, base_model.parameters(), local.parameters())
-            ):
-                # g_i = M_t - M_i
-                g.add_(p_global.data - p_local.data)
-            del local
+    num_models = len(args.model)
+    for index, path in enumerate(args.model):
+        print(f"\t Loading model {index+1} of {num_models} models from {path}...")
+        local = LlamaForCausalLM.from_pretrained(
+            path,
+            local_files_only=True,
+            attn_implementation="sdpa",
+            dtype=torch.float32,
+            device_map="cpu",
+            use_safetensors=True,
+        )
 
-        print("Averaging gradients...")
-        for g in tqdm(grads):
-            g.div_(num_models)
+        for d, p_global, p_local in tqdm(
+            zip(deltas, base_model.parameters(), local.parameters())
+        ):
+            d.add_(p_local.data - p_global.data)
+        del local
 
-        print("Applying gradients...")
-        for p, g in tqdm(zip(base_model.parameters(), grads)):
-            p.grad = g.clone()
+    for d in deltas:
+        d.div_(num_models)
+
+    total_norm = sum(d.norm().item() for d in deltas)
+    print(f"Norma dei cambiamenti: {total_norm}")
+
+    print("Applying gradients...")
+    for p, d in tqdm(zip(base_model.parameters(), deltas)):
+        p.grad = -d
 
     print("Optimizer step...")
+
+    torch.nn.utils.clip_grad_norm_(base_model.parameters(), 1.0)
+    total_norm = sum(p.grad.norm().item() for p in base_model.parameters())
+    print(f"Norma dei gradienti: {total_norm}")
+
+    params_before = [p.data.clone() for p in base_model.parameters()]
     optimizer.step()
+    diff = sum(
+        (p.data - p_before).norm().item()
+        for p, p_before in zip(base_model.parameters(), params_before)
+    )
+
+    print("Total change after optimizer.step():", diff)
     optimizer.zero_grad()
 
     print(f"Saving the aggregated model and the optimizer state to {args.outname}...")
-    base_model.half().save_pretrained(args.outname, safe_serialization=False)
+    base_model.to(dtype=torch.bfloat16)
+    base_model.save_pretrained(args.outname, safe_serialization=True)
     torch.save(optimizer.state_dict(), args.optimizer)
-
-    print("Done!")
 
 
 if __name__ == "__main__":

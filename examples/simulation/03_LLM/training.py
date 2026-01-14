@@ -8,6 +8,7 @@ import functools
 import math
 import os
 import time
+from dataclasses import asdict
 from logging import Logger, getLogger
 from typing import Dict, Optional
 
@@ -33,6 +34,57 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
+class WarmupCosineLREpochsAccum:
+    def __init__(
+        self,
+        optimizer,
+        warmup_frac,
+        epochs,
+        steps_per_epoch,
+        accum_steps,
+        peak_lr,
+        final_lr_ratio=0.1,
+    ):
+        """
+        Warmup + Cosine Decay compatibile con Gradient Accumulation.
+        """
+        self.optimizer = optimizer
+
+        self.accum_steps = accum_steps
+        self.peak_lr = peak_lr
+        self.final_lr = peak_lr * final_lr_ratio
+
+        # Converte tutto in "optimizer steps"
+        self.effective_steps_per_epoch = steps_per_epoch // accum_steps
+        self.total_steps = epochs * self.effective_steps_per_epoch
+        self.warmup_steps = int(self.total_steps * warmup_frac)
+
+        self.step_num = 0  # conta gli optimizer.step()
+
+    def step(self):
+        self.step_num += 1
+        lr = self.get_lr()
+
+        for group in self.optimizer.param_groups:
+            group["lr"] = lr
+
+        return lr
+
+    def get_lr(self):
+        # Warmup lineare
+        if self.step_num < self.warmup_steps:
+            return self.peak_lr * (self.step_num / self.warmup_steps)
+
+        # Cosine decay
+        progress = (self.step_num - self.warmup_steps) / (
+            self.total_steps - self.warmup_steps
+        )
+        progress = min(max(progress, 0.0), 1.0)
+
+        cosine = 0.5 * (1 + math.cos(math.pi * progress))
+        return self.final_lr + (self.peak_lr - self.final_lr) * cosine
+
+
 def pretraining(config: xffl_config) -> None:
     """LLM pre-training script
 
@@ -51,9 +103,9 @@ def pretraining(config: xffl_config) -> None:
     setup_logging(log_level=config.loglevel)
 
     # Sets RNGs seeds and force PyTorch's deterministic execution
-    generator: Optional[torch.Generator] = (
-        utils.set_deterministic_execution(seed=config.seed) if config.seed else None
-    )
+    # generator: Optional[torch.Generator] = (
+    #     utils.set_deterministic_execution(seed=config.seed) if config.seed else None
+    # )
 
     # Convert paths to the container's defaults if executing inside one
     if "XFFL_IMAGE" in os.environ:
@@ -88,7 +140,7 @@ def pretraining(config: xffl_config) -> None:
         notes=f"{config.model.name} pre-training on the gsarti clean_mc4_it dataset on multiple HPCs through xFFL",
         tags=["xFFL", f"{config.model.name}", "clean_mc4_it"],
         mode=config.wandb_mode,  # Set to "disable" to execute without wandb
-        # config=config.__dict__,
+        config=asdict(config),
     )
 
     # The whole training is done in bfloat16
@@ -172,10 +224,22 @@ def pretraining(config: xffl_config) -> None:
     # Dataloaders creation
     start_time = time.perf_counter()
     dataloaders: Dict[str, DataLoader] = {}
+    epoch: int = os.environ.get("XFFL_EPOCH")
+    epoch = 0
     for split in config.dataset.splits:
 
         if split == "train" and config.subsampling:
-            datasets[split] = datasets[split].select(list(range(0, config.subsampling)))
+            datasets[split] = (
+                datasets[split]
+                .shuffle()
+                .select(
+                    list(
+                        range(
+                            config.subsampling * epoch, config.subsampling * (epoch + 1)
+                        )
+                    )
+                )
+            )
 
         if state.rank == 0:
             logger.debug(f"{split} set size: {len(datasets[split])} samples")
@@ -200,9 +264,9 @@ def pretraining(config: xffl_config) -> None:
             worker_init_fn=(
                 utils.seed_dataloader_worker if config.seed else None
             ),  # Necessary for reproducibility
-            generator=(
-                generator if config.seed else None
-            ),  # Necessary for reproducibility
+            # generator=(
+            #     generator if config.seed else None
+            # ),  # Necessary for reproducibility
         )
 
         if state.rank == 0:
@@ -234,29 +298,29 @@ def pretraining(config: xffl_config) -> None:
         fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
     )
 
-    def get_llama31_cosine_schedule(optimizer, total_steps, warmup_frac=0.1):
-        """
-        Scheduler stile LLaMA3.1 semplificato: warmup -> cosine decay.
+    # def get_llama31_cosine_schedule(optimizer, total_steps, warmup_frac=0.1):
+    #     """
+    #     Scheduler stile LLaMA3.1 semplificato: warmup -> cosine decay.
 
-        Args:
-            optimizer: torch.optim.Optimizer
-            total_steps (int): passi totali (es. 128)
-            lr_max (float): learning rate massimo
-            warmup_frac (float): frazione di warmup (default 5%)
-        """
-        warmup_steps = int(total_steps * warmup_frac)
-        decay_steps = total_steps - warmup_steps
+    #     Args:
+    #         optimizer: torch.optim.Optimizer
+    #         total_steps (int): passi totali (es. 128)
+    #         lr_max (float): learning rate massimo
+    #         warmup_frac (float): frazione di warmup (default 5%)
+    #     """
+    #     warmup_steps = int(total_steps * warmup_frac)
+    #     decay_steps = total_steps - warmup_steps
 
-        def lr_lambda(step):
-            if step < warmup_steps:
-                # warmup lineare
-                return step / max(1, warmup_steps)
-            else:
-                # decadimento coseno
-                progress = (step - warmup_steps) / max(1, decay_steps)
-                return 0.5 * (1 + math.cos(math.pi * progress))
+    #     def lr_lambda(step):
+    #         if step < warmup_steps:
+    #             # warmup lineare
+    #             return step / max(1, warmup_steps)
+    #         else:
+    #             # decadimento coseno
+    #             progress = (step - warmup_steps) / max(1, decay_steps)
+    #             return 0.5 * (1 + math.cos(math.pi * progress))
 
-        return LambdaLR(optimizer, lr_lambda=lambda step: lr_lambda(step))
+    #     return LambdaLR(optimizer, lr_lambda=lambda step: lr_lambda(step))
 
     # Clear GPU cache and reset peak memory stats
     if torch.cuda.is_available():
@@ -294,15 +358,22 @@ def pretraining(config: xffl_config) -> None:
             train_dataloader=dataloaders["train"],
             validate=False,
             eval_dataloader=dataloaders["val"],
-            lr_scheduler=get_llama31_cosine_schedule(
-                optimizer,
-                total_steps=len(dataloaders["train"]),
+            lr_scheduler=WarmupCosineLREpochsAccum(
+                optimizer=optimizer,
+                warmup_frac=0.02,
+                epochs=config.epochs,
+                steps_per_epoch=len(dataloaders["train"]),
+                accum_steps=1,
+                peak_lr=config.learning_rate,
+                final_lr_ratio=0.1,
             ),
             wandb_run=wandb_run,
             save_path=PathLike(config.output),
             output_model_name=config.output_model,
             epochs=config.epochs,
             federated_batches=config.federated_batches,
+            gradient_clipping=config.gradient_clipping,
+            accumulation_steps=config.accumulation_steps,
         )
 
         if state.rank == 0:
@@ -321,7 +392,7 @@ def main():
     """Argument parsing and training launch"""
 
     try:
-        pretraining(xffl_config)
+        pretraining(xffl_config())
     except KeyboardInterrupt as e:
         logger.exception(e)
     except Exception as e:

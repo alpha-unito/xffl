@@ -21,10 +21,26 @@ MIXTRAL_8x7b_v0_1: str = "mixtral-8x7b-v0.1"
 
 CLEAN_MC4_IT: str = "clean_mc4_it"
 
+TEST = "test"
+
+
+@dataclass
+class test(ModelInfo):
+    name = TEST
+    model_type = LlamaForCausalLM
+    decoder_layers = (LlamaDecoderLayer,)
+    wrapping_policy = (
+        functools.partial(
+            wrap.transformer_auto_wrap_policy,
+            transformer_layer_cls={decoder_layers},
+        ),
+    )
+    path = "/leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/"
+
 
 @dataclass
 class llama(ModelInfo):
-    name = LLAMA3_1_8B
+    name = TINY_RANDOM_LLAMA_3
     model_type = LlamaForCausalLM
     decoder_layers = (LlamaDecoderLayer,)
     wrapping_policy = (
@@ -69,12 +85,14 @@ class xffl_config:
     federated_scaling: int = None
     cuda_streams: int = 1
     wandb: bool = False
-    wandb_name: str = "LLaMA-3.1 8B"
+    wandb_name: str = llama.name
     wandb_mode: str = "disabled"
     online: bool = False
     attention: str = "sdpa"
-    subsampling: int = 32
-    train_batch_size: int = 2
+    subsampling: int = 1024 * 1024
+    train_batch_size: int = 8
+    gradient_clipping: float = 1.0
+    accumulation_steps: int = 8
     val_batch_size: int = 1
     workers: int = 2
     scale_learning_rate: bool = False
@@ -84,7 +102,10 @@ class xffl_config:
     benchmark: int = 0
     workspace: FolderLike = None
     csv: FileLike = None
-    output: PathLike = "/output/"
+    output: PathLike = (
+        "/leonardo_scratch/fast/uToID_bench/xffl/examples/simulation/03_LLM/"
+    )
     output_model: str = "output"
+    max_rounds: int = 3
     epochs: int = 1
     federated_batches: int = 8
