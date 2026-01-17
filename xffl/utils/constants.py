@@ -14,17 +14,8 @@ VERSION: Final[str] = "v0.2.1"
 DEFAULT_xFFL_DIR: Final[Path] = Path(os.path.dirname(os.path.abspath(xffl.__file__)))
 """FastFederatedLearning default root directory"""
 
-FACILITY_TYPES: Final[list] = [
-    "deucalion",
-    "discoverer",
-    "fedarchs",
-    "hpc4ai-bw",
-    "hpc4ai-gh",
-    "karolina",
-    "leonardo",
-    "lumi",
-    "local",
-    "marenostrum",
-    "meluxina",
-    "vega",
+SUPPORTED_QUEUE_MANAGERS: Final[list] = [
+    "flux",
+    "slurm",
+    "pbs",  # "lsf" installing streamflow-lsf plugin
 ]
