@@ -102,7 +102,7 @@ def _setup_execution_env(args: SimpleNamespace | Namespace) -> Dict[str, str]:
     :return: Mapping of environment variables
     :rtype: Dict[str, str]
     """
-    base_env_mapping: Dict[str, str] = {
+    env_mapping: Dict[str, str] = {
         "XFFL_WORLD_SIZE": "world_size",
         "XFFL_NUM_NODES": "num_nodes",
         "MASTER_ADDR": "masteraddr",
@@ -111,7 +111,7 @@ def _setup_execution_env(args: SimpleNamespace | Namespace) -> Dict[str, str]:
 
     if args.venv:
         logger.debug("Using virtual environment: %s", args.venv)
-        env_mapping: Dict[str, str] = {"XFFL_VENV": "venv"} | base_env_mapping
+        env_mapping: Dict[str, str] = {"XFFL_VENV": "venv"} | env_mapping
     elif args.image:
         logger.debug("Using container image: %s", args.image)
         env_mapping: Dict[str, str] = {
@@ -119,12 +119,12 @@ def _setup_execution_env(args: SimpleNamespace | Namespace) -> Dict[str, str]:
             "XFFL_MODEL_FOLDER": "model",
             "XFFL_DATASET_FOLDER": "dataset",
             "XFFL_IMAGE": "image",
-        } | base_env_mapping
+        } | env_mapping
     elif sys.prefix != sys.base_prefix:
         # Already in a venv, use it
         args.venv = sys.prefix
         logger.debug("Using current virtual environment: %s", args.venv)
-        env_mapping: Dict[str, str] = {"XFFL_VENV": "venv"} | base_env_mapping
+        env_mapping: Dict[str, str] = {"XFFL_VENV": "venv"} | env_mapping
     else:
         raise ValueError("No execution environment specified [container/virtual env]")
 
@@ -132,8 +132,8 @@ def _setup_execution_env(args: SimpleNamespace | Namespace) -> Dict[str, str]:
     env["XFFL_EXECUTION"] = "true"
 
     if args.image:
-        env["XFFL_CODE_FOLDER"] = args.executable.parent
-        args.executable = args.executable.name
+        env["XFFL_CODE_FOLDER"] = Path(args.executable).parent
+        args.executable = Path(args.executable).name
 
     logger.debug("New local execution xFFL environment variables: %s", env)
     return env

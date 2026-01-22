@@ -189,9 +189,9 @@ def build_parser() -> Tuple[ArgumentParser, _SubParsersAction]:
     exec_parser.add_argument(
         "-f",
         "--facility",
-        help="Name of the computational facility to use. Default is 'leonardo'.",
-        type=str,
-        default="local",
+        help="Path of a script for initializing the environment on the cluster nodes before running xFFL.",
+        type=FileLike,
+        default=None,
     )
 
     exec_parser.add_argument(

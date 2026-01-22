@@ -7,10 +7,10 @@ set -euo pipefail
 # We extract this information from the SLURM runtime environment through srun, but an equivalent setting is obtained through mpirun (mpi equivalent variables are indicated in comments)
 Derive_env () {
 
-    if [ "${XFFL_EXECUTION}" = "true" ] ; then
+    if [ "${XFFL_EXECUTION}" = "true" ] ; then # Intra-Silo
         export ROLE_NAME="default"
         export MASTER_PORT=29500
-        export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # We assume an equal allocation
+        export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # Equal allocation assumption
         export WORLD_SIZE=$XFFL_WORLD_SIZE
         export GROUP_WORLD_SIZE=$XFFL_NUM_NODES
         export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE
@@ -25,7 +25,7 @@ Derive_env () {
             export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=${ROLE_WORLD_SIZE}"
         fi
 
-    elif command -v srun > /dev/null ; then # Check SLURM
+    elif command -v srun > /dev/null ; then # Cross-Facility (SLURM)
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_NAME=default"
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_PORT=29500"
 
@@ -37,20 +37,20 @@ Derive_env () {
             echo "SLURM_NTASKS is unset"
             exit 1
         fi
-        if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
+        if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		                                # SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS
         else
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS_PER_NODE
         fi
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_WORLD_SIZE=${LOCAL_WORLD_SIZE}"
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}WORLD_SIZE=$SLURM_NTASKS"			 					# OMPI_COMM_WORLD_SIZE
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES"				# OMPI_MCA_orte_num_nodes
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=$SLURM_NTASKS" 						# OMPI_COMM_WORLD_SIZE
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}WORLD_SIZE=$SLURM_NTASKS"			 			# OMPI_COMM_WORLD_SIZE
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES"			# OMPI_MCA_orte_num_nodes
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=$SLURM_NTASKS" 					# OMPI_COMM_WORLD_SIZE
 
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_RANK=$SLURM_LOCALID" 							# OMPI_COMM_WORLD_LOCAL_RANK
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_RANK=$SLURM_LOCALID" 						# OMPI_COMM_WORLD_LOCAL_RANK
         RANK=$SLURM_PROCID
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}RANK=$RANK" 									# OMPI_COMM_WORLD_RANK
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_RANK=$RANK"										# $OMPI_COMM_WORLD_RANK
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_RANK=$RANK"								# $OMPI_COMM_WORLD_RANK
         GROUP_RANK=$(( RANK / SLURM_NTASKS_PER_NODE ))
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_RANK=${GROUP_RANK}"
 
@@ -148,6 +148,8 @@ Gpu_detection () {
 
         return 0
     fi
+
+    export GPU_FLAG=""
 
     return 0
 }
