@@ -100,7 +100,6 @@ celerybeat-schedule
 .env
 .venv
 .test
-env/
 venv/
 ENV/
 env.bak/
@@ -141,8 +140,8 @@ dmypy.json
 *.err
 logs
 data/*
-models/*
-datasets/*
+model/*
+dataset/*
 images/*
 *.csv
 *.pstats

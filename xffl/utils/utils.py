@@ -68,7 +68,7 @@ def check_input(
     :type control: Callable
     :param is_local_path: If the provided path is a local path, defaults to True
     :type is_local_path: bool
-    :param optional: If True, the user can leave the input blank, returning None. Defaults to False.
+    :param optional: If the user can leave the input blank, defaults to False.
     :type optional: bool, optional
     :return: The validated user input, or None if the input was left blank and optional is True.
     :rtype: str

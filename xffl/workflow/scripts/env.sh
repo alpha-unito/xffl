@@ -1,14 +1,16 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # The PyTorch's FSDP runtime requires the following environment variables to be correctly set to operate correctly.
 # These environment variables are very similar to those used by other distributed systems (i.e., MPI)
 # We extract this information from the SLURM runtime environment through srun, but an equivalent setting is obtained through mpirun (mpi equivalent variables are indicated in comments)
 Derive_env () {
 
-    if [ "${XFFL_EXECUTION}" = "true" ] ; then
+    if [ "${XFFL_EXECUTION}" = "true" ] ; then # Intra-Silo
         export ROLE_NAME="default"
         export MASTER_PORT=29500
-        export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # We assume an equal allocation
+        export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # Equal allocation assumption
         export WORLD_SIZE=$XFFL_WORLD_SIZE
         export GROUP_WORLD_SIZE=$XFFL_NUM_NODES
         export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE
@@ -23,10 +25,9 @@ Derive_env () {
             export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=${ROLE_WORLD_SIZE}"
         fi
 
-    elif command -v srun > /dev/null ; then # Check SLURM
+    elif command -v srun > /dev/null ; then # Cross-Facility (SLURM)
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_NAME=default"
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_PORT=29500"
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}MASTER_ADDR=${MASTER_ADDR}"
 
         if [ -z "${SLURM_NTASKS_PER_NODE+x}" ]; then
             echo "SLURM_NTASKS_PER_NODE is unset"
@@ -36,19 +37,20 @@ Derive_env () {
             echo "SLURM_NTASKS is unset"
             exit 1
         fi
-        if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		# SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
+        if (( SLURM_NTASKS_PER_NODE >= SLURM_NTASKS )); then		                                # SLURM_GPUS_ON_NODE, OMPI_COMM_WORLD_LOCAL_SIZE
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS
         else
             export LOCAL_WORLD_SIZE=$SLURM_NTASKS_PER_NODE
         fi
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_WORLD_SIZE=${LOCAL_WORLD_SIZE}"
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}WORLD_SIZE=$SLURM_NTASKS"			 					# OMPI_COMM_WORLD_SIZE
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES"				# OMPI_MCA_orte_num_nodes
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=$SLURM_NTASKS" 						# OMPI_COMM_WORLD_SIZE
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}WORLD_SIZE=$SLURM_NTASKS"			 			# OMPI_COMM_WORLD_SIZE
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_WORLD_SIZE=$SLURM_JOB_NUM_NODES"			# OMPI_MCA_orte_num_nodes
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_WORLD_SIZE=$SLURM_NTASKS" 					# OMPI_COMM_WORLD_SIZE
 
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_RANK=$SLURM_LOCALID" 							# OMPI_COMM_WORLD_LOCAL_RANK
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}RANK=$SLURM_PROCID" 									# OMPI_COMM_WORLD_RANK
-        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_RANK=$RANK"										# $OMPI_COMM_WORLD_RANK
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}LOCAL_RANK=$SLURM_LOCALID" 						# OMPI_COMM_WORLD_LOCAL_RANK
+        RANK=$SLURM_PROCID
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}RANK=$RANK" 									# OMPI_COMM_WORLD_RANK
+        export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}ROLE_RANK=$RANK"								# $OMPI_COMM_WORLD_RANK
         GROUP_RANK=$(( RANK / SLURM_NTASKS_PER_NODE ))
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}GROUP_RANK=${GROUP_RANK}"
 
@@ -63,11 +65,11 @@ Limit_PyTorch_threads () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then
 	    export OMP_NUM_THREADS=$(( $(nproc --all) / LOCAL_WORLD_SIZE ))
     elif command -v srun > /dev/null ; then # Check SLURM
-        if [ -z "${SLURM_CPUS_PER_TASK+x}" ]; then
-            echo "SLURM_CPUS_PER_TASK is unset"
+        if [ -z "${SLURM_GPUS_PER_NODE+x}" ]; then
+            echo "SLURM_GPUS_PER_NODE is unset"
             exit 1
         fi
-        export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+        export OMP_NUM_THREADS=$(( $(nproc --all) / SLURM_GPUS_PER_NODE ))
     else
         exit 1
     fi
@@ -90,6 +92,10 @@ Reset_visible_devices () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then
         export VISIBLE_DEVICES=$( seq -s , 0 $(( LOCAL_WORLD_SIZE - 1 )) )
     elif command -v srun > /dev/null ; then # Check SLURM
+        if [ -z "${SLURM_GPUS_PER_NODE+x}"  ]; then
+          echo "SLURM_GPUS_PER_NODE is unset"
+          exit 1
+        fi
         export VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # TODO: change SLURM_GPUS_PER_NODE for cloud environments
     fi
 
@@ -113,7 +119,6 @@ LLaMA_default_env () {
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}TORCH_DISABLE_ADDR2LINE=${TORCH_DISABLE_ADDR2LINE}"
         export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}NCCL_CROSS_NIC=${NCCL_CROSS_NIC}"
     fi
-
 }
 
 # Check which GPU architecture is available on the current computing node
@@ -144,14 +149,20 @@ Gpu_detection () {
         return 0
     fi
 
+    export GPU_FLAG=""
+
     return 0
 }
 
 # Check which containerization software is available on the current computing node
 Container_platform_detection () {
-    unset PREFIX
-    unset ENVIRONMENT
-    unset CONTAINER_PLT
+
+    # Check if `apptainer` command exists
+    if command -v apptainer > /dev/null ; then
+        export CONTAINER_PLT="apptainer"
+        export PREFIX="APPTAINERENV_"
+        return 0
+    fi
 
     # Check if `singularity` command exists
     if command -v singularity > /dev/null ; then
@@ -160,15 +171,10 @@ Container_platform_detection () {
         return 0
     fi
 
-    # Check if `apptainer` command exists
-    if command -v apptainer > /dev/null ; then
-        export CONTAINER_PLT="apptainer"
-        return 0
-    fi
-
     # Check if `docker` command exists
     if command -v docker > /dev/null ; then
         export CONTAINER_PLT="docker"
+        export PREFIX=""
         return 0
     fi
 

@@ -14,4 +14,5 @@
 #SBATCH --mem=0
 #SBATCH --exclusive
 
+module load python/3.10/gcc/base/3.10.17
 srun bash -c "{{ streamflow_command }}" 2>&1

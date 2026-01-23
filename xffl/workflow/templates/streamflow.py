@@ -52,19 +52,17 @@ class StreamFlowFile(YamlConfig):
     def add_deployment(
         self,
         facility_name: str,
-        facility_type: str,
         address: str,
         username: str,
         ssh_key: str,
         step_workdir: str,
-        slurm_template: str | None = None,
+        queue_manager: str | None = None,
+        template: str | None = None,
     ) -> None:
         """Adds a new facility deployment to the StreamFlow configuration
 
         :param facility_name: Facility's name
         :type facility_name: str
-        :param facility_type: Facility's type
-        :type facility_type: str
         :param address: Facility's address (IP, FQDN)
         :type address: str
         :param username: Username to use to log in the facility
@@ -73,8 +71,10 @@ class StreamFlowFile(YamlConfig):
         :type ssh_key: str
         :param step_workdir: Directory where to store temporary StreamFlow SSH files
         :type step_workdir: str
-        :param slurm_template: Facility's SLURM file template
-        :type slurm_template: str | None
+        :param queue_manager: Facility's queue manager
+        :type template: str | None
+        :param template: Facility's file template
+        :type template: str | None
         :raises ValueError: If the facility is already present in the StreamFlow configuration
         """
         if facility_name in self.deployments.keys():
@@ -82,7 +82,19 @@ class StreamFlowFile(YamlConfig):
                 f"Facility {facility_name} is already present in the StreamFlow configuration"
             )
 
-        if slurm_template is not None:
+        if template:
+            with open(template) as f:
+                content = f.read()
+                if (
+                    "{{streamflow_command}}" not in content
+                    and "{{ streamflow_command }}" not in content
+                ):
+                    sf_placeholder = "{{streamflow_command}}"
+                    raise Exception(
+                        f"It is necessary to add the '{sf_placeholder}' placeholder in the template {template}"
+                    )
+
+        if queue_manager is not None:
             self.deployments[facility_name] = {
                 f"{facility_name}-ssh": {
                     "type": "ssh",
@@ -94,8 +106,10 @@ class StreamFlowFile(YamlConfig):
                     "workdir": step_workdir,
                 },
                 facility_name: {
-                    "type": "slurm",
-                    "config": {"services": {"pragma": {"file": slurm_template}}},
+                    "type": queue_manager,
+                    "config": {
+                        "services": {"pragma": {"file": template} if template else {}}
+                    },
                     "wraps": f"{facility_name}-ssh",
                     "workdir": step_workdir,
                 },
@@ -109,7 +123,8 @@ class StreamFlowFile(YamlConfig):
                         "username": username,
                         "sshKey": ssh_key,
                         "checkHostKey": False,
-                    },
+                    }
+                    | ({"services": {"pragma": template}} if template else {}),
                     "workdir": step_workdir,
                 }
             }
