@@ -148,7 +148,7 @@ class StreamFlowFile(YamlConfig):
             )
 
         step_name = posixpath.join(
-            posixpath.sep, "iteration", f"training_on_{facility_name}"
+            posixpath.sep, "iteration", f"training_on_{facility_name}", "client"
         )
         self.step_bindings[facility_name] = [
             self.create_binding(

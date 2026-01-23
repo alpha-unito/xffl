@@ -373,6 +373,92 @@ class RoundWorkflow(Workflow):
         :return: Dict template of a CWL xFFL step
         :rtype: cwl.Process
         """
+        check_step = cwl.CommandLineTool(
+            baseCommand=["true"],
+            cwlVersion="v1.2",
+            id="check",
+            inputs=[
+                cwl.CommandInputParameter(
+                    id="model",
+                    type_="Directory",
+                ),
+            ],
+            outputs=[],
+        )
+
+        training_subworkflow = cwl.Workflow(
+            id="training",
+            inputs=[
+                cwl.WorkflowInputParameter(id="script", type_="Directory"),
+                cwl.WorkflowInputParameter(id="model", type_="Directory"),
+                cwl.WorkflowInputParameter(id="executable", type_="File"),
+                cwl.WorkflowInputParameter(id="facility", type_="string"),
+                cwl.WorkflowInputParameter(id="model_basename", type_="string"),
+                cwl.WorkflowInputParameter(id="round", type_="int"),
+                cwl.WorkflowInputParameter(id="image", type_="File"),
+                cwl.WorkflowInputParameter(id="dataset", type_="Directory"),
+            ],
+            outputs=[
+                cwl.WorkflowOutputParameter(
+                    id="new_model",
+                    type_="Directory",
+                    outputSource="client/new_model",
+                )
+            ],
+            steps=[
+                cwl.WorkflowStep(
+                    id="client",
+                    in_=[
+                        cwl.WorkflowStepInput(
+                            id="executable",
+                            source="executable",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model",
+                            source="model",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="script",
+                            source="script",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="facility",
+                            source="facility",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="image",
+                            source="image",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="dataset",
+                            source="dataset",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model_basename",
+                            source="model_basename",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="round",
+                            source="round",
+                        ),
+                    ],
+                    out=[cwl.WorkflowStepOutput(id="new_model")],
+                    run="clt/training.cwl",
+                ),
+                cwl.WorkflowStep(
+                    id="check",
+                    in_=[
+                        cwl.WorkflowStepInput(
+                            id="model",
+                            source="client/new_model",
+                        ),
+                    ],
+                    out=[],
+                    run=check_step,
+                ),
+            ],
+        )
+
         return cwl.WorkflowStep(
             id=f"training_on_{name}",
             in_=[
@@ -410,7 +496,7 @@ class RoundWorkflow(Workflow):
                 ),
             ],
             out=[cwl.WorkflowStepOutput(id="new_model")],
-            run="clt/training.cwl",
+            run=training_subworkflow,
         )
 
     def add_inputs(

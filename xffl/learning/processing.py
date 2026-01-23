@@ -130,12 +130,14 @@ def distributed_training(
                         device=state.current_device,
                         non_blocking=True,
                     )
-                loss: torch.Tensor = model(**batch).loss
-                # loss: torch.Tensor = model(
-                #     input_ids=batch["input_ids"],
-                #     attention_mask=batch["attention_mask"],
-                #     labels=batch["input_ids"],
-                # ).loss
+                if all(key in batch for key in ["input_ids", "attention_mask"]):
+                    loss: torch.Tensor = model(
+                        input_ids=batch["input_ids"],
+                        attention_mask=batch["attention_mask"],
+                        labels=batch["input_ids"],
+                    ).loss
+                else:
+                    loss: torch.Tensor = model(**batch).loss
             else:
                 data, target = batch
                 data, target = data.to(
