@@ -16,7 +16,6 @@ import torch.nn as nn
 import transformers
 import wandb
 from config import xffl_config
-from datasets import Dataset, DatasetDict
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision, wrap
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
@@ -24,6 +23,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModel, AutoModelForCausalLM, default_data_collator
 
+from datasets import Dataset, DatasetDict
 from xffl.custom.types import PathLike
 from xffl.distributed import distributed
 from xffl.learning import data, modelling, processing, utils

@@ -156,17 +156,18 @@ Gpu_detection () {
 
 # Check which containerization software is available on the current computing node
 Container_platform_detection () {
-    # Check if `singularity` command exists
-    if command -v singularity > /dev/null ; then
-        export CONTAINER_PLT="singularity"
-        export PREFIX="SINGULARITYENV_"
-        return 0
-    fi
 
     # Check if `apptainer` command exists
     if command -v apptainer > /dev/null ; then
         export CONTAINER_PLT="apptainer"
         export PREFIX="APPTAINERENV_"
+        return 0
+    fi
+
+    # Check if `singularity` command exists
+    if command -v singularity > /dev/null ; then
+        export CONTAINER_PLT="singularity"
+        export PREFIX="SINGULARITYENV_"
         return 0
     fi
 
