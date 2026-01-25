@@ -2,13 +2,14 @@
 
 import logging
 import math
+import os
 import time
 from logging import Logger, getLogger
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-from torch import nn
+from torch import Tensor, nn, tensor
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -19,7 +20,7 @@ from wandb.wandb_run import Run
 from xffl.custom.types import PathLike
 from xffl.distributed.aggregation import bucket_optimized_coalesced_
 from xffl.distributed.distributed import DistributedState
-from xffl.learning.modelling import save_fsdp_model
+from xffl.learning.modelling import save_model
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -46,6 +47,8 @@ def distributed_training(
     lr_scheduler: Optional[LRScheduler] = None,
     wandb_run: Optional[Run] = None,
     criterion=None,
+    gradient_clipping=None,
+    accumulation_steps=None,
     fedopt=False,
 ) -> Dict[str, float]:
     """Generic training cycle for FSDP models
@@ -92,7 +95,7 @@ def distributed_training(
     epoch_times: List[float] = []
     checkpoint_times: List[float] = []
     results: Dict[str, float] = {}
-    best_val_loss: float = float("inf")
+    best_val_loss: Tensor = tensor(float("inf"))
 
     agg_lr_sched = None
     if fedopt:
@@ -148,13 +151,14 @@ def distributed_training(
 
     if torch.distributed.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
+
     for epoch in range(epochs):
         epoch_start_time: float = time.perf_counter()
         logger.info(f"Starting epoch {epoch}/{epochs}")
 
         model.train()
 
-        total_loss: float = 0.0
+        total_loss: Tensor = tensor(0.0)
         total_length: int = len(train_dataloader)
         pbar: tqdm = tqdm(
             colour="blue",
@@ -163,6 +167,16 @@ def distributed_training(
             dynamic_ncols=True,
             disable=state.rank != 0,
         )
+
+        if (
+            save_path is not None
+            and output_model_name is not None
+            and (not os.path.exists(save_path) or not os.path.isdir(save_path))
+        ):
+            logger.warning(
+                f"Impossible saving the trained model with save dir {save_path}: saving disabled."
+            )
+            save_path, output_model_name = None, None
 
         step: int
         batch: Dict[str, Any]
@@ -178,7 +192,14 @@ def distributed_training(
                         device=state.current_device,
                         non_blocking=True,
                     )
-                loss: torch.Tensor = model(**batch).loss
+                if all(key in batch for key in ["input_ids", "attention_mask"]):
+                    loss: torch.Tensor = model(
+                        input_ids=batch["input_ids"],
+                        attention_mask=batch["attention_mask"],
+                        labels=batch["input_ids"],
+                    ).loss
+                else:
+                    loss: torch.Tensor = model(**batch).loss
             else:
                 data, target = batch
                 data, target = data.to(
@@ -196,6 +217,9 @@ def distributed_training(
                 batch_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
+            if accumulation_steps is not None:
+                loss = loss / accumulation_steps
+
             loss.backward()
 
             if logging.root.level == logging.DEBUG:
@@ -204,12 +228,21 @@ def distributed_training(
                 back_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
-            optimizer.step()  # TODO: average optimizer?
-            optimizer.zero_grad(set_to_none=True)
-            if lr_scheduler:
-                lr_scheduler.step()
-                if agg_lr_sched:
-                    agg_lr_sched.step()
+            if (
+                accumulation_steps is not None
+                and (step + 1) % accumulation_steps == 0
+                or (step + 1) == len(train_dataloader)
+            ):
+                if gradient_clipping is not None:
+                    torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), gradient_clipping
+                    )
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
+                if lr_scheduler:
+                    lr_scheduler.step()
+                    if agg_lr_sched:
+                        agg_lr_sched.step()
             pbar.update(1)
 
             if logging.root.level == logging.DEBUG:
@@ -218,99 +251,113 @@ def distributed_training(
                 optimizer_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
-            if state.is_federated_scaling_setup() and (
-                (step + 1) % federated_batches == 0 or step + 1 == total_length
-            ):
-                with torch.no_grad():
-                    bucket_optimized_coalesced_(
-                        model=model,
-                        state=state,
-                        use_multiple_cuda_streams=False,
-                        use_contiguous_memory=True,
-                    )
+            if state.is_federated_scaling_setup():
+                assert federated_batches is not None
+                if (step + 1) % federated_batches == 0 or step + 1 == total_length:
+                    with torch.no_grad():
+                        bucket_optimized_coalesced_(
+                            model=model,
+                            state=state,
+                            use_multiple_cuda_streams=False,
+                            use_contiguous_memory=True,
+                        )
 
-                    if fedopt:
-                        _move_opt_to(optimizer, "cpu")
+                        if fedopt:
+                            _move_opt_to(optimizer, "cpu")
 
-                        current_state_dict = {
-                            k: v.detach().clone().to(device="cpu")
-                            for k, v in model.state_dict().items()
-                        }
+                            current_state_dict = {
+                                k: v.detach().clone().to(device="cpu")
+                                for k, v in model.state_dict().items()
+                            }
 
-                        for g, p_origin, p_current in zip(
-                            grads,
-                            origin_state_dict.values(),
-                            current_state_dict.values(),
-                            strict=True,
-                        ):
-                            if g is not None:
-                                g.copy_(p_origin.data - p_current.data).to(
-                                    device=state.current_device
-                                )
-
-                        if state.rank == 0:
-                            total_norm = sum(
-                                (g.norm().item() if g is not None else torch.tensor(0))
-                                for g in grads
-                            )
-                            print(f"Norma dei cambiamenti: {total_norm}")
-
-                        model.load_state_dict(origin_state_dict, strict=True)
-                        for p, g in zip(model.parameters(), grads, strict=True):
-                            if p.requires_grad:
-                                p.grad = g.detach().to(device=state.current_device)
-
-                        if state.rank == 0:
-                            pre_clipping_norm = torch.nn.utils.clip_grad_norm_(
-                                model.parameters(), max_norm=1.0
-                            )
-                            print(f"Pre-clipping norm: {pre_clipping_norm}")
-
-                            total_norm = torch.sqrt(
-                                sum(
-                                    (
-                                        p.grad.norm() ** 2
-                                        if p.grad is not None
-                                        else torch.tensor(0)
+                            for g, p_origin, p_current in zip(
+                                grads,
+                                origin_state_dict.values(),
+                                current_state_dict.values(),
+                                strict=True,
+                            ):
+                                if g is not None:
+                                    g.copy_(p_origin.data - p_current.data).to(
+                                        device=state.current_device
                                     )
-                                    for p in model.parameters()
+
+                            if state.rank == 0:
+                                total_norm: Tensor = tensor(
+                                    sum(
+                                        (
+                                            g.norm().item()
+                                            if g is not None
+                                            else torch.tensor(0)
+                                        )
+                                        for g in grads
+                                    )
                                 )
-                            )
-                            print(f"Norma dei gradienti: {total_norm}")
+                                print(f"Norma dei cambiamenti: {total_norm}")
 
-                        _move_opt_to(optimizer_agg, state.current_device)
+                            model.load_state_dict(origin_state_dict, strict=True)
+                            for p, g in zip(model.parameters(), grads, strict=True):
+                                if p.requires_grad:
+                                    assert g is not None
+                                    p.grad = g.detach().to(device=state.current_device)
 
-                        optimizer_agg.step()
-                        if state.rank == 0:
-                            diff = sum(
-                                (p.detach().clone().to("cpu") - p_before).norm().item()
-                                for p, p_before in zip(
-                                    model.parameters(), current_state_dict.values()
+                            if state.rank == 0:
+                                pre_clipping_norm = torch.nn.utils.clip_grad_norm_(
+                                    model.parameters(), max_norm=1.0
                                 )
-                            )
-                            print("Total change after optimizer.step():", diff)
+                                print(f"Pre-clipping norm: {pre_clipping_norm}")
 
-                        optimizer_agg.zero_grad(set_to_none=True)
-                        # if agg_lr_sched:
-                        #    agg_lr_sched.step()
-                        _move_opt_to(optimizer_agg, "cpu")
+                                total_norm: Tensor = torch.sqrt(
+                                    tensor(
+                                        sum(
+                                            (
+                                                p.grad.norm() ** 2
+                                                if p.grad is not None
+                                                else torch.tensor(0)
+                                            )
+                                            for p in model.parameters()
+                                        )
+                                    )
+                                )
+                                print(f"Norma dei gradienti: {total_norm}")
 
-                        origin_state_dict = {
-                            k: v.detach().clone().to(device="cpu")
-                            for k, v in model.state_dict().items()
-                        }
+                            _move_opt_to(optimizer_agg, state.current_device)
 
-                        _move_opt_to(optimizer, state.current_device)
+                            optimizer_agg.step()
+                            if state.rank == 0:
+                                diff = sum(
+                                    (p.detach().clone().to("cpu") - p_before)
+                                    .norm()
+                                    .item()
+                                    for p, p_before in zip(
+                                        model.parameters(), current_state_dict.values()
+                                    )
+                                )
+                                print("Total change after optimizer.step():", diff)
 
-                        if torch.cuda.is_available():
-                            torch.cuda.synchronize()
-                            torch.cuda.empty_cache()
+                            optimizer_agg.zero_grad(set_to_none=True)
+                            # if agg_lr_sched:
+                            #    agg_lr_sched.step()
+                            _move_opt_to(optimizer_agg, "cpu")
+
+                            origin_state_dict = {
+                                k: v.detach().clone().to(device="cpu")
+                                for k, v in model.state_dict().items()
+                            }
+
+                            _move_opt_to(optimizer, state.current_device)
+
+                            if torch.cuda.is_available():
+                                torch.cuda.synchronize()
+                                torch.cuda.empty_cache()
 
             if logging.root.level == logging.DEBUG:
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 comm_time = time.perf_counter() - start_time
                 start_time = time.perf_counter()
+
+            if accumulation_steps is not None:
+                loss = loss * accumulation_steps
 
             total_loss += loss.detach().float()
             train_step_perplexity.append(float(torch.exp(loss.detach().float())))
@@ -323,6 +370,10 @@ def distributed_training(
                         "train/step": epoch * total_length + step,
                         "train/loss": train_step_loss[-1],
                         "train/perplexity": train_step_perplexity[-1],
+                        "train/learning rate": (
+                            lr_scheduler.get_lr() if lr_scheduler is not None else None
+                        ),
+                        "train/gradient_accumulation": accumulation_steps,
                     }
                 )
 
@@ -357,9 +408,11 @@ def distributed_training(
         #        op=dist.ReduceOp.SUM,
         #    )
 
+        assert state.world_size is not None
+
         train_epoch_loss: torch.Tensor = (
             (total_loss / total_length)
-            / state.federated_local_size[state.federated_rank]
+            / state.federated_local_size[state.federated_rank]  # type: ignore
             if state.is_federated_scaling_setup()
             else (total_loss / total_length) / state.world_size
         )
@@ -382,24 +435,25 @@ def distributed_training(
             val_step_loss.extend(temp_val_loss)
             val_step_perplexity.extend(temp_step_perplexity)
 
-            if output_model_name:
-                checkpoint_start_time = time.perf_counter()
-                save_fsdp_model(
-                    model=model,
-                    optimizer=optimizer,
-                    path=save_path,
-                    name=output_model_name,
-                    rank=state.rank,
-                    epoch=epoch,
-                )
-                checkpoint_times.append(time.perf_counter() - checkpoint_start_time)
-
             if eval_epoch_loss < best_val_loss:
                 best_val_loss: torch.Tensor = eval_epoch_loss
                 # if state.rank == 0:
                 #    logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(best_val_loss))
             val_perp.append(float(eval_ppl))
+
+        if output_model_name is not None and save_path is not None:
+            assert state.rank is not None
+            checkpoint_start_time = time.perf_counter()
+            save_model(
+                model=model,
+                optimizer=optimizer,
+                path=save_path,
+                name=output_model_name,
+                rank=state.rank,
+                epoch=epoch,
+            )
+            checkpoint_times.append(time.perf_counter() - checkpoint_start_time)
 
         if state.rank == 0:
             if validate:
@@ -428,7 +482,7 @@ def fsdp_evaluation(
     state: DistributedState,
     wandb_run: Optional[Run] = None,
     criterion=None,
-) -> Tuple[torch.Tensor, torch.Tensor, List[float], List[float]]:
+) -> Tuple[Tensor, Tensor, List[float], List[float], float]:
     """Generic evaluation cycle for FSDP models
 
     :param model: Model to evaluate
@@ -446,7 +500,7 @@ def fsdp_evaluation(
 
     val_step_loss: List[float] = []
     val_step_perplexity: List[float] = []
-    eval_loss: float = 0.0
+    eval_loss: Tensor = tensor(0.0)
     correct: int = 0
 
     with torch.no_grad():
@@ -460,6 +514,8 @@ def fsdp_evaluation(
                 disable=state.rank != 0,
             )
         ):
+            loss: torch.Tensor | float
+
             if isinstance(batch, dict):
                 for key in batch.keys():
                     batch[key] = batch[key].to(
@@ -467,7 +523,8 @@ def fsdp_evaluation(
                     )
 
                 outputs = model(**batch)
-                loss: torch.Tensor = outputs.loss
+                loss = outputs.loss
+                assert isinstance(loss, Tensor)
 
                 eval_loss += loss.detach().float()
                 val_step_loss.append(loss.detach().float().item())
@@ -483,7 +540,7 @@ def fsdp_evaluation(
                 )
 
                 output: torch.Tensor = model(data)
-                loss: float = criterion(output, target)
+                loss = criterion(output, target)
                 eval_loss += loss
                 pred: int = output.argmax(
                     dim=1, keepdim=True
@@ -492,6 +549,9 @@ def fsdp_evaluation(
 
         if torch.cuda.device_count() > 1:
             dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
+
+    assert state.world_size is not None
+    assert eval_dataloader.batch_size is not None
 
     eval_epoch_loss: torch.Tensor = (
         eval_loss / len(eval_dataloader)

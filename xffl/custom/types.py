@@ -1,58 +1,39 @@
-"""Custom types for better type hints"""
+"""Custom types for better type hints in xFFL. Local paths are automatically resolved and expanded."""
 
-import os
-from os import PathLike as _PathLike
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Union
 
 from xffl.utils.utils import resolve_path
 
-PathLike: TypeVar = TypeVar("PathLike", str, Path, _PathLike)
-"""Path-like objects"""
+
+class PathLike(Path):
+    """Path-like object (file or folder)."""
+
+    def __init__(self, path: Union[str, Path], local=True) -> None:
+        _path: Path = path if isinstance(path, Path) else Path(path)
+        if local and not _path.is_absolute():
+            _path = resolve_path(path=_path)
+        super().__init__(_path)
+
+    def __repr__(self) -> str:
+        return super().__str__()
 
 
-def PathLike(path: Any) -> PathLike:
-    """PathLike objects constructor
+class FolderLike(PathLike):
+    """Path to a folder."""
 
-    :param path: A file system path
-    :type path: Any
-    :return: Expanded and resolved file system path
-    :rtype: PathLike
-    """
-    return resolve_path(path=path)
+    def __init__(self, path: Union[str, Path], local=True) -> None:
+        super().__init__(path)
 
-
-FolderLike: TypeVar = TypeVar("FolderLike", str, Path, _PathLike, PathLike)
-"""Path to folder objects"""
+        if local and not self.is_dir():
+            raise ValueError(f"Invalid directory path: {self}")
 
 
-def FolderLike(path: Any) -> FolderLike:
-    """Folder objects constructor
+class FileLike(PathLike):
+    """Path to a file."""
 
-    :param path: A file system path to a folder
-    :type path: Any
-    :return: Expanded and resolved file system folder path
-    :rtype: PathLike
-    """
-    if os.path.isdir(PathLike(path=path)):
-        return path
-    else:
-        raise ValueError
+    def __init__(self, path: Union[str, Path], local=True) -> None:
+        super().__init__(path)
 
-
-FileLike: TypeVar = TypeVar("FileLike", str, Path, _PathLike, PathLike)
-"""Path to file objects"""
-
-
-def FileLike(path: Any) -> FileLike:
-    """File objects constructor
-
-    :param path: A file system path to a file
-    :type path: Any
-    :return: Expanded and resolved file system file path
-    :rtype: PathLike
-    """
-    if os.path.isfile(PathLike(path=path)):
-        return path
-    else:
-        raise ValueError
+        if local and not self.is_file():
+            raise ValueError(f"Invalid file path: {self}")

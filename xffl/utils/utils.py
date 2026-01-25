@@ -1,11 +1,15 @@
 """Utility methods exploitable in many different situations"""
 
+from __future__ import annotations
+
 import os
 from collections.abc import Callable
 from datetime import timedelta
 from logging import Logger, getLogger
-from pathlib import Path, PurePath
-from typing import Optional, Sequence
+from pathlib import Path
+from typing import Any, Optional, Sequence
+
+from xffl.custom.config_info import XFFLConfig
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -34,34 +38,27 @@ def get_param_name(flag_list: Sequence[str], prefix: str = "-") -> str:
     :return: Full parameter name
     :rtype: str
     """
-
     return get_param_flag(flag_list=flag_list).lstrip(prefix).replace(prefix, "_")
 
 
-def resolve_path(path: str, is_local_path: bool = True) -> str:
+def resolve_path(path: str | Path) -> Path:
     """Check the path is well formatted, otherwise tries to fix it.
-    Moreover, the path is resolve to the absolute form if it is defined as a local path
 
     :param path: abbreviated path
-    :type path: str
-    :param is_local_path:
-    :type is_local_path: bool
+    :type path: str or Path
     :return: expanded path
-    :rtype: str
+    :rtype: Path
     """
-    return str(
-        Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
-        if is_local_path
-        else PurePath(path)
-    )
+    logger.debug(f"Expanding {path} path...")
+    return Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
 
 
 def check_input(
     text: str,
     warning_msg: str,
-    control: Callable,
-    is_path: bool = False,
-    is_local_path=True,
+    control: Optional[Callable] = None,
+    is_local_path: bool = False,
+    optional: bool = False,
 ) -> str:
     """Receives and checks a user input based on the specified condition
 
@@ -73,28 +70,32 @@ def check_input(
     :param control: Control function to be checked on the inserted value
     :param control: Control function to be checked on the inserted value
     :type control: Callable
-    :param is_path: Flag signaling if the expected input is a path, defaults to False
-    :type is_path: bool, optional
     :param is_local_path: If the provided path is a local path, defaults to True
     :type is_local_path: bool
-    :return: The value inserted from the user satisfying the condition
+    :param optional: If the user can leave the input blank, defaults to False.
+    :type optional: bool, optional
+    :return: The validated user input, or None if the input was left blank and optional is True.
     :rtype: str
     """
-
-    condition: bool = False
-    value: str = ""
-    while not condition:
-        value = input(text)
-        if is_path:
-            value = resolve_path(value, is_local_path)
-        if not (condition := control(value)):
-            logger.warning(warning_msg.format(value))
-    return value
+    is_valid = control or (lambda _: True)
+    while True:
+        raw_value = input(text).strip()
+        if not raw_value:
+            if optional:
+                logger.warning("No value provided; skipping.")
+                return ""
+            continue
+        processed_value = (
+            str(resolve_path(path=raw_value)) if is_local_path else raw_value
+        )
+        if is_valid(processed_value):
+            return processed_value
+        logger.warning(warning_msg.format(processed_value))
 
 
 def get_timeout(
-    seconds: Optional[int] = 120,
-) -> timedelta:  # TODO: make this a parameter
+    seconds: float = 120.0,
+) -> timedelta:
     """Maximum allowed timeout for distributed communications
 
     :param seconds: Maximum allowed timeout in seconds, defaults to 12
@@ -106,7 +107,7 @@ def get_timeout(
 
 
 def get_default_nccl_process_group_options(
-    is_high_priority_stream: Optional[bool] = True,
+    is_high_priority_stream: bool = True,
 ):
     """Default NCCL backend configuration for xFFL
 
@@ -122,3 +123,21 @@ def get_default_nccl_process_group_options(
     options._timeout = get_timeout()
 
     return options
+
+
+def resolve_param(
+    value: Optional[Any], config: Optional[XFFLConfig], attr: str
+) -> Optional[Any]:
+    """Resolve a function parameter giving priority to the "value" field, alternatively tries to get it from the xFFL configuration.
+       If both fail, None is returned.
+
+    :param value: Given parameter value
+    :type value: Optional[Any]
+    :param config: xFFL configuration
+    :type config: Optional[XFFLConfig]
+    :param attr: Name of the attribute in the xFFL configuration
+    :type attr: str
+    :return: Resolved value of the parameter, None if none is found
+    :rtype: Optional[Any]
+    """
+    return value if value is not None else getattr(config, attr, None)

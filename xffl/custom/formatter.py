@@ -1,19 +1,38 @@
-"""Custom logging.Formatter for formatted and coloured logging"""
+"""Custom logging.Formatter for formatted and coloured logging with logger filtering."""
 
 import logging
 from logging import LogRecord
-from typing import Literal, Optional
+from typing import Dict, List, Literal, Optional, Set
+
+
+class ExcludeLoggerFilter(logging.Filter):
+    """Filter to exclude logs from specified loggers."""
+
+    def __init__(self, exclude: Optional[List[str]] = None) -> None:
+        """
+        :param exclude: List of logger names or prefixes to exclude.
+        """
+        super().__init__()
+        self.exclude: Set = set(exclude or [])
+
+    def filter(self, record: LogRecord) -> bool:
+        """Return True if the log should be emitted, False otherwise."""
+        return not any(record.name.startswith(name) for name in self.exclude)
 
 
 class CustomFormatter(logging.Formatter):
-    """Logging colored formatter, adapted from https://stackoverflow.com/a/56944256/3638629"""
+    """Logging formatter with color support per log level."""
 
-    grey = "\x1b[38;20m"
-    blue = "\x1b[38;5;39m"
-    yellow = "\x1b[38;5;226m"
-    red = "\x1b[38;5;196m"
-    bold_red = "\x1b[31;1m"
-    reset = "\x1b[0m"
+    # ANSI color codes
+    GREY: str = "\x1b[38;20m"  # Info
+    BLUE: str = "\x1b[38;5;39m"  # Debug
+    YELLOW: str = "\x1b[38;5;226m"  # Warning
+    RED: str = "\x1b[38;5;196m"  # Error
+    BOLD_RED: str = "\x1b[31;1m"  # Critical
+    RESET: str = "\x1b[0m"
+
+    DEFAULT_FORMAT: str = "%(asctime)s | %(name)16s | %(levelname)8s | %(message)s"
+    DATE_FORMAT: str = "%H:%M:%S"
 
     def __init__(
         self,
@@ -21,37 +40,34 @@ class CustomFormatter(logging.Formatter):
         datefmt: Optional[str] = None,
         style: Literal["%", "{", "$"] = "%",
         validate: bool = True,
-    ):
-        """Creation of the CustomFormatter.
-
-        :param fmt: format of the logged message.
-        :type fmt: Optional[str]
-        :param datefmt: format of the logged date.
-        :type datefmt: Optional[str]
-        :param style: style of the formatted logged messages.
-        :type style: str
-        :param validate: validate the logging style.
-        :type validate: bool
+    ) -> None:
         """
-        super().__init__(fmt, datefmt, style, validate)
+        Initialize the CustomFormatter.
 
-        self.fmt = "%(asctime)s | %(name)16s | %(levelname)8s | %(message)s"
-        self.FORMATS = {
-            logging.INFO: self.grey + self.fmt + self.reset,
-            logging.DEBUG: self.blue + self.fmt + self.reset,
-            logging.WARNING: self.yellow + self.fmt + self.reset,
-            logging.ERROR: self.red + self.fmt + self.reset,
-            logging.CRITICAL: self.bold_red + self.fmt + self.reset,
+        :param fmt: Format string for log messages.
+        :param datefmt: Date format string.
+        :param style: Style of the format string ("%", "{", or "$").
+        :param validate: Whether to validate the format string.
+        """
+        super().__init__(
+            fmt=fmt or self.DEFAULT_FORMAT,
+            datefmt=datefmt or self.DATE_FORMAT,
+            style=style,
+            validate=validate,
+        )
+        self.fmt: str = fmt or self.DEFAULT_FORMAT
+
+        self.FORMATS: Dict[int, str] = {
+            logging.DEBUG: self.BLUE + self.fmt + self.RESET,
+            logging.INFO: self.GREY + self.fmt + self.RESET,
+            logging.WARNING: self.YELLOW + self.fmt + self.RESET,
+            logging.ERROR: self.RED + self.fmt + self.RESET,
+            logging.CRITICAL: self.BOLD_RED + self.fmt + self.RESET,
         }
 
     def format(self, record: LogRecord) -> str:
-        """Format the provided record
-
-        :param record: Logging record
-        :type record: LogRecord
-        :return: Formatted logging record
-        :rtype: str
-        """
-
-        formatter = logging.Formatter(self.FORMATS.get(record.levelno))
+        """Format the log record with level-specific color."""
+        formatter: logging.Formatter = logging.Formatter(
+            self.FORMATS.get(record.levelno, self.fmt), datefmt=self.DATE_FORMAT
+        )
         return formatter.format(record)

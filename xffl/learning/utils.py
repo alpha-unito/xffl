@@ -6,50 +6,67 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List
+from typing import List, Optional
 
 import numpy
 import torch
 import torch.nn as nn
+from torch import Generator
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     CheckpointImpl,
     apply_activation_checkpointing,
     checkpoint_wrapper,
 )
-from transformers import AutoModel, PreTrainedModel
+from transformers import PreTrainedModel
 
+from xffl.custom.config_info import XFFLConfig
 from xffl.custom.types import PathLike
+from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def set_deterministic_execution(
-    seed: int,
-) -> torch.Generator:  # TODO: Flash_attention is stochastic
+    seed: Optional[int] = None, config: Optional[XFFLConfig] = None
+) -> Optional[Generator]:  # TODO: Flash_attention is stochastic
     """Set all the necessary RNGs to obtain reproducible executions
 
     This method sets random, numpy, torch and CUDA RNGs with the same seed.
     It also forces PyTorch's to use deterministic algorithms, reducing performance
 
+    The seed can be provided both directly and through an XFFL configuration.
+    In case both are provided, the first takes the precedence.
+
     :param seed: Random seed
-    :type seed: int
-    :return: PyTorch RNG
-    :rtype: torch.Generator
+    :type seed: Optional[int], defaults to None
+    :param config: XFFL configuration
+    :type config: Optional[XFFLConfig], defaults to None
+    :return: PyTorch RNG if a seed is provided, else None
+    :rtype: Optional[Generator]
     """
-    logger.debug(f"Setting RNGs seed to {seed}")
 
-    random.seed(seed)
-    numpy.random.seed(seed)
-    generator = torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    # Parameters resolution
+    _seed: Optional[int] = resolve_param(value=seed, config=config, attr="seed")
 
-    torch.utils.deterministic.fill_uninitialized_memory = (
-        True  # This should be True by default
-    )
-    torch.use_deterministic_algorithms(mode=True)
+    generator: Optional[Generator] = None
 
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # TODO: check cuBLAS version
+    if _seed is not None:
+        logger.debug(f"Setting RNGs seed to {_seed}")
+
+        random.seed(_seed)
+        numpy.random.seed(_seed)
+        generator = torch.manual_seed(_seed)
+        torch.cuda.manual_seed_all(_seed)
+
+        torch.utils.deterministic.fill_uninitialized_memory = (  # type: ignore
+            True  # This should be True by default
+        )
+        torch.use_deterministic_algorithms(mode=True)
+
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # TODO: check cuBLAS version
+    else:
+        logger.warning("No seed provided - deterministic execution will not be set.")
 
     return generator
 
@@ -57,11 +74,11 @@ def set_deterministic_execution(
 def set_nondeterministic_execution() -> None:
     """Deactivate deterministic execution and deterministic memory filling to improve performance"""
     logger.debug("Setting PyTorch deterministic execution")
-    torch.utils.deterministic.fill_uninitialized_memory = False
+    torch.utils.deterministic.fill_uninitialized_memory = False  # type: ignore
     torch.use_deterministic_algorithms(mode=False)
 
 
-def get_model_size(model: nn.Module | AutoModel) -> int:
+def get_model_size(model: nn.Module) -> int:
     """Returns the model's trainable parameters number
 
     :param model: PyTorch model
@@ -72,7 +89,7 @@ def get_model_size(model: nn.Module | AutoModel) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def get_model_size_in_bits(model: nn.Module | AutoModel) -> int:
+def get_model_size_in_bits(model: nn.Module) -> int:
     """Returns the model's trainable parameters size in bits
 
     :param model: PyTorch model
@@ -108,7 +125,7 @@ def seed_dataloader_worker(worker_id: int) -> None:
 
 
 def set_activation_checkpointing(
-    model: nn.Module | PreTrainedModel, layer: type = None
+    model: nn.Module | PreTrainedModel, layer: type
 ) -> None:
     """Sets up activation (gradient) checkpointing
 
@@ -155,7 +172,7 @@ def preload(files: List[PathLike]) -> None:
         command = " ".join(
             [
                 "find",
-                file,
+                str(file),
                 "-type",
                 "f",
                 "-exec",

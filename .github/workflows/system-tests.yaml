@@ -1,0 +1,48 @@
+name: "System Tests"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  cli-config:
+    name: "Test xffl workflow execution"
+    strategy:
+      matrix:
+        on: [ "ubuntu-24.04" ]
+        python: [ "3.10", "3.11", "3.12", "3.13", "3.14" ]
+    runs-on: ${{ matrix.on }}
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Set up Python ${{ matrix.python }}"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            test-requirements.txt
+
+      - name: "Install dependencies"
+        run: |
+          python -m pip install .
+          python -m pip install -r test-requirements.txt
+
+      - name: "Execute Test Chain"
+        working-directory: tests/system/cli
+        run: |
+          make setup
+          make create
+          make run
+
+      - name: "Cleanup Resources"
+        if: always()
+        working-directory: tests/system/cli
+        run: make clean

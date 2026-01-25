@@ -1,98 +1,77 @@
-"""Command line interface (CLI) for xFFL
+"""Command line interface (CLI) for xFFL.
 
-This is the main entrypoint of the xFFL CLI
-Here argument parsing takes place and the various xFFL subcommands are interpreted
+This is the main entrypoint of the xFFL CLI.
+Argument parsing takes place here and the various xFFL subcommands are dispatched.
 """
 
 import sys
+from argparse import Namespace
 from logging import Logger, getLogger
-from typing import List
+from typing import Callable, Dict, List
 
-from xffl.cli.parser import config_parser, parser, run_parser, simulate_parser
+import xffl.cli.parser as cli_parser
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
+# Mappa subcomandi → modulo main
+COMMANDS: Dict[str, str] = {
+    "config": "xffl.cli.config",
+    "run": "xffl.cli.run",
+    "exec": "xffl.cli.exec",
+}
 
-def main(arguments: List[str]) -> int:
-    """xFFL command line interface (CLI)
 
-    :param arguments: Command line arguments
-    :type arguments: argparse.Namespace
+def dispatch_command(command: str, args: Namespace) -> int:
+    """Dispatch a subcommand safely, logging errors.
+
+    :param command: Subcommand name
+    :param args: Parsed Namespace
     :return: Exit code
-    :rtype: int
     """
-
-    # Logging facilities setup
-    setup_logging()
-
-    # Check if there are arguments to be passed to the `executable` script
-    args_index = len(arguments)
-    if "-args" in arguments:
-        args_index = arguments.index("-args")
-    elif "--arguments" in arguments:
-        args_index = arguments.index("--arguments")
+    module_path = COMMANDS.get(command)
+    if not module_path:
+        cli_parser.parser.print_help()
+        return 1
 
     try:
-        # Parse CLI arguments and isolate script arguments
-        args = parser.parse_args(arguments[:args_index])
-        args.arguments = arguments[args_index + 1 :]
-
-        # Logging facilities setup
-        setup_logging(args.loglevel)
-
-        # xFFL subcommands handling
-        if args.command == "config":
-            if args.help:
-                logger.info(f"\n{config_parser.format_help()}")
-                return 0
-            else:
-                from xffl.cli.config import main as xffl_config
-
-                return xffl_config(args)
-        elif args.command == "run":
-            if args.help:
-                logger.info(f"\n{run_parser.format_help()}")
-                return 0
-            else:
-                from xffl.cli.run import main as xffl_run
-
-                return xffl_run(args)
-        elif args.command == "simulate":
-            if args.help:
-                logger.info(f"\n{simulate_parser.format_help()}")
-                return 0
-            else:
-                from xffl.cli.simulate import main as xffl_simulate
-
-                return xffl_simulate(args=args)
-
-        # xFFL arguments handling
-        if args.help:
-            logger.info(f"\n{parser.format_help()}")
-            return 0
-        elif args.version:
-            from xffl.utils.constants import VERSION
-
-            logger.info(f"xFFL version: {VERSION}")
-            return 0
-        else:
-            logger.critical(f"\n{parser.format_help()}")
-            return 1
+        module: Callable = __import__(module_path, fromlist=["main"])
+        return module.main(args)
     except Exception as e:
-        logger.exception(e)
+        logger.exception("Unhandled exception in %s: %s", command, e)
         return 1
 
 
-def run() -> int:
-    """Main CLI entrypoint
+def main(arguments: List[str]) -> int:
+    """xFFL command line interface.
 
+    :param arguments: Command line arguments
+    :type arguments: List[str]
     :return: Exit code
-    :rtype: int
     """
-    return main(sys.argv[1:])
+
+    args: Namespace = cli_parser.parser.parse_args(arguments)
+
+    # Setup logging
+    setup_logging(args.loglevel)
+    logger.debug(f"Input arguments: {args}")
+
+    # Handle version
+    if getattr(args, "version", False):
+        from xffl.utils.constants import VERSION
+
+        logger.info("xFFL version: %s", VERSION)
+        return 0
+
+    # Dispatch to subcommand
+    return dispatch_command(args.command, args)
+
+
+def run() -> None:
+    """Main CLI entrypoint"""
+    sys.exit(main(sys.argv[1:]))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    run()

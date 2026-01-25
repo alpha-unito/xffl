@@ -1,0 +1,4 @@
+astroid==3.3.11
+furo==2025.9.25
+sphinx==8.2.3
+sphinx-autoapi==3.6.0

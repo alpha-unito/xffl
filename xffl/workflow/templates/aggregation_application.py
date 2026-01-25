@@ -1,12 +1,14 @@
 import argparse
 
+from torch import nn
 from tqdm import tqdm
 from transformers import LlamaForCausalLM
 
 
 def main(args: argparse.Namespace):
     print("Starting aggregation...")
-    buffer_model = None
+    buffer_model: nn.Module
+
     state_dict_list = []
     for index, model_path in enumerate(args.model):
         print(f"\t Loading model {index+1} of {len(args.model)} models...")

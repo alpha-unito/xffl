@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import MutableMapping
 from logging import Logger, getLogger
-from typing import Any
+from typing import Any, Optional
 
 import cwl_utils.parser.cwl_v1_2 as cwl
 
@@ -31,19 +31,12 @@ class CWLConfig(YamlConfig):
             "script_train": {"class": "Directory", "path": "scripts"},
         }
 
-    def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
-    ) -> None:
+    def add_inputs(self, inputs: MutableMapping[str, Any]) -> None:
         """Adds the CWL inputs to the YAML content
 
-        :param facility_name: Facility's name
-        :param extra_inputs: Extra inputs
-        :type facility_name: str
-        :type extra_inputs: MutableMapping[str, Any]
+        :type inputs: MutableMapping[str, Any]
         """
-        self.content |= {f"facility_{facility_name}": facility_name} | {
-            f"{name}_{facility_name}": value for name, value in extra_inputs.items()
-        }
+        self.content |= inputs
 
 
 class Workflow(ABC):
@@ -72,7 +65,7 @@ class Workflow(ABC):
 
     @abstractmethod
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the Workflow definition
 
@@ -146,7 +139,7 @@ class AggregateStep(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the AggregateStep definition
 
@@ -251,7 +244,9 @@ class MainWorkflow(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self,
+        facility_name: str,
+        extra_inputs: Optional[MutableMapping[str, Any]] = None,
     ) -> None:
         """Add the given extra inputs to the MainWorkflow definition
 
@@ -260,11 +255,15 @@ class MainWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
+        if extra_inputs is None:
+            extra_inputs = {}
+
         mandatory_inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
+
         for key in mandatory_inputs.keys():
             if key in extra_inputs.keys():
                 logger.warning(
@@ -278,6 +277,7 @@ class MainWorkflow(Workflow):
                 for name, _type in inputs.items()
             ]
         )
+
         iteration_step = next(elem for elem in self.cwl.steps if elem.id == "iteration")
         iteration_step.in_.extend(
             cwl.WorkflowStepInput(
@@ -373,6 +373,92 @@ class RoundWorkflow(Workflow):
         :return: Dict template of a CWL xFFL step
         :rtype: cwl.Process
         """
+        check_step = cwl.CommandLineTool(
+            baseCommand=["true"],
+            cwlVersion="v1.2",
+            id="check",
+            inputs=[
+                cwl.CommandInputParameter(
+                    id="model",
+                    type_="Directory",
+                ),
+            ],
+            outputs=[],
+        )
+
+        training_subworkflow = cwl.Workflow(
+            id="training",
+            inputs=[
+                cwl.WorkflowInputParameter(id="script", type_="Directory"),
+                cwl.WorkflowInputParameter(id="model", type_="Directory"),
+                cwl.WorkflowInputParameter(id="executable", type_="File"),
+                cwl.WorkflowInputParameter(id="facility", type_="string"),
+                cwl.WorkflowInputParameter(id="model_basename", type_="string"),
+                cwl.WorkflowInputParameter(id="round", type_="int"),
+                cwl.WorkflowInputParameter(id="image", type_="File"),
+                cwl.WorkflowInputParameter(id="dataset", type_="Directory"),
+            ],
+            outputs=[
+                cwl.WorkflowOutputParameter(
+                    id="new_model",
+                    type_="Directory",
+                    outputSource="client/new_model",
+                )
+            ],
+            steps=[
+                cwl.WorkflowStep(
+                    id="client",
+                    in_=[
+                        cwl.WorkflowStepInput(
+                            id="executable",
+                            source="executable",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model",
+                            source="model",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="script",
+                            source="script",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="facility",
+                            source="facility",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="image",
+                            source="image",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="dataset",
+                            source="dataset",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="model_basename",
+                            source="model_basename",
+                        ),
+                        cwl.WorkflowStepInput(
+                            id="round",
+                            source="round",
+                        ),
+                    ],
+                    out=[cwl.WorkflowStepOutput(id="new_model")],
+                    run="clt/training.cwl",
+                ),
+                cwl.WorkflowStep(
+                    id="check",
+                    in_=[
+                        cwl.WorkflowStepInput(
+                            id="model",
+                            source="client/new_model",
+                        ),
+                    ],
+                    out=[],
+                    run=check_step,
+                ),
+            ],
+        )
+
         return cwl.WorkflowStep(
             id=f"training_on_{name}",
             in_=[
@@ -410,11 +496,13 @@ class RoundWorkflow(Workflow):
                 ),
             ],
             out=[cwl.WorkflowStepOutput(id="new_model")],
-            run="clt/training.cwl",
+            run=training_subworkflow,
         )
 
     def add_inputs(
-        self, facility_name: str, extra_inputs: MutableMapping[str, Any]
+        self,
+        facility_name: str,
+        extra_inputs: Optional[MutableMapping[str, Any]] = None,
     ) -> None:
         """Add the given extra inputs to the RoundWorkflow definition
 
@@ -423,11 +511,15 @@ class RoundWorkflow(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
+        if extra_inputs is None:
+            extra_inputs = {}
+
         mandatory_inputs = {
             "image": "File",
             "facility": "string",
             "dataset": "Directory",
         }
+
         for key in mandatory_inputs.keys():
             if key in extra_inputs.keys():
                 logger.warning(
@@ -449,6 +541,7 @@ class RoundWorkflow(Workflow):
                 for name in extra_inputs.keys()
             ]
         )
+
         self.cwl.steps.append(training_step)
         merge_step = next(elem for elem in self.cwl.steps if elem.id == "merge")
         merge_step.in_.append(
@@ -490,18 +583,13 @@ class TrainingStep(Workflow):
                 ),
                 cwl.CommandLineBinding(
                     position=5,
-                    prefix="--output-model",
+                    prefix="--out-model-name",
                     valueFrom="$(inputs.model_basename)",
                 ),
                 cwl.CommandLineBinding(
                     position=6,
-                    prefix="--output",
+                    prefix="--outdir",
                     valueFrom="$(runtime.outdir)",
-                ),
-                cwl.CommandLineBinding(
-                    position=7,
-                    prefix="--workspace",
-                    valueFrom="$XFFL_TMPDIR_FOLDER",
                 ),
             ],
             cwlVersion="v1.2",
@@ -590,7 +678,7 @@ class TrainingStep(Workflow):
         )
 
     def add_inputs(
-        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any]
+        self, facility_name: str | None, extra_inputs: MutableMapping[str, Any] = None
     ) -> None:
         """Add the given extra inputs to the TrainingStep definition
 
@@ -599,23 +687,24 @@ class TrainingStep(Workflow):
         :param extra_inputs: Command line argument required by the executable script [name: cwl type]
         :type extra_inputs: MutableMapping[str, str]
         """
-        i = self.get_available_position()
-        for name, values in extra_inputs.items():
-            input_binding = None
-            if "prefix" in values.keys():
-                input_binding = cwl.CommandLineBinding(
-                    position=i,
-                    prefix=values["prefix"],
+        if extra_inputs:
+            i = self.get_available_position()
+            for name, values in extra_inputs.items():
+                input_binding = None
+                if "prefix" in values.keys():
+                    input_binding = cwl.CommandLineBinding(
+                        position=i,
+                        prefix=values["prefix"],
+                    )
+                    i += 1
+                self.cwl.inputs.append(
+                    cwl.WorkflowInputParameter(
+                        id=name,
+                        type_=values["type"],
+                        inputBinding=input_binding,
+                        default=values.get("default", None),
+                    )
                 )
-                i += 1
-            self.cwl.inputs.append(
-                cwl.WorkflowInputParameter(
-                    id=name,
-                    type_=values["type"],
-                    inputBinding=input_binding,
-                    default=values.get("default", None),
-                )
-            )
 
     def get_available_position(self) -> int:
         position = 0

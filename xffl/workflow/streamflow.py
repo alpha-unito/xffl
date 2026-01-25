@@ -16,8 +16,6 @@ from streamflow.ext.utils import load_extensions
 from streamflow.log_handler import logger as sf_logger
 from streamflow.main import build_context
 
-from xffl.utils.logging import set_external_loggers
-
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
@@ -35,7 +33,6 @@ async def run_streamflow(args: argparse.Namespace) -> None:
     streamflow_file = str(os.path.join(args.workdir, args.project, "streamflow.yml"))
 
     # Logger
-    set_external_loggers()
     if args.loglevel == logging.WARNING:
         sf_logger.setLevel(logging.WARNING)
     elif args.loglevel == logging.DEBUG:
