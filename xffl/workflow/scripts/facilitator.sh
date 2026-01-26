@@ -29,9 +29,7 @@ source "${XFFL_SCRIPTS_FOLDER}/env.sh"
 
 # Set specific facility env variables if xffl exec
 if [ "${XFFL_EXECUTION}" = "true" ] ; then
-	if [ "${XFFL_FACILITY}" = "None" ]; then
-		echo "No facility specified - the environment will not be initialized."
-	else
+	if [ "${XFFL_FACILITY}" != "None" ]; then
 		if [ ! -f "${XFFL_FACILITY}" ]; then
 			echo "Specified facility does not exist (${XFFL_FACILITY}) - the environment will not be initialized."
 		else

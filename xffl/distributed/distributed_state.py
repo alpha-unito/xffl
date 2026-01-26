@@ -470,7 +470,7 @@ class DistributedState:
             _replica_world_size: int
             if self.is_federated_scaling_setup():
                 assert self.federated_local_size is not None
-                assert self.federated_rank
+                assert self.federated_rank is not None
 
                 _world_size = self.federated_local_size[self.federated_rank]
                 _replica_world_size = replica_world_size[self.federated_rank]
@@ -530,7 +530,6 @@ class DistributedState:
 
     def _set_rank_role(self) -> None:
         assert self.federated_rank is not None
-        assert self.replica_group is not None
 
         if self.is_hsdp_setup():
             federated_group_communicating_processes: Tuple[int, ...] = (
@@ -539,6 +538,8 @@ class DistributedState:
 
             self.is_sender = self.rank in federated_group_communicating_processes
             if not self.is_sender:
+                assert self.replica_group is not None
+
                 self.receive_from = (
                     set(dist.get_process_group_ranks(self.replica_group[0]))
                     & set(federated_group_communicating_processes)

@@ -9,8 +9,13 @@ import torch.distributed as dist
 from torch.distributed.distributed_c10d import Backend
 from torch.distributed.fsdp import ShardingStrategy
 
+from xffl.custom.config_info import XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
-from xffl.utils.utils import get_default_nccl_process_group_options, get_timeout
+from xffl.utils.utils import (
+    get_default_nccl_process_group_options,
+    get_timeout,
+    resolve_param,
+)
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -54,8 +59,9 @@ def setup_distributed_process_group(
     master_port: Optional[int] = None,
     device: Optional[torch.device] = None,
     hsdp: Optional[int] = None,
-    federated: Optional[Tuple[int, ...]] = None,
+    federated: Optional[int | Tuple[int, ...]] = None,
     streams: Optional[int] = None,
+    config: Optional[XFFLConfig] = None,
 ) -> DistributedState:
     """Setup PyTorch's distributed environment
 
@@ -63,6 +69,9 @@ def setup_distributed_process_group(
     The distributed rendez-vous point determined by two environmental variable that should be set BEFORE calling this method (same values for all processes):
     MASTER_ADD:  network address of the rendezvous
     MASTER_PORT: network port of the rendezvous
+
+    The parameters can be provided both directly and through an XFFL configuration.
+    In case both are provided, the firsts take the precedence.
 
     :param rank: Rank of the calling process, otherwise obtained from the environment, defaults to None
     :type rank: Optional[int], optional
@@ -87,45 +96,88 @@ def setup_distributed_process_group(
     :param hsdp: Activate Hybrid Sharding Distributed Parallelism with specified replica group size, defaults to None
     :type hsdp: Optional[int], optional
     :param federated: Activate Federated Scaling with specified federated group size, defaults to None
-    :type federated: Optional[int], optional
+    :type federated: Optional[int | Tuple[int, ...]], optional
     :param streams: Number of CUDA streams to instantiate, defaults to None
     :type streams: Optional[int]
+    :param config: XFFL configuration
+    :type config: Optional[XFFLConfig], defaults to None
     :raises AttributeError: If backend is not in nccl, gloo, or mpi
     :raises ValueError: If no valid MASTER_ADDR and MASTER_PORT are set
     :return: Distributed state of the current training setup
     :rtype: DistributedState
     """
+
+    # Parameters resolution
+    _rank: Optional[int] = resolve_param(value=rank, config=config, attr="rank")
+    _world_size: Optional[int] = resolve_param(
+        value=world_size, config=config, attr="world_size"
+    )
+    _group_local_rank: Optional[int] = resolve_param(
+        value=group_local_rank, config=config, attr="group_local_rank"
+    )
+    _group_local_size: Optional[int] = resolve_param(
+        value=group_local_size, config=config, attr="group_local_size"
+    )
+    _group_rank: Optional[int] = resolve_param(
+        value=group_rank, config=config, attr="group_rank"
+    )
+    _group_world_size: Optional[int] = resolve_param(
+        value=group_world_size, config=config, attr="group_world_size"
+    )
+    _backend: Optional[Backend] = resolve_param(
+        value=backend, config=config, attr="backend"
+    )
+    _master_addr: Optional[str] = resolve_param(
+        value=master_addr, config=config, attr="master_addr"
+    )
+    _master_port: Optional[int] = resolve_param(
+        value=master_port, config=config, attr="master_port"
+    )
+    _device: Optional[torch.device] = resolve_param(
+        value=device, config=config, attr="device"
+    )
+    _hsdp: Optional[int] = resolve_param(value=hsdp, config=config, attr="hsdp")
+    __federated: Optional[int | Tuple[int, ...]] = resolve_param(
+        value=federated, config=config, attr="federated"
+    )
+    _federated: Optional[Tuple[int, ...]] = (
+        (__federated,) if isinstance(__federated, int) else __federated
+    )
+    _streams: Optional[int] = resolve_param(
+        value=streams, config=config, attr="streams"
+    )
+
     state: DistributedState = DistributedState()
 
     # Distributed state global information
     state.set_global(
         backend=(
-            backend
-            if backend is not None
+            _backend
+            if _backend is not None
             else "nccl" if torch.cuda.is_available() else "gloo"
         ),
         device_type=(
-            device
-            if device is not None
+            _device
+            if _device is not None
             else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         ),
         master_addr=(
-            os.environ.get("MASTER_ADDR") if master_addr is None else master_addr
+            os.environ.get("MASTER_ADDR") if _master_addr is None else _master_addr
         ),
-        master_port=_get_int_from_env(var=master_port, env_var="MASTER_PORT"),
-        rank=_get_int_from_env(var=rank, env_var="RANK"),
-        world_size=_get_int_from_env(var=world_size, env_var="WORLD_SIZE"),
+        master_port=_get_int_from_env(var=_master_port, env_var="MASTER_PORT"),
+        rank=_get_int_from_env(var=_rank, env_var="RANK"),
+        world_size=_get_int_from_env(var=_world_size, env_var="WORLD_SIZE"),
     )
 
     # Distributed state local information
     state.set_node(
-        node_local_rank=_get_int_from_env(var=group_local_rank, env_var="LOCAL_RANK"),
+        node_local_rank=_get_int_from_env(var=_group_local_rank, env_var="LOCAL_RANK"),
         node_local_size=_get_int_from_env(
-            var=group_local_size, env_var="LOCAL_WORLD_SIZE"
+            var=_group_local_size, env_var="LOCAL_WORLD_SIZE"
         ),
-        node_rank=_get_int_from_env(var=group_rank, env_var="GROUP_RANK"),
+        node_rank=_get_int_from_env(var=_group_rank, env_var="GROUP_RANK"),
         node_world_size=_get_int_from_env(
-            var=group_world_size, env_var="GROUP_WORLD_SIZE"
+            var=_group_world_size, env_var="GROUP_WORLD_SIZE"
         ),
     )
 
@@ -133,48 +185,48 @@ def setup_distributed_process_group(
     assert state.node_local_size is not None
     assert state.world_size is not None
 
-    if federated is None:
+    if _federated is None:
         if "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
-            federated = tuple(
+            _federated = tuple(
                 int(item) * state.node_local_size
                 for item in str(
                     os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE")
                 ).split(",")
             )
-    elif len(federated) == 1:
-        if state.world_size % federated[0] != 0:
+    elif len(_federated) == 1:
+        if state.world_size % _federated[0] != 0:
             logger.error(
-                f"The world size {state.world_size} is not divisible by the specified federated group size {federated[0]} - falling back to standard FSDP/HSDP"
+                f"The world size {state.world_size} is not divisible by the specified federated group size {_federated[0]} - falling back to standard FSDP/HSDP"
             )
-            federated = None
-        elif state.world_size == federated[0]:
+            _federated = None
+        elif state.world_size == _federated[0]:
             logger.error(
-                f"The world size {state.world_size} and the the specified federated group size {federated[0]} are equal - falling back to standard FSDP/HSDP"
+                f"The world size {state.world_size} and the the specified federated group size {_federated[0]} are equal - falling back to standard FSDP/HSDP"
             )
-            federated = None
+            _federated = None
         else:
-            federated = tuple(
-                federated[0] for _ in range(state.world_size // federated[0])
+            _federated = tuple(
+                _federated[0] for _ in range(state.world_size // _federated[0])
             )
 
     # Setting execution device
     state.set_exec_device(
         current_device=_get_current_device(state=state),
-        streams=(streams if federated is not None else None),
+        streams=(_streams if _federated is not None else None),
     )
 
     # Basic PyTorch distributed setup
     init_distributed_process_group(state=state)
 
-    if federated is not None:
-        if sum(federated) != state.world_size:
+    if _federated is not None:
+        if sum(_federated) != state.world_size:
             logger.error(
-                f"The world size {state.world_size} is not divisible by the specified federated group size {federated} - falling back to standard FSDP/HSDP"
+                f"The world size {state.world_size} is not divisible by the specified federated group size {_federated} - falling back to standard FSDP/HSDP"
             )
-        state.set_federated_scaling(federated_group_size=federated, hsdp=hsdp)
+        state.set_federated_scaling(federated_group_size=_federated, hsdp=_hsdp)
     else:  # Setting non-federated techniques
-        if hsdp is not None:
-            state.set_hsdp(hsdp=hsdp)
+        if _hsdp is not None:
+            state.set_hsdp(hsdp=_hsdp)
         else:
             state.set_fsdp()
 

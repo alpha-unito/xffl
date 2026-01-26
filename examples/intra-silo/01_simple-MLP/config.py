@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass
+from typing import Tuple
 
 import torch.nn.functional as F
 from torch import nn
@@ -39,15 +40,20 @@ class Mnist(DatasetInfo):
 
 @dataclass
 class xffl_config(XFFLConfig):
+
+    # Default
     model: ModelInfo = Mlp
     dataset: DatasetInfo = Mnist
     loglevel: int = logging.DEBUG
     seed: int = 42
-    hsdp: int = 1
     train_batch_size: int = 1024
-    val_batch_size: int = 1
-    workers: int = 0
     learning_rate: float = 1e-2
-    epochs: int = 10
+    epochs: int = 3
+    hsdp: int = 1
+    federated: Tuple[int, ...] = (
+        1,
+        3,
+    )
+
+    # Custom
     one_class: bool = False
-    # subsampling: int = (5000, 800)

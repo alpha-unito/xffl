@@ -90,15 +90,16 @@ Limit_PyTorch_threads () {
 # This is necessary since each process is run on only 1GPU, and some SLURM installation do not reset correctly the CUDA_VISIBLE_DEVICES variable
 Reset_visible_devices () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then
-        export VISIBLE_DEVICES=$( seq -s , 0 $(( LOCAL_WORLD_SIZE - 1 )) )
+        VISIBLE_DEVICES=$( seq -s , 0 $(( LOCAL_WORLD_SIZE - 1 )) )
     elif command -v srun > /dev/null ; then # Check SLURM
         if [ -z "${SLURM_GPUS_PER_NODE+x}"  ]; then
           echo "SLURM_GPUS_PER_NODE is unset"
           exit 1
         fi
-        export VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # TODO: change SLURM_GPUS_PER_NODE for cloud environments
+        VISIBLE_DEVICES=$( seq -s , 0 $(( SLURM_GPUS_PER_NODE - 1 )) ) # TODO: change SLURM_GPUS_PER_NODE for cloud environments
     fi
 
+    export VISIBLE_DEVICES
     return 0
 }
 

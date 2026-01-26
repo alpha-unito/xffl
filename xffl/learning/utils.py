@@ -6,11 +6,12 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List
+from typing import List, Optional
 
 import numpy
 import torch
 import torch.nn as nn
+from torch import Generator
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     CheckpointImpl,
     apply_activation_checkpointing,
@@ -18,38 +19,54 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
 )
 from transformers import PreTrainedModel
 
+from xffl.custom.config_info import XFFLConfig
 from xffl.custom.types import PathLike
+from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def set_deterministic_execution(
-    seed: int,
-) -> torch.Generator:  # TODO: Flash_attention is stochastic
+    seed: Optional[int] = None, config: Optional[XFFLConfig] = None
+) -> Optional[Generator]:  # TODO: Flash_attention is stochastic
     """Set all the necessary RNGs to obtain reproducible executions
 
     This method sets random, numpy, torch and CUDA RNGs with the same seed.
     It also forces PyTorch's to use deterministic algorithms, reducing performance
 
+    The seed can be provided both directly and through an XFFL configuration.
+    In case both are provided, the first takes the precedence.
+
     :param seed: Random seed
-    :type seed: int
-    :return: PyTorch RNG
-    :rtype: torch.Generator
+    :type seed: Optional[int], defaults to None
+    :param config: XFFL configuration
+    :type config: Optional[XFFLConfig], defaults to None
+    :return: PyTorch RNG if a seed is provided, else None
+    :rtype: Optional[Generator]
     """
-    logger.debug(f"Setting RNGs seed to {seed}")
 
-    random.seed(seed)
-    numpy.random.seed(seed)
-    generator = torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    # Parameters resolution
+    _seed: Optional[int] = resolve_param(value=seed, config=config, attr="seed")
 
-    torch.utils.deterministic.fill_uninitialized_memory = (  # type: ignore
-        True  # This should be True by default
-    )
-    torch.use_deterministic_algorithms(mode=True)
+    generator: Optional[Generator] = None
 
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # TODO: check cuBLAS version
+    if _seed is not None:
+        logger.debug(f"Setting RNGs seed to {_seed}")
+
+        random.seed(_seed)
+        numpy.random.seed(_seed)
+        generator = torch.manual_seed(_seed)
+        torch.cuda.manual_seed_all(_seed)
+
+        torch.utils.deterministic.fill_uninitialized_memory = (  # type: ignore
+            True  # This should be True by default
+        )
+        torch.use_deterministic_algorithms(mode=True)
+
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # TODO: check cuBLAS version
+    else:
+        logger.warning("No seed provided - deterministic execution will not be set.")
 
     return generator
 

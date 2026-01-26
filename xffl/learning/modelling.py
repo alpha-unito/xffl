@@ -26,6 +26,7 @@ def create_fsdp_model(
     state: DistributedState,
     wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
+    use_orig_params: bool = False,
 ) -> FullyShardedDataParallel:  # TODO: Move to FSDP2
     """Creates an FSDP model
 
@@ -37,6 +38,8 @@ def create_fsdp_model(
     :type wrapping_policy:  Optional[Callable], optional
     :param mixed_precision: Precision to use for the module, defaults to None
     :type mixed_precision: Optional[MixedPrecision], optional
+    :param use_orig_params: If to use the original parameter format, defaults to False
+    :type use_orig_params: Bool, defaults to False
     :return: The original module wrapped by FSDP
     :rtype: FullyShardedDataParallel
     """
@@ -62,13 +65,16 @@ def create_fsdp_model(
             else None
         ),  # type: ignore
         device_mesh=device_mesh,
+        use_orig_params=use_orig_params,
     )
 
     return model
 
 
 def save_model(
-    model: FullyShardedDataParallel,  # To be generalized (as for now just HF)
+    model: (
+        nn.Module | FullyShardedDataParallel
+    ),  # To be generalized (as for now just HF)
     optimizer: Optimizer,
     path: Path,
     name: str,
@@ -101,7 +107,6 @@ def save_model(
 
     # Clear GPU cache and reset peak memory stats
     if torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats()
         torch.cuda.empty_cache()
 
     # Gather the full, un-sharded state dict
@@ -143,6 +148,6 @@ def save_model(
             save_directory=save_path,
             state_dict=state_dict,
             safe_serialization=True,  # Safetensor or Pickle
-        )  # Shard size can be controlled (can improve transfer performance)
+        )  # type: ignore # Shard size can be controlled (can improve transfer performance)
 
         logger.info(f"Model saved to {save_path}")

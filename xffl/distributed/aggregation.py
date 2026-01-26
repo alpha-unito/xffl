@@ -86,7 +86,7 @@ def _setup_streams(
 
     stream_index: int = 0
     reduce_op: dist.ReduceOp.RedOpType = dist.ReduceOp.SUM
-    stream_context: ContextManager = nullcontext  # type: ignore
+    stream_context: ContextManager = nullcontext()
     if state.backend == "nccl":
         reduce_op = dist.ReduceOp.AVG
         stream_context = torch.cuda.StreamContext(cuda.default_stream())
@@ -104,7 +104,8 @@ def _get_stream_context(state: DistributedState, stream_index: int) -> ContextMa
     :return: CUDE stream context manager
     :rtype: ContextManager
     """
-    stream_context: ContextManager = nullcontext  # type: ignore
+    stream_context: ContextManager = nullcontext()
+
     if state.streams is not None:
         if stream_index < len(state.streams):
             stream_context = torch.cuda.StreamContext(state.streams[stream_index])

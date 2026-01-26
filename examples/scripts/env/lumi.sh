@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# LUMI specific environment variables
+export XFFL_LOCAL_TMPDIR="/tmp/"
 module load cray-python/3.11.7
 
 # MIOPEN needs some initialisation for the cache as the default location

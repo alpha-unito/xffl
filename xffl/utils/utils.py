@@ -7,7 +7,9 @@ from collections.abc import Callable
 from datetime import timedelta
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
+
+from xffl.custom.config_info import XFFLConfig
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -63,7 +65,9 @@ def check_input(
     :param text: Question to be asked to the user
     :type text: str
     :param warning_msg: Error message in case the inserted value does not satisfy the control condition
+    :param warning_msg: Error message in case the inserted value does not satisfy the control condition
     :type warning_msg: str
+    :param control: Control function to be checked on the inserted value
     :param control: Control function to be checked on the inserted value
     :type control: Callable
     :param is_local_path: If the provided path is a local path, defaults to True
@@ -119,3 +123,21 @@ def get_default_nccl_process_group_options(
     options._timeout = get_timeout()
 
     return options
+
+
+def resolve_param(
+    value: Optional[Any], config: Optional[XFFLConfig], attr: str
+) -> Optional[Any]:
+    """Resolve a function parameter giving priority to the "value" field, alternatively tries to get it from the xFFL configuration.
+       If both fail, None is returned.
+
+    :param value: Given parameter value
+    :type value: Optional[Any]
+    :param config: xFFL configuration
+    :type config: Optional[XFFLConfig]
+    :param attr: Name of the attribute in the xFFL configuration
+    :type attr: str
+    :return: Resolved value of the parameter, None if none is found
+    :rtype: Optional[Any]
+    """
+    return value if value is not None else getattr(config, attr, None)

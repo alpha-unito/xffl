@@ -7,7 +7,6 @@ from typing import Dict, Optional
 import torch
 import torch.nn as nn
 from config import xffl_config
-from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Adadelta
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.distributed import DistributedSampler
@@ -37,17 +36,14 @@ def pretraining(config: xffl_config) -> None:
     setup_logging(log_level=config.loglevel)
 
     # Sets RNGs seeds and force PyTorch's deterministic execution
-    generator: Optional[torch.Generator] = (
-        utils.set_deterministic_execution(seed=config.seed) if config.seed else None
+    generator: Optional[torch.Generator] = utils.set_deterministic_execution(
+        config=config
     )
 
     # PyTorch's distributed backend setup
     start_time = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
-        hsdp=config.hsdp if hasattr(config, "hsdp") else None,
-        federated=(
-            config.federated_scaling if hasattr(config, "federated_scaling") else None
-        ),
+        config=config
     )
     if state.rank == 0 and torch.distributed.is_initialized():
         logger.debug(
@@ -72,7 +68,7 @@ def pretraining(config: xffl_config) -> None:
 
     # FSDP/HSDP setup
     start_time = time.perf_counter()
-    model: FullyShardedDataParallel = modelling.create_fsdp_model(
+    model = modelling.create_fsdp_model(
         module=model,
         state=state,
     )
@@ -107,7 +103,7 @@ def pretraining(config: xffl_config) -> None:
             dataset.data = dataset.data[dataset.targets == state.rank % 10]
             dataset.targets = dataset.targets[dataset.targets == state.rank % 10]
 
-    if hasattr(config, "subsampling"):
+    if hasattr(config, "subsampling") and config.subsampling:
         xffl_datasets["train"] = Subset(
             xffl_datasets["train"], range(config.subsampling[0])
         )
@@ -149,7 +145,7 @@ def pretraining(config: xffl_config) -> None:
                 utils.seed_dataloader_worker if config.seed else None
             ),  # Necessary for reproducibility
             generator=(
-                generator if config.seed else None
+                generator if generator is not None else None
             ),  # Necessary for reproducibility
         )
 
@@ -192,6 +188,7 @@ def pretraining(config: xffl_config) -> None:
         eval_dataloader=dataloaders["test"],
         epochs=config.epochs,
         criterion=nn.NLLLoss(),
+        federated_batches=config.federated_batches,
     )
 
     if state.rank == 0:
