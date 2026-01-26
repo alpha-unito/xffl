@@ -81,6 +81,11 @@ def distributed_training(
     :rtype: Dict[str, float]
     """
 
+    # Clear GPU cache and reset peak memory stats
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
+
     # TODO: if fp16 the gradients should be rescaled
     train_perp: List[float] = []
     train_loss: List[float] = []

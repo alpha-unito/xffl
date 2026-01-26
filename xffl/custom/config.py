@@ -4,10 +4,7 @@ import logging
 from abc import ABC
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping, Optional, Tuple, Type
-
-import torch
-from torch.distributed.distributed_c10d import Backend
+from typing import Any, Callable, Mapping, Optional, Tuple, Type
 
 
 @dataclass
@@ -24,11 +21,11 @@ class ModelInfo(ABC):
     :type path: str
     """
 
-    model_type: str
-    decoder_layers: Type
-    wrapping_policy: Callable
     name: str
-    path: str
+    model: Callable
+    decoder_layers: Optional[Type] = None
+    wrapping_policy: Optional[Callable] = None
+    path: Optional[Path] = None
 
 
 @dataclass
@@ -42,8 +39,12 @@ class DatasetInfo(ABC):
     """
 
     name: str
-    splits: Mapping[str, str]
-    path: str
+    splits: Mapping[str, Any]
+    batch_sizes: Mapping[str, int]
+    filters: Optional[Callable | Tuple[Callable, ...]] = None
+    subsampling: Optional[int | Tuple[int, ...]] = None
+    workers: Optional[int] = None
+    path: Optional[Path | str] = None
 
 
 @dataclass
@@ -57,8 +58,8 @@ class XFFLConfig(ABC):
     """
 
     # Mandatory - Model and dataset
-    model: ModelInfo
-    dataset: DatasetInfo
+    model_info: ModelInfo
+    dataset_info: DatasetInfo
 
     # General
     loglevel: int = logging.INFO
@@ -78,13 +79,7 @@ class XFFLConfig(ABC):
     learning_rate: float = 1e-3
     scale_learning_rate: bool = False
     epochs: int = 1
-    train_batch_size: int = 1
-    val_batch_size: int = 1
     attention: str = "sdpa"
-
-    # Data
-    subsampling: Optional[int] = None
-    workers: int = 0
 
     # Output
     output_folder: Optional[Path] = None
@@ -100,7 +95,7 @@ class XFFLConfig(ABC):
     group_local_size: Optional[int] = None
     group_rank: Optional[int] = None
     group_world_size: Optional[int] = None
-    backend: Optional[Backend] = None
+    backend: Optional[str] = None
     master_addr: Optional[str] = None
     master_port: Optional[int] = None
-    device: Optional[torch.device] = None
+    device: Optional[str] = None

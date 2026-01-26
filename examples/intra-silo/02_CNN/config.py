@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from torch import nn
 from torchvision import models
 
-from xffl.custom.config_info import DatasetInfo, ModelInfo
+from xffl.custom.config import DatasetInfo, ModelInfo
 
 
 @dataclass

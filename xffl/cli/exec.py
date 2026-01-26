@@ -17,7 +17,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 import xffl.cli.parser as cli_parser
-from xffl.custom.config_info import XFFLConfig
+from xffl.custom.config import XFFLConfig
 from xffl.custom.types import FileLike, PathLike
 from xffl.distributed.networking import get_cells_ids
 
@@ -86,8 +86,12 @@ def _setup_env(
         if config_module is not None:
             config: XFFLConfig = getattr(config_module, args.config)()
 
-            env["XFFL_MODEL_FOLDER"] = config.model.path + config.model.name
-            env["XFFL_DATASET_FOLDER"] = config.dataset.path + config.dataset.name
+            env["XFFL_MODEL_FOLDER"] = str(config.model_info.path) + str(
+                config.model_info.name
+            )
+            env["XFFL_DATASET_FOLDER"] = str(config.dataset_info.path) + str(
+                config.dataset_info.name
+            )
             env["XFFL_CODE_FOLDER"] = str(PathLike(args.executable).parent)
 
     return env

@@ -9,7 +9,7 @@ from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-from xffl.custom.config_info import XFFLConfig
+from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -49,7 +49,6 @@ def resolve_path(path: str | Path) -> Path:
     :return: expanded path
     :rtype: Path
     """
-    logger.debug(f"Expanding {path} path...")
     return Path(os.path.expanduser(os.path.expandvars(path))).absolute().resolve()
 
 
@@ -126,7 +125,9 @@ def get_default_nccl_process_group_options(
 
 
 def resolve_param(
-    value: Optional[Any], config: Optional[XFFLConfig], attr: str
+    value: Optional[Any],
+    config: Optional[XFFLConfig | ModelInfo | DatasetInfo],
+    attr: str,
 ) -> Optional[Any]:
     """Resolve a function parameter giving priority to the "value" field, alternatively tries to get it from the xFFL configuration.
        If both fail, None is returned.

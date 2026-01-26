@@ -9,7 +9,7 @@ import torch.distributed as dist
 from torch.distributed.distributed_c10d import Backend
 from torch.distributed.fsdp import ShardingStrategy
 
-from xffl.custom.config_info import XFFLConfig
+from xffl.custom.config import XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 from xffl.utils.utils import (
     get_default_nccl_process_group_options,
@@ -266,7 +266,7 @@ def init_distributed_process_group(state: DistributedState) -> None:
 
 
 def cleanup_distributed_process_group(
-    state: DistributedState, del_obj: Optional[Tuple[Any]] = None
+    state: DistributedState, del_obj: Optional[Tuple[Any, ...]] = None
 ) -> None:
     """Cleanup PyTorch's distributed environment
 

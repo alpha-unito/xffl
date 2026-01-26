@@ -19,7 +19,7 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
 )
 from transformers import PreTrainedModel
 
-from xffl.custom.config_info import XFFLConfig
+from xffl.custom.config import XFFLConfig
 from xffl.custom.types import PathLike
 from xffl.utils.utils import resolve_param
 

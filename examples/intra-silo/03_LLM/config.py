@@ -10,7 +10,7 @@ from transformers import LlamaForCausalLM, MixtralForCausalLM
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 
-from xffl.custom.config_info import DatasetInfo, ModelInfo
+from xffl.custom.config import DatasetInfo, ModelInfo
 from xffl.custom.types import FileLike, FolderLike, PathLike
 
 TINY_RANDOM_LLAMA_3: str = "tiny-random-llama-3"

@@ -12,27 +12,33 @@ from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
 
+from xffl.custom.config import XFFLConfig
 from xffl.distributed.distributed import (
     DistributedState,
     get_appropriate_sharding_strategy,
 )
+from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def create_fsdp_model(
-    module: nn.Module,
     state: DistributedState,
+    module: Optional[nn.Module] = None,
     wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
+    config: Optional[XFFLConfig] = None,
     use_orig_params: bool = False,
 ) -> FullyShardedDataParallel:  # TODO: Move to FSDP2
     """Creates an FSDP model
 
+    The parameters can be provided both directly and through an XFFL configuration.
+    In case both are provided, the firsts take the precedence.
+
     :param module: FSDP-wrapped model to be saved
     :type module: nn.Module
-    :param state: Instantiated distributed state
+    :param state: xFFL distributed state
     :type state: DistributedState
     :param wrapping_policy: Model's wrapping policy, defaults to None
     :type wrapping_policy:  Optional[Callable], optional
@@ -40,33 +46,60 @@ def create_fsdp_model(
     :type mixed_precision: Optional[MixedPrecision], optional
     :param use_orig_params: If to use the original parameter format, defaults to False
     :type use_orig_params: Bool, defaults to False
+    :param config: XFFL configuration
+    :type config: Optional[XFFLConfig], defaults to None
     :return: The original module wrapped by FSDP
     :rtype: FullyShardedDataParallel
     """
 
-    device_mesh: Optional[DeviceMesh] = None
-    if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
-        device_mesh = state.hsdp_mesh
-    elif state.is_fsdp_setup():
-        device_mesh = state.fsdp_mesh
+    # Parameters resolution
+    if config is not None:
+        if module is None:
+            __module: Optional[Callable] = resolve_param(
+                value=module, config=config.model_info, attr="model"
+            )
+            if __module is not None:
+                _module: Optional[nn.Module] = __module()
+        _wrapping_policy: Optional[Callable] = resolve_param(
+            value=wrapping_policy, config=config.model_info, attr="wrapping_policy"
+        )
+        _mixed_precision: Optional[MixedPrecision] = resolve_param(
+            value=mixed_precision, config=config.model_info, attr="mixed_precision"
+        )
+    else:
+        _module: Optional[nn.Module] = module
+        _wrapping_policy: Optional[Callable] = wrapping_policy
+        _mixed_precision: Optional[MixedPrecision] = mixed_precision
 
-    model: FullyShardedDataParallel = FullyShardedDataParallel(
-        module=module,
-        sharding_strategy=get_appropriate_sharding_strategy(state=state),
-        auto_wrap_policy=wrapping_policy,
-        device_id=state.current_device,
-        forward_prefetch=True,
-        limit_all_gathers=False,
-        mixed_precision=mixed_precision,
-        sync_module_states=bool(state.meta_initialization),
-        param_init_fn=lambda layer: (
-            layer.to_empty(device=state.current_device, recurse=False)
-            if state.meta_initialization
-            else None
-        ),  # type: ignore
-        device_mesh=device_mesh,
-        use_orig_params=use_orig_params,
-    )
+    # Model and device mashes creation
+    if _module is not None:
+        device_mesh: Optional[DeviceMesh] = None
+        if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
+            device_mesh = state.hsdp_mesh
+        elif state.is_fsdp_setup():
+            device_mesh = state.fsdp_mesh
+
+        model: FullyShardedDataParallel = FullyShardedDataParallel(
+            module=_module,
+            sharding_strategy=get_appropriate_sharding_strategy(state=state),
+            auto_wrap_policy=_wrapping_policy,
+            device_id=state.current_device,
+            forward_prefetch=True,
+            limit_all_gathers=False,
+            mixed_precision=_mixed_precision,
+            sync_module_states=bool(state.meta_initialization),
+            param_init_fn=lambda layer: (
+                layer.to_empty(device=state.current_device, recurse=False)
+                if state.meta_initialization
+                else None
+            ),  # type: ignore
+            device_mesh=device_mesh,
+            use_orig_params=use_orig_params,
+        )
+    else:
+        logger.critical(
+            "Impossible setting up the distributed training: no model provided."  # TODO: add an exception?
+        )
 
     return model
 
