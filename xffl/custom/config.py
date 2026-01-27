@@ -68,7 +68,7 @@ class XFFLConfig(ABC):
     # Distributed training
     hsdp: Optional[int] = None
     federated: Optional[int | Tuple[int, ...]] = None
-    federated_batches: int = 1
+    federated_batches: Optional[int] = None
     cuda_streams: Optional[int] = None
 
     # WandB
@@ -80,6 +80,7 @@ class XFFLConfig(ABC):
     scale_learning_rate: bool = False
     epochs: int = 1
     attention: str = "sdpa"
+    criterion: Optional[Callable] = None
 
     # Output
     output_folder: Optional[Path] = None

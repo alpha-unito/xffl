@@ -87,13 +87,18 @@ class Mnist(DatasetInfo):
 @dataclass
 class xffl_config(XFFLConfig):
 
-    # Default
+    # Model and dataset
     model_info: ModelInfo = field(default_factory=SimpleMLP)
     dataset_info: DatasetInfo = field(default_factory=Mnist)
+
+    # General
     loglevel: int = logging.DEBUG
     seed: int = 42
+
+    # Learning
     learning_rate: float = 1e-2
     epochs: int = 3
+    criterion: nn.Module = field(default_factory=nn.NLLLoss)
 
     # Custom
     one_class: bool = False

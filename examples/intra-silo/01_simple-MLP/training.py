@@ -2,7 +2,7 @@
 
 import time
 from logging import Logger, getLogger
-from typing import MutableMapping, Optional
+from typing import Mapping, MutableMapping, Optional
 
 import torch
 import torch.nn as nn
@@ -40,7 +40,7 @@ def pretraining(config: xffl_config) -> None:
     )
 
     # PyTorch's distributed backend setup
-    start_time = time.perf_counter()
+    start_time: float = time.perf_counter()
     state: distributed.DistributedState = distributed.setup_distributed_process_group(
         config=config
     )
@@ -50,7 +50,7 @@ def pretraining(config: xffl_config) -> None:
         )
 
     # Model setup
-    start_time = time.perf_counter()
+    start_time: float = time.perf_counter()
     model: nn.Module = modelling.create_fsdp_model(state=state, config=config)
 
     # Print model's weights
@@ -63,7 +63,7 @@ def pretraining(config: xffl_config) -> None:
         )
 
     # Dataset loading
-    start_time = time.perf_counter()
+    start_time: float = time.perf_counter()
     dataloaders: Optional[MutableMapping[str, DataLoader]] = create_dataloaders(
         state=state,
         config=config,
@@ -90,16 +90,14 @@ def pretraining(config: xffl_config) -> None:
         )
 
     # Main training function
-    results = processing.distributed_training(
+    results: Mapping[str, float] = processing.distributed_training(
         model=model,
         state=state,
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
         validate=True,
-        eval_dataloader=dataloaders["test"],
-        epochs=config.epochs,
-        criterion=nn.NLLLoss(),
-        federated_batches=config.federated_batches,
+        val_dataloader=dataloaders["test"],
+        config=config,
     )
 
     if state.rank == 0:

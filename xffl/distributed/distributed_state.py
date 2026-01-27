@@ -90,7 +90,7 @@ class DistributedState:
     # DEVICE
     device_type: Optional[torch.device] = None
     """Chosen deployment device"""
-    current_device: Optional[torch.device | int] = None
+    current_device: Optional[torch.device] = None
     """Specific device currently in use by the process"""
     init_device: Optional[torch.device] = None
     """Chosen initialization device"""
@@ -227,7 +227,7 @@ class DistributedState:
 
     def set_exec_device(
         self,
-        current_device: torch.device | int,
+        current_device: torch.device,
         streams: Optional[int] = None,
     ) -> None:
         """

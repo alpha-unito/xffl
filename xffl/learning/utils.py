@@ -12,6 +12,7 @@ import numpy
 import torch
 import torch.nn as nn
 from torch import Generator
+from torch import distributed as dist
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     CheckpointImpl,
     apply_activation_checkpointing,
@@ -21,6 +22,7 @@ from transformers import PreTrainedModel
 
 from xffl.custom.config import XFFLConfig
 from xffl.custom.types import PathLike
+from xffl.distributed.distributed_state import DistributedState
 from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
@@ -194,3 +196,25 @@ def preload(files: List[PathLike]) -> None:
             )
         except (OSError, ValueError) as e:
             raise e
+
+
+def cuda_reset_memory_stats_and_empty_cache():
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
+
+
+def cuda_sync_and_empty_cache():
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+
+
+def cuda_sync():
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
+def barrier(state: DistributedState):
+    if torch.distributed.is_initialized():
+        dist.barrier(device_ids=[state.node_local_rank])

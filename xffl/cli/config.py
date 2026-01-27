@@ -16,8 +16,8 @@ from typing import Any, MutableMapping, Tuple
 import yaml
 
 import xffl.cli.parser as cli_parser
+from xffl.cli.utils import check_input
 from xffl.utils.constants import SUPPORTED_QUEUE_MANAGERS, DEFAULT_xFFL_DIR
-from xffl.utils.utils import check_input
 from xffl.workflow.templates.cwl import (
     AggregateStep,
     CWLConfig,
