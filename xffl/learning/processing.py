@@ -46,47 +46,47 @@ def _move_opt_to(
                     param[k] = v.to(device, non_blocking=True)
 
 
-def _get_train_function(batch: Mapping[Any, Any] | Tuple[Any, Any]) -> Callable:
+def _get_processing_function(batch: Mapping[Any, Any] | Tuple[Any, Any]) -> Callable:
 
     train_function: Callable
 
-    def attention_mask_training(
+    def attention_mask_processing(
         model: nn.Module,
         batch: Dict[str, Any],
         state: DistributedState,
-        criterion: nn.Module,
-    ) -> Tensor:
+    ) -> Tuple[Any, Optional[Tensor]]:
         for key in batch.keys():
             batch[key] = batch[key].to(
                 device=state.current_device,
                 non_blocking=True,
             )
-
-        return model(
+        output: Any = model(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
             labels=batch["input_ids"],
-        ).loss
+        )
+        return output, None
 
-    def dict_training(
+    def dict_processing(
         model: nn.Module,
         batch: Dict[str, Any],
         state: DistributedState,
-        criterion: nn.Module,
-    ) -> Tensor:
+    ) -> Tuple[Any, Optional[Tensor]]:
         for key in batch.keys():
             batch[key] = batch[key].to(
                 device=state.current_device,
                 non_blocking=True,
             )
-        return model(**batch).loss
+        output: Any = model(**batch)
+        return output, None
 
-    def criterion_training(
+    def criterion_processing(
         model: nn.Module,
         batch: Tuple[Any, Any],
         state: DistributedState,
-        criterion: nn.Module,
-    ) -> Tensor:
+    ) -> Tuple[Any, Optional[Tensor]]:
+        data: Tensor
+        target: Tensor
         data, target = batch
         data, target = data.to(
             device=state.current_device,
@@ -95,15 +95,16 @@ def _get_train_function(batch: Mapping[Any, Any] | Tuple[Any, Any]) -> Callable:
             device=state.current_device,
             non_blocking=True,
         )
-        return criterion(model(data), target)
+        output: Tensor = model(data)
+        return output, target
 
     if isinstance(batch, dict):
         if all(key in batch for key in ["input_ids", "attention_mask"]):
-            train_function = attention_mask_training
+            train_function = attention_mask_processing
         else:
-            train_function = dict_training
+            train_function = dict_processing
     else:
-        train_function = criterion_training
+        train_function = criterion_processing
 
     return train_function
 
@@ -220,26 +221,26 @@ def _fedopt_step(
     return origin_state_dict
 
 
-def _get_average_train_loss(
-    total_loss: Tensor, total_length: int, state: DistributedState
+def _get_average_distributed_loss(
+    loss: Tensor, total_length: int, state: DistributedState
 ) -> Tensor:
     assert state.world_size is not None
 
     dist.all_reduce(
-        tensor=total_loss,
+        tensor=loss,
         op=dist.ReduceOp.SUM,
     )
 
     if state.is_federated_scaling_setup():
         assert state.federated_local_size is not None
         assert state.federated_rank is not None
-        train_epoch_loss: torch.Tensor = (
-            total_loss / total_length
-        ) / state.federated_local_size[state.federated_rank]
+        average_loss: torch.Tensor = (loss / total_length) / state.federated_local_size[
+            state.federated_rank
+        ]
     else:
-        train_epoch_loss: torch.Tensor = (total_loss / total_length) / state.world_size
+        average_loss: torch.Tensor = (loss / total_length) / state.world_size
 
-    return train_epoch_loss
+    return average_loss
 
 
 # --------------------------------------------------------------------------- #
@@ -255,7 +256,6 @@ def distributed_training(
     val_dataloader: Optional[DataLoader] = None,
     wandb_run: Optional[Run] = None,
     fedopt: Optional[bool] = None,
-    validate: Optional[bool] = None,
     epochs: Optional[int] = None,
     federated_batches: Optional[int] = None,
     save_path: Optional[PathLike] = None,
@@ -320,13 +320,6 @@ def distributed_training(
     if _fedopt and not state.is_federated_scaling_setup():
         logger.warning(
             "FedOpt is active, but FederatedScaling is not setup: running FedOpt with a single model replica."
-        )
-    _validate: Optional[bool] = resolve_param(
-        value=validate, config=config, attr="validate"
-    )
-    if _validate and not val_dataloader:
-        logger.warning(
-            "Model validation is active, but no validation set dataloader is found. Validation will not be performed."
         )
     _epochs: Optional[int] = resolve_param(value=epochs, config=config, attr="epochs")
     if _epochs is None or _epochs < 1:
@@ -414,11 +407,7 @@ def distributed_training(
     train_loss: List[float] = []
     val_perp: List[float] = []
     val_loss: List[float] = []
-
-    train_step_perplexity: List[float] = []
-    train_step_loss: List[float] = []
-    val_step_loss: List[float] = []
-    val_step_perplexity: List[float] = []
+    val_acc: List[float] = []
 
     epoch_times: List[float] = []
     checkpoint_times: List[float] = []
@@ -442,13 +431,21 @@ def distributed_training(
         )
 
     # Epoch training cycle
+    epoch: int
+    optimizer.zero_grad(set_to_none=True)
+    train_function: Callable = _get_processing_function(next(iter(train_dataloader)))
     for epoch in range(_epochs):
         epoch_start_time: float = time.perf_counter()
         logger.info(f"Starting epoch {epoch}/{_epochs}")
 
+        train_step_perplexity: List[float] = []
+        train_step_loss: List[float] = []
+        val_step_loss: List[float] = []
+        val_step_perplexity: List[float] = []
+
         model.train()
 
-        total_loss: Tensor = tensor(0.0)
+        train_epoch_loss: Tensor = tensor(0.0)
         total_length: int = len(train_dataloader)
         pbar: tqdm = tqdm(
             colour="blue",
@@ -458,21 +455,22 @@ def distributed_training(
             disable=state.rank != 0,
         )
 
+        # Batch training cycle
         step: int
         batch: Dict[str, Any]
-        optimizer.zero_grad(set_to_none=True)
-        train_function: Callable = _get_train_function(next(iter(train_dataloader)))
-
-        # Batch training cycle
         for step, batch in enumerate(train_dataloader):
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
                 start_time = time.perf_counter()
 
             # Forward
-            loss: torch.Tensor = train_function(
-                model=model, batch=batch, state=state, criterion=_criterion
-            )
+            output: Any
+            target: Tensor
+            output, target = train_function(model=model, batch=batch, state=state)
+            if _criterion:
+                loss: Tensor = _criterion(output, target)
+            else:
+                loss: Tensor = output.loss
 
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
@@ -549,9 +547,9 @@ def distributed_training(
             if _accumulation_steps is not None:
                 loss *= _accumulation_steps
 
-            total_loss += loss.detach().float()
-            train_step_perplexity.append(float(torch.exp(loss.detach().float())))
-            train_step_loss.append(loss.detach().float().item())
+            train_epoch_loss += loss.detach().float().cpu()
+            train_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))
+            train_step_loss.append(loss.detach().float().cpu().item())
 
             # WandB
             if wandb_run:
@@ -583,8 +581,8 @@ def distributed_training(
                 wandb_run.log(metrics)
 
             pbar.set_description(
-                f"Training Epoch: {epoch + 1}/{_epochs}, step {step+1}/{total_length} completed (loss: {train_step_loss[-1]:.4f})",
-                refresh=False,
+                f"Training Epoch: {epoch + 1}/{_epochs},   step {step+1}/{total_length} completed (loss: {train_step_loss[-1]:.4f})",
+                refresh=True,
             )
             if logging.root.level == logging.DEBUG:
                 pbar.set_postfix(
@@ -598,38 +596,46 @@ def distributed_training(
                     refresh=False,
                 )
 
+        # TODO: log on WandB totals?
+
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)
 
-        train_epoch_loss = _get_average_train_loss(
-            total_loss=total_loss, total_length=total_length, state=state
+        _train_epoch_loss: Tensor = _get_average_distributed_loss(
+            loss=train_epoch_loss, total_length=total_length, state=state
         )
-        train_perplexity: torch.Tensor = torch.exp(train_epoch_loss)
-        train_perp.append(float(train_perplexity))
-        train_loss.append(float(train_epoch_loss))
+        train_epoch_perplexity: Tensor = torch.exp(_train_epoch_loss)
+        train_perp.append(float(train_epoch_perplexity))
+        train_loss.append(float(_train_epoch_loss))
 
         # Validation
-        if _validate:
-            assert val_dataloader is not None
-
-            val_ppl, val_epoch_loss, temp_val_loss, temp_step_perplexity, eval_acc = (
-                validation(
-                    model=model,
-                    eval_dataloader=val_dataloader,
-                    state=state,
-                    wandb_run=wandb_run,
-                    criterion=_criterion,
-                )
+        if val_dataloader is not None:
+            (
+                val_epoch_loss,
+                val_epoch_perplexity,
+                _val_step_loss,
+                _val_step_perplexity,
+                _val_acc,
+            ) = validation(
+                model=model,
+                val_dataloader=val_dataloader,
+                state=state,
+                epoch=epoch,
+                epochs=_epochs,
+                wandb_run=wandb_run,
+                criterion=_criterion,
             )
-            val_step_loss.extend(temp_val_loss)
-            val_step_perplexity.extend(temp_step_perplexity)
+            val_step_loss.extend(_val_step_loss)
+            val_step_perplexity.extend(_val_step_perplexity)
 
             if val_epoch_loss < best_val_loss:
-                best_val_loss: torch.Tensor = val_epoch_loss
+                best_val_loss = val_epoch_loss
                 if state.rank == 0:
                     logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
-            val_loss.append(float(best_val_loss))
-            val_perp.append(float(val_ppl))
+            val_loss.append(float(val_epoch_loss))
+            val_perp.append(float(val_epoch_perplexity))
+            if _val_acc is not None:
+                val_acc.append(_val_acc)
 
         # Model saving
         if _output_model_name is not None and _save_path is not None:
@@ -649,124 +655,135 @@ def distributed_training(
                 logger.debug(f"Checkpoint time: {checkpoint_times[-1]}")
 
         if state.rank == 0:
-            if _validate:
-                logger.info(
-                    f"Epoch {epoch+1}:\n\ttrain_perplexity={train_perplexity:.4f},\n\ttrain_epoch_loss={train_epoch_loss:.4f},\n\tepoch time {epoch_times[-1]:.2f}s,\n\taccuracy={eval_acc:.2f}%"
-                )
-            else:
-                logger.info(
-                    f"Epoch {epoch+1}:\n\ttrain_perplexity={train_perplexity:.4f},\n\ttrain_epoch_loss={train_epoch_loss:.4f},\n\tepoch time {epoch_times[-1]:.2f}s"
-                )
+            log_message: str = (
+                f"\n\nEpoch {epoch+1}:\n\t"
+                + f"Train perplexity:\t{train_epoch_perplexity:.2f}\n\t"
+                + f"Train loss:\t\t{_train_epoch_loss:.2f}\n\t"
+                + f"Epoch time:\t\t{epoch_times[-1]:.2f}s\n\t"
+            )
+            if val_dataloader is not None:
+                log_message += f"Validation accuracy:\t{_val_acc:.2f}%"
+            logger.info(log_message + "\n")
 
     # Results dictionary # TODO: not sure about this
     results["Epoch time (avg)"] = sum(epoch_times) / len(epoch_times)
     results["Train perplexity (avg)"] = sum(train_perp) / len(train_perp)
     results["Train loss (avg)"] = sum(train_loss) / len(train_loss)
-    if _validate:
+    if val_dataloader is not None:
         results["Validation perplexity (avg)"] = sum(val_perp) / len(val_perp)
         results["Validation loss (avg)"] = sum(val_loss) / len(val_loss)
-        if eval_acc is not None:
-            results["Validation accuracy"] = eval_acc
+        if _val_acc is not None:
+            results["Validation accuracy (avg)"] = sum(val_acc) / len(val_acc)
 
     return results
 
 
 def validation(
     model: nn.Module,
-    eval_dataloader: DataLoader,
+    val_dataloader: DataLoader,
     state: DistributedState,
+    epoch: int,
+    epochs: int,
     wandb_run: Optional[Run] = None,
     criterion: Optional[nn.Module] = None,
-) -> Tuple[Tensor, Tensor, List[float], List[float], float]:
+) -> Tuple[Tensor, Tensor, List[float], List[float], Optional[float]]:
     """Generic evaluation cycle for FSDP models
 
     :param model: Model to evaluate
     :type model: nn.Module
-    :param eval_dataloader: Validation dataset data loader
-    :type eval_dataloader: DataLoader
+    :param val_dataloader: Validation dataset data loader
+    :type val_dataloader: DataLoader
     :param state: Instantiated distributed state
     :type state: DistributedState
     :param wandb_run: WandB run if wandb logging is desired, defaults to None
     :type wandb_run: Optional[wandb.Run], optional
-    :return: perplexity, epoch loss, step loss, step perplexity
-    :rtype: Tuple[float, float, float, float]
+    :param criterion: Loss function, defaults to None
+    :type criterion: Optional[Callable], optional
+    :return: Total epoch loss, total epoch perplexity, per-step loss, per-step perplexity, overall accuracy
+    :rtype: Tuple[Tensor, Tensor, List[float], List[float], Optional[float]]
     """
+
     model.eval()
 
     val_step_loss: List[float] = []
     val_step_perplexity: List[float] = []
-    eval_loss: Tensor = tensor(0.0)
-    correct: int = 0
+    val_epoch_loss: Tensor = tensor(0.0)
+    correct: Optional[int] = None
 
-    with torch.no_grad():
-        batch: Dict[str, Any]
-        for _, batch in enumerate(
-            tqdm(
-                eval_dataloader,
-                colour="green",
-                desc="evaluating Epoch",
-                dynamic_ncols=True,
-                disable=state.rank != 0,
-            )
-        ):
-            loss: torch.Tensor | float
+    val_function: Callable = _get_processing_function(next(iter(val_dataloader)))
+    total_length: int = len(val_dataloader)
 
-            if isinstance(batch, dict):
-                for key in batch.keys():
-                    batch[key] = batch[key].to(
-                        device=torch.cuda.current_device(), non_blocking=True
-                    )
-
-                outputs = model(**batch)
-                loss = outputs.loss
-                assert isinstance(loss, Tensor)
-
-                eval_loss += loss.detach().float()
-                val_step_loss.append(loss.detach().float().item())
-                val_step_perplexity.append(float(torch.exp(loss.detach().float())))
-            else:
-                data, target = batch
-                data, target = data.to(
-                    device=state.current_device,
-                    non_blocking=True,
-                ), target.to(
-                    device=state.current_device,
-                    non_blocking=True,
-                )
-
-                output: torch.Tensor = model(data)
-                loss = criterion(output, target)
-                eval_loss += loss
-                pred: int = output.argmax(
-                    dim=1, keepdim=True
-                )  # get the index of the max log-probability
-                correct += pred.eq(target.view_as(pred)).sum().item()
-
-        if torch.cuda.device_count() > 1:
-            dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
-
-    assert state.world_size is not None
-    assert eval_dataloader.batch_size is not None
-
-    eval_epoch_loss: torch.Tensor = (
-        eval_loss / len(eval_dataloader)
-    ) / state.world_size
-    eval_ppl: torch.Tensor = torch.exp(eval_epoch_loss)
-    eval_acc: float = (100.0 * correct) / (
-        len(eval_dataloader) * eval_dataloader.batch_size
+    pbar: tqdm = tqdm(
+        val_dataloader,
+        colour="green",
+        total=total_length,
+        desc=f"Validation Epoch: {epoch+1}",
+        dynamic_ncols=True,
+        disable=state.rank != 0,
     )
 
-    # if state.node_local_rank == 0:
-    #    logger.info(f" {eval_ppl=} {eval_epoch_loss=}")
+    with torch.no_grad():
 
-    if wandb_run:
-        wandb_run.log(
-            {
-                "eval/perplexity": eval_ppl,
-                "eval/loss": eval_epoch_loss,
-                "eval/accuracy": eval_acc,
-            },
-            commit=False,
+        # Validation
+        step: int
+        batch: Dict[str, Any]
+        for step, batch in enumerate(val_dataloader):
+            output: Any
+            target: Tensor
+            output, target = val_function(model=model, batch=batch, state=state)
+            if criterion:
+                loss: Tensor = criterion(output, target)
+            else:
+                loss: Tensor = output.loss
+
+            # Metrics
+            val_epoch_loss += loss.detach().float().cpu()
+            val_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))
+            val_step_loss.append(loss.detach().float().cpu().item())
+            if target:
+                pred: Tensor = output.argmax(
+                    dim=1, keepdim=True
+                )  # get the index of the max log-probability
+
+                if correct is None:
+                    correct = 0
+                correct += int(pred.eq(target.view_as(pred)).sum().item())
+
+            # TQDM update
+            pbar.update(1)
+            pbar.set_description(
+                f"Validation Epoch: {epoch + 1}/{epochs}, step {step+1}/{total_length} completed (loss: {val_step_loss[-1]:.4f})",
+                refresh=True,
+            )
+
+        _val_epoch_loss: Tensor = _get_average_distributed_loss(
+            loss=val_epoch_loss, total_length=total_length, state=state
         )
+        val_epoch_perplexity: Tensor = torch.exp(_val_epoch_loss)
+        if correct is not None:
+            assert val_dataloader.batch_size is not None
 
-    return eval_ppl, eval_epoch_loss, val_step_loss, val_step_perplexity, eval_acc
+            val_acc: float = (100.0 * correct) / (
+                total_length * val_dataloader.batch_size
+            )
+
+        if wandb_run:
+            metrics: Mapping[str, Any] = {
+                "eval/loss": _val_epoch_loss,
+                "eval/perplexity": val_epoch_perplexity,
+            }
+            if correct is not None:
+                metrics["eval/accuracy"] = (val_acc,)
+
+            wandb_run.log(
+                metrics,
+                commit=False,
+            )
+
+    return (
+        _val_epoch_loss,
+        val_epoch_perplexity,
+        val_step_loss,
+        val_step_perplexity,
+        val_acc,
+    )

@@ -95,13 +95,12 @@ def pretraining(config: xffl_config) -> None:
         state=state,
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
-        validate=True,
         val_dataloader=dataloaders["test"],
         config=config,
     )
 
     if state.rank == 0:
-        [logger.debug(f"Key: {k}, Value: {v}") for k, v in results.items()]
+        [logger.debug(f"{k}:\t{v:.2f}") for k, v in results.items()]
 
     # PyTorch's distributed backend cleanup
     distributed.cleanup_distributed_process_group(
