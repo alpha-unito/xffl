@@ -364,9 +364,9 @@ def distributed_training(
             if accumulation_steps is not None:
                 loss = loss * accumulation_steps
 
-            total_loss += loss.detach().float()
-            train_step_perplexity.append(float(torch.exp(loss.detach().float())))
-            train_step_loss.append(loss.detach().float().item())
+            total_loss += loss.cpu().detach().float()
+            train_step_perplexity.append(float(torch.exp(loss.cpu().detach().float())))
+            train_step_loss.append(loss.cpu().detach().float().item())
 
             if wandb_run:
                 wandb_run.log(
