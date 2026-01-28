@@ -6,6 +6,7 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
+from pathlib import Path
 from typing import Any, Literal, Optional, Sequence
 
 import numpy
@@ -22,7 +23,6 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
 from transformers import PreTrainedModel
 
 from xffl.custom.config import XFFLConfig
-from xffl.custom.types import PathLike
 from xffl.distributed.distributed_state import DistributedState
 from xffl.utils.utils import resolve_param
 
@@ -161,7 +161,7 @@ def set_activation_checkpointing(
         logger.debug("Activated non-reentrant model (gradient) checkpointing")
 
 
-def preload(files: Sequence[PathLike]) -> None:
+def preload(files: Sequence[Optional[Path | str]]) -> None:
     """Pre-loads the given list of files and folders
 
     Particularly useful on HPC, where data can be moved near the computing nodes ahead of time
@@ -171,32 +171,34 @@ def preload(files: Sequence[PathLike]) -> None:
     :raises OSError, ValueError: If the subprocess run fails
     """
     for file in files:
-        logger.debug(f"Preloading: {file}")
-        command = " ".join(
-            [
-                "find",
-                str(file),
-                "-type",
-                "f",
-                "-exec",
-                "cat",
-                "{}",
-                "+",
-                ">",
-                "/dev/null",
-                "&",
-            ]
-        )
-        try:
-            subprocess.Popen(
-                command,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                shell=True,
-                universal_newlines=True,
+        if file is not None:
+            _file: Path = file if isinstance(file, Path) else Path(file)
+            logger.debug(f"Preloading: {file}")
+            command = " ".join(
+                [
+                    "find",
+                    str(_file),
+                    "-type",
+                    "f",
+                    "-exec",
+                    "cat",
+                    "{}",
+                    "+",
+                    ">",
+                    "/dev/null",
+                    "&",
+                ]
             )
-        except (OSError, ValueError) as e:
-            raise e
+            try:
+                subprocess.Popen(
+                    command,
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    shell=True,
+                    universal_newlines=True,
+                )
+            except (OSError, ValueError) as e:
+                raise e
 
 
 def cuda_reset_memory_stats_and_empty_cache() -> None:

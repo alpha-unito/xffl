@@ -138,7 +138,9 @@ def create_dataloaders(
                 value=dataset, config=config.dataset_info, attr="splits"
             )
             if __dataset is not None:
-                _dataset: Optional[MutableMapping[str, Dataset]] = __dataset()
+                _dataset: Optional[MutableMapping[str, Dataset]] = __dataset(
+                    config=config, state=state
+                )
         _filters: Optional[Callable | Tuple[Callable, ...]] = resolve_param(
             value=filters, config=config.dataset_info, attr="filters"
         )

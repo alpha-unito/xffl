@@ -4,7 +4,7 @@ import logging
 from abc import ABC
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal, Mapping, Optional, Sequence, Type
+from typing import Any, Callable, Literal, Mapping, Optional, Sequence
 
 
 @dataclass
@@ -23,9 +23,10 @@ class ModelInfo(ABC):
 
     name: str
     model: Callable
-    decoder_layers: Optional[Type] = None
-    wrapping_policy: Optional[Callable] = None
-    path: Optional[Path] = None
+    decoder_layers: Optional[type] = None
+    wrapping_policy: Optional[Callable | Sequence[Callable]] = None
+    attention: Optional[str] = None
+    path: Optional[Path | str] = None
 
 
 @dataclass
@@ -84,15 +85,11 @@ class XFFLConfig(ABC):
     learning_rate: float = 1e-3
     scale_learning_rate: bool = False
     epochs: int = 1
-    attention: str = "sdpa"
     criterion: Optional[Callable] = None
 
     # Output
     output_folder: Optional[Path] = None
     output_model: Optional[str] = None
-
-    # Misc
-    online: bool = False
 
     # Advanced configuration
     rank: Optional[int] = None
@@ -101,7 +98,9 @@ class XFFLConfig(ABC):
     group_local_size: Optional[int] = None
     group_rank: Optional[int] = None
     group_world_size: Optional[int] = None
-    backend: Optional[str] = None
+    backend: Optional[str] = None  # torch.distributed.distributed_c10d.Backend
     master_addr: Optional[str] = None
     master_port: Optional[int] = None
-    device: Optional[str] = None
+    device: Optional[str] = None  # torch.device
+    mixed_precision: Optional[Any] = None  # torch.distributed.fsdp.MixedPrecision
+    lr_scheduler: Optional[Callable] = None

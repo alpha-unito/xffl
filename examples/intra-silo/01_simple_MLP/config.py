@@ -19,9 +19,9 @@ CURRENT_DIR: str = str(os.getcwd())
 DATASET_PATH: Path = Path(CURRENT_DIR + "/MNIST")
 
 
-# Helper methods and classes
+# Simple MLP
 class _Model(nn.Module):
-    def __init__(self):
+    def __init__(self, config: XFFLConfig, state: DistributedState):
         super(_Model, self).__init__()
         self.fc1 = nn.Linear(784, 64)
         self.fc2 = nn.Linear(64, 32)
@@ -35,35 +35,6 @@ class _Model(nn.Module):
         return output
 
 
-def _get_mnist_splits() -> Mapping[str, Dataset]:
-    transform: transforms.Compose = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
-    return {
-        "train": datasets.MNIST(
-            root=DATASET_PATH,
-            train=True,
-            download=True,
-            transform=transform,
-        ),
-        "val": datasets.MNIST(
-            root=DATASET_PATH,
-            train=False,
-            download=True,
-            transform=transform,
-        ),
-    }
-
-
-def _single_class(
-    dataset: Mapping[str, Dataset], config: XFFLConfig, state: DistributedState
-):
-    if hasattr(config, "one_class") and config.one_class:  # type: ignore
-        for _, split in dataset.items():
-            split.data = split.data[split.targets == state.rank % 10]  # type: ignore
-            split.targets = split.targets[split.targets == state.rank % 10]  # type: ignore
-
-
 # Model information
 @dataclass
 class SimpleMLP(ModelInfo):
@@ -74,6 +45,38 @@ class SimpleMLP(ModelInfo):
 # Dataset information
 @dataclass
 class Mnist(DatasetInfo):
+
+    @staticmethod
+    def _get_mnist_splits(
+        config: XFFLConfig, state: DistributedState
+    ) -> Mapping[str, Dataset]:
+        transform: transforms.Compose = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        )
+        return {
+            "train": datasets.MNIST(
+                root=DATASET_PATH,
+                train=True,
+                download=True,
+                transform=transform,
+            ),
+            "val": datasets.MNIST(
+                root=DATASET_PATH,
+                train=False,
+                download=True,
+                transform=transform,
+            ),
+        }
+
+    @staticmethod
+    def _single_class(
+        dataset: Mapping[str, Dataset], config: XFFLConfig, state: DistributedState
+    ):
+        if hasattr(config, "one_class") and config.one_class:  # type: ignore
+            for _, split in dataset.items():
+                split.data = split.data[split.targets == state.rank % 10]  # type: ignore
+                split.targets = split.targets[split.targets == state.rank % 10]  # type: ignore
+
     name: str = "MNIST"
     splits: Callable = _get_mnist_splits
     batch_sizes: Mapping[str, int] = field(

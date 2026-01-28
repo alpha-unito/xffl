@@ -51,8 +51,6 @@ def pretraining(config: XFFLConfig) -> None:
     # Model setup
     start_time: float = time.perf_counter()
     model: nn.Module = modelling.create_fsdp_model(state=state, config=config)
-
-    # Print model's weights
     if state.rank == 0:
         logger.debug(
             f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds"

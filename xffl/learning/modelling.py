@@ -59,7 +59,7 @@ def create_fsdp_model(
                 value=module, config=config.model_info, attr="model"
             )
             if __module is not None:
-                _module: Optional[nn.Module] = __module()
+                _module: Optional[nn.Module] = __module(config=config, state=state)
         _wrapping_policy: Optional[Callable] = resolve_param(
             value=wrapping_policy, config=config.model_info, attr="wrapping_policy"
         )

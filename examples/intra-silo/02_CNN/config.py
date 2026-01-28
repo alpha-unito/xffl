@@ -18,46 +18,57 @@ CURRENT_DIR: str = str(os.getcwd())
 DATASET_PATH: Path = Path(CURRENT_DIR + "/CIFAR10")
 
 
-def _get_cifar10_splits() -> Mapping[str, Dataset]:
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-    )
-
-    return {
-        "train": datasets.CIFAR10(
-            root=DATASET_PATH,
-            train=True,
-            download=True,
-            transform=transform,
-        ),
-        "val": datasets.CIFAR10(
-            root=DATASET_PATH,
-            train=False,
-            download=True,
-            transform=transform,
-        ),
-    }
-
-
-def _single_class(
-    dataset: Mapping[str, Dataset], config: XFFLConfig, state: DistributedState
-):
-    if hasattr(config, "one_class") and config.one_class:  # type: ignore
-        for _, split in dataset.items():
-            split.data = split.data[split.targets == state.rank % 10]  # type: ignore
-            split.targets = split.targets[split.targets == state.rank % 10]  # type: ignore
-
-
 # Model information
 @dataclass
 class CNN(ModelInfo):
+
+    @staticmethod
+    def _get_resnet18(config: XFFLConfig, state: DistributedState) -> nn.Module:
+        return models.resnet18()
+
     name: str = "CNN"
-    model: Callable = models.resnet18
+    model: Callable = _get_resnet18
 
 
 # Dataset information
 @dataclass
 class Cifar(DatasetInfo):
+
+    @staticmethod
+    def _get_cifar10_splits(
+        config: XFFLConfig, state: DistributedState
+    ) -> Mapping[str, Dataset]:
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
+
+        return {
+            "train": datasets.CIFAR10(
+                root=DATASET_PATH,
+                train=True,
+                download=True,
+                transform=transform,
+            ),
+            "val": datasets.CIFAR10(
+                root=DATASET_PATH,
+                train=False,
+                download=True,
+                transform=transform,
+            ),
+        }
+
+    @staticmethod
+    def _single_class(
+        dataset: Mapping[str, Dataset], config: XFFLConfig, state: DistributedState
+    ):
+        if hasattr(config, "one_class") and config.one_class:  # type: ignore
+            for _, split in dataset.items():
+                split.data = split.data[split.targets == state.rank % 10]  # type: ignore
+                split.targets = split.targets[split.targets == state.rank % 10]  # type: ignore
+
     name: str = "CIFAR10"
     splits: Callable = _get_cifar10_splits
     batch_sizes: Mapping[str, int] = field(

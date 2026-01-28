@@ -325,7 +325,7 @@ def distributed_training(
     federated_batches: Optional[int] = None,
     save_path: Optional[PathLike] = None,
     output_model_name: Optional[str] = None,
-    lr_scheduler: Optional[LRScheduler] = None,
+    lr_scheduler: Optional[Callable] = None,
     fedopt_lr_scheduler: Optional[LRScheduler] = None,
     fedopt_optimizer: Optional[Optimizer] = None,
     criterion: Optional[nn.Module] = None,
@@ -420,8 +420,15 @@ def distributed_training(
             "Output model name is provided, but save path is not - disabling model saving."
         )
         _output_model_name = None
-    _lr_scheduler: Optional[LRScheduler] = resolve_param(
+    __lr_scheduler: Optional[Callable] = resolve_param(
         value=lr_scheduler, config=config, attr="lr_scheduler"
+    )
+    _lr_scheduler: Optional[LRScheduler] = (
+        __lr_scheduler(
+            optimizer=optimizer, total_steps=len(train_dataloader), config=config
+        )
+        if __lr_scheduler is not None
+        else __lr_scheduler
     )
     _fedopt_optimizer: Optional[Optimizer] = resolve_param(
         value=fedopt_optimizer, config=config, attr="fedopt_optimizer"
