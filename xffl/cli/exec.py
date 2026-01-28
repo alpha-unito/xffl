@@ -86,12 +86,12 @@ def _setup_env(
         if config_module is not None:
             config: XFFLConfig = getattr(config_module, args.config)()
 
-            env["XFFL_MODEL_FOLDER"] = str(config.model_info.path) + str(
-                config.model_info.name
-            )
-            env["XFFL_DATASET_FOLDER"] = str(config.dataset_info.path) + str(
-                config.dataset_info.name
-            )
+            if config.model_info.path is not None:
+                env["XFFL_MODEL_FOLDER"] = str(config.model_info.path)
+                print(config.model_info.path)
+            if config.dataset_info.path is not None:
+                env["XFFL_DATASET_FOLDER"] = str(config.dataset_info.path)
+
             env["XFFL_CODE_FOLDER"] = str(Path(args.executable).parent)
 
     return env
@@ -120,8 +120,6 @@ def _setup_execution_env(args: SimpleNamespace | Namespace) -> Dict[str, str]:
         logger.debug("Using container image: %s", args.image)
         env_mapping: Dict[str, str] = {
             "XFFL_CODE_FOLDER": "workdir",
-            "XFFL_MODEL_FOLDER": "model",
-            "XFFL_DATASET_FOLDER": "dataset",
             "XFFL_IMAGE": "image",
         } | env_mapping
     elif sys.prefix != sys.base_prefix:

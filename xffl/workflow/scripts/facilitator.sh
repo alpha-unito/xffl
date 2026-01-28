@@ -17,6 +17,8 @@ XFFL_OUTPUT_FOLDER=${XFFL_OUTPUT_FOLDER:-$XFFL_LOCAL_TMPDIR}
 XFFL_EXECUTION=${XFFL_EXECUTION:-"false"}
 XFFL_VENV=${XFFL_VENV:-"false"}
 XFFL_IMAGE=${XFFL_IMAGE:-""}
+XFFL_MODEL_FOLDER=${XFFL_MODEL_FOLDER:-""}
+XFFL_DATASET_FOLDER=${XFFL_DATASET_FOLDER:-""}
 
 if [[ "${XFFL_FACILITY}" == dummy* ]]; then
   cp -r ${XFFL_MODEL_FOLDER} output # FIXME: hardcoded
@@ -68,7 +70,7 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 
 		XFFL_TASKSET="taskset --cpu-list "$(( LOCAL_RANK * OMP_NUM_THREADS ))"-"$(( LOCAL_RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
 
-		if [ -n "$XFFL_VENV" ] ; then # Python virtual environment
+		if [ -n "${XFFL_VENV}" ] ; then # Python virtual environment
 			XFFL_RANKS="RANK=$RANK LOCAL_RANK=$LOCAL_RANK ROLE_RANK=$ROLE_RANK GROUP_RANK=$GROUP_RANK"
 
 			COMMAND="${XFFL_RANKS} ${XFFL_TASKSET} python $*"
@@ -77,13 +79,25 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 
 			XFFL_RANKS="${PREFIX}RANK=${RANK} ${PREFIX}LOCAL_RANK=${LOCAL_RANK} ${PREFIX}ROLE_RANK=${ROLE_RANK} ${PREFIX}GROUP_RANK=${GROUP_RANK}"
 
+			if [ -n "${XFFL_MODEL_FOLDER}" ] ; then
+				MOUNT_XFFL_MODEL_FOLDER="--mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/"
+			else
+				MOUNT_XFFL_MODEL_FOLDER=""
+			fi
+
+			if [ ! -n "${XFFL_DATASET_FOLDER}" ] ; then
+				MOUNT_XFFL_DATASET_FOLDER="--mount type=bind,src=${XFFL_DATASET_FOLDER}/,dst=/dataset/"
+			else
+				MOUNT_XFFL_DATASET_FOLDER=""
+			fi
+
 			COMMAND="
 ${ENVIRONMENT} \
 ${XFFL_RANKS} \
 ${XFFL_TASKSET} \
 ${CONTAINER_PLT} exec \
---mount type=bind,src=${XFFL_MODEL_FOLDER}/,dst=/model/ \
---mount type=bind,src=${XFFL_DATASET_FOLDER},dst=/dataset/ \
+${MOUNT_XFFL_MODEL_FOLDER} \
+${MOUNT_XFFL_DATASET_FOLDER} \
 --mount type=bind,src=${XFFL_LOCAL_TMPDIR}/,dst=/tmp/ \
 --mount type=bind,src=${XFFL_OUTPUT_FOLDER}/,dst=/output/ \
 --mount type=bind,src=${XFFL_CODE_FOLDER}/,dst=/code/ \
