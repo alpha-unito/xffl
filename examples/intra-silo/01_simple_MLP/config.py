@@ -46,7 +46,7 @@ def _get_mnist_splits() -> Mapping[str, Dataset]:
             download=True,
             transform=transform,
         ),
-        "test": datasets.MNIST(
+        "val": datasets.MNIST(
             root=DATASET_PATH,
             train=False,
             download=True,
@@ -77,11 +77,8 @@ class Mnist(DatasetInfo):
     name: str = "MNIST"
     splits: Callable = _get_mnist_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 1024, "test": 1}
+        default_factory=lambda: {"train": 1024, "val": 1}
     )
-    # subsampling: Mapping[str, int] = field(
-    #     default_factory=lambda: {"train": 1024, "test": 1024}
-    # )
     filters: Callable = _single_class
     path: Path = DATASET_PATH
 

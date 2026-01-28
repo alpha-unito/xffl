@@ -6,10 +6,12 @@ from typing import Any, Mapping, MutableMapping, Optional
 
 import torch
 import torch.nn as nn
+import wandb
 from config import xffl_config
 from torch.optim import Adadelta
 from torch.utils.data import DataLoader
 
+from xffl.custom.config import XFFLConfig
 from xffl.distributed import distributed
 from xffl.learning import modelling, processing, utils
 from xffl.learning.data import create_dataloaders
@@ -20,15 +22,11 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def pretraining(config: xffl_config) -> None:
+def pretraining(config: XFFLConfig) -> None:
     """Simple MLP training script
 
-    :param args: Command-line arguments
-    :type args: argparse.Namespace
-    :param model_info: Model information class
-    :type model_info: ModelInfo
-    :param dataset_info: Dataset information class
-    :type dataset_info: DatasetInfo
+    :param config: xFFL configuration
+    :type config: XFFLConfig
     """
     setup_time: float = time.perf_counter()
 
@@ -69,7 +67,7 @@ def pretraining(config: xffl_config) -> None:
         state=state,
         config=config,
         generator=generator,
-        distributed_sampling=not config.one_class,
+        distributed_sampling=not config.one_class,  # type: ignore
     )
     if state.rank == 0:
         logger.debug(
@@ -99,7 +97,7 @@ def pretraining(config: xffl_config) -> None:
         state=state,
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
-        val_dataloader=dataloaders["test"],
+        val_dataloader=dataloaders["val"],
         wandb_run=wandb_run,
         config=config,
     )
@@ -111,6 +109,7 @@ def pretraining(config: xffl_config) -> None:
                 wandb_run.summary[k] = v
 
     # PyTorch's distributed backend cleanup
+    wandb.finish()
     distributed.cleanup_distributed_process_group(
         state=state, del_obj=(model, optimizer)
     )
@@ -120,7 +119,7 @@ def main():
     """Argument parsing and training launch"""
 
     try:
-        pretraining(xffl_config())
+        pretraining(config=xffl_config())
     except KeyboardInterrupt as e:
         logger.exception(e)
     except Exception as e:
