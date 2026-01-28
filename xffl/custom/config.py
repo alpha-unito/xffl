@@ -4,7 +4,7 @@ import logging
 from abc import ABC
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Tuple, Type
+from typing import Any, Callable, Literal, Mapping, Optional, Sequence, Type
 
 
 @dataclass
@@ -41,8 +41,8 @@ class DatasetInfo(ABC):
     name: str
     splits: Mapping[str, Any]
     batch_sizes: Mapping[str, int]
-    filters: Optional[Callable | Tuple[Callable, ...]] = None
-    subsampling: Optional[int | Tuple[int, ...]] = None
+    filters: Optional[Callable | Sequence[Callable]] = None
+    subsampling: Optional[int | Sequence[int]] = None
     workers: Optional[int] = None
     path: Optional[Path | str] = None
 
@@ -67,13 +67,18 @@ class XFFLConfig(ABC):
 
     # Distributed training
     hsdp: Optional[int] = None
-    federated: Optional[int | Tuple[int, ...]] = None
+    federated: Optional[int | Sequence[int]] = None
     federated_batches: Optional[int] = None
     cuda_streams: Optional[int] = None
 
     # WandB
+    wandb_entity: Optional[str] = None
+    wandb_project: Optional[str] = None
+    wandb_group: Optional[str] = None
     wandb_name: Optional[str] = None
-    wandb_mode: Optional[str] = "disabled"
+    wandb_notes: Optional[str] = None
+    wandb_tags: Optional[Sequence[str]] = None
+    wandb_mode: Literal["online", "offline", "disabled", "shared"] = "disabled"
 
     # Learning
     learning_rate: float = 1e-3

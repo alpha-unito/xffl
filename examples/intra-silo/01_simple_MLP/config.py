@@ -4,7 +4,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Mapping
+from typing import Callable, Mapping, Sequence
 
 import torch.nn.functional as F
 from torch import nn
@@ -105,3 +105,14 @@ class xffl_config(XFFLConfig):
 
     # Custom
     one_class: bool = False
+
+    # WandB
+    wandb_entity: str = "alpha-unito"
+    wandb_project: str = "xFFL playground"
+    wandb_group: str = "01_simple_MLP"
+    wandb_name: str = "Example"
+    wandb_notes: str = "Example run of xFFL with a simple MLP"
+    wandb_tags: Sequence[str] = field(
+        default_factory=lambda: ["xFFL", "example", "MLP"]
+    )
+    wandb_mode: str = "online"

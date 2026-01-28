@@ -6,11 +6,12 @@ import random
 import subprocess
 import sys
 from logging import Logger, getLogger
-from typing import List, Optional
+from typing import Any, Literal, Optional, Sequence
 
 import numpy
 import torch
 import torch.nn as nn
+import wandb
 from torch import Generator
 from torch import distributed as dist
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
@@ -160,7 +161,7 @@ def set_activation_checkpointing(
         logger.debug("Activated non-reentrant model (gradient) checkpointing")
 
 
-def preload(files: List[PathLike]) -> None:
+def preload(files: Sequence[PathLike]) -> None:
     """Pre-loads the given list of files and folders
 
     Particularly useful on HPC, where data can be moved near the computing nodes ahead of time
@@ -198,23 +199,66 @@ def preload(files: List[PathLike]) -> None:
             raise e
 
 
-def cuda_reset_memory_stats_and_empty_cache():
+def cuda_reset_memory_stats_and_empty_cache() -> None:
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
         torch.cuda.empty_cache()
 
 
-def cuda_sync_and_empty_cache():
+def cuda_sync_and_empty_cache() -> None:
     if torch.cuda.is_available():
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
 
-def cuda_sync():
+def cuda_sync() -> None:
     if torch.cuda.is_available():
         torch.cuda.synchronize()
 
 
-def barrier(state: DistributedState):
+def barrier(state: DistributedState) -> None:
     if torch.distributed.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
+
+
+def wandb_setup(
+    entity: Optional[str] = None,
+    project: Optional[str] = None,
+    group: Optional[str] = None,
+    name: Optional[str] = None,
+    notes: Optional[str] = None,
+    tags: Optional[Sequence[str]] = None,
+    mode: Optional[Literal["online", "offline", "disabled", "shared"]] = None,
+    config: Optional[XFFLConfig] = None,
+) -> Any:
+
+    # Resolve parameters
+    _entity: Optional[str] = resolve_param(
+        value=entity, config=config, attr="wandb_entity"
+    )
+    _project: Optional[str] = resolve_param(
+        value=project, config=config, attr="wandb_project"
+    )
+    _group: Optional[str] = resolve_param(
+        value=group, config=config, attr="wandb_group"
+    )
+    _name: Optional[str] = resolve_param(value=name, config=config, attr="wandb_name")
+    _notes: Optional[str] = resolve_param(
+        value=notes, config=config, attr="wandb_notes"
+    )
+    _tags: Optional[Sequence[str]] = resolve_param(
+        value=tags, config=config, attr="wandb_tags"
+    )
+    _mode: Optional[Literal["online", "offline", "disabled", "shared"]] = resolve_param(
+        value=mode, config=config, attr="wandb_mode"
+    )
+
+    return wandb.init(
+        entity=_entity,
+        project=_project,
+        group=_group,
+        name=_name,
+        notes=_notes,
+        tags=_tags,
+        mode=_mode,
+    )

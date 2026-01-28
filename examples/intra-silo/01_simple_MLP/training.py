@@ -2,7 +2,7 @@
 
 import time
 from logging import Logger, getLogger
-from typing import Mapping, MutableMapping, Optional
+from typing import Any, Mapping, MutableMapping, Optional
 
 import torch
 import torch.nn as nn
@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from xffl.distributed import distributed
 from xffl.learning import modelling, processing, utils
 from xffl.learning.data import create_dataloaders
+from xffl.learning.utils import wandb_setup
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -89,6 +90,9 @@ def pretraining(config: xffl_config) -> None:
             f"GPU RAM allocated before training: {torch.cuda.max_memory_allocated() / 10**9:.2f} GB"
         )
 
+    # WandB setup
+    wandb_run: Any = wandb_setup(config=config)
+
     # Main training function
     results: Mapping[str, float] = processing.distributed_training(
         model=model,
@@ -96,11 +100,15 @@ def pretraining(config: xffl_config) -> None:
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
         val_dataloader=dataloaders["test"],
+        wandb_run=wandb_run,
         config=config,
     )
 
     if state.rank == 0:
         [logger.info(f"{k}{v:.2f}") for k, v in results.items()]
+        if wandb_run is not None:
+            for k, v in results.items():
+                wandb_run.summary[k] = v
 
     # PyTorch's distributed backend cleanup
     distributed.cleanup_distributed_process_group(
