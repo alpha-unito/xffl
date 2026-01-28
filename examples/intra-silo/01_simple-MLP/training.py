@@ -100,7 +100,7 @@ def pretraining(config: xffl_config) -> None:
     )
 
     if state.rank == 0:
-        [logger.debug(f"{k}:\t{v:.2f}") for k, v in results.items()]
+        [logger.info(f"{k}{v:.2f}") for k, v in results.items()]
 
     # PyTorch's distributed backend cleanup
     distributed.cleanup_distributed_process_group(

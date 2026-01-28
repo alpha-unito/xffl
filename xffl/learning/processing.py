@@ -39,6 +39,16 @@ logger: Logger = getLogger(__name__)
 def _move_opt_to(
     optimizer: Optimizer, device: torch.device | str, state: DistributedState
 ) -> None:
+    """Moves an optimizer to the desired device.
+    If training is happening on CPU this method has no effect.
+
+    :param optimizer: Optimizer to be moved
+    :type optimizer: Optimizer
+    :param device: Device on which to move the optimizer
+    :type device: torch.device | str
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    """
     if state.device_type != "cpu":
         for param in optimizer.state.values():
             for k, v in param.items():
@@ -46,13 +56,22 @@ def _move_opt_to(
                     param[k] = v.to(device, non_blocking=True)
 
 
-def _get_processing_function(batch: Mapping[Any, Any] | Tuple[Any, Any]) -> Callable:
+def _get_processing_function(
+    batch: Any,
+) -> Callable[[nn.Module, Any, DistributedState], Tuple[Tensor, Tensor]]:
+    """Returns the appropriate processing function for the provided batch data type.
+
+    :param batch: An exemplary data batch from a dataloader
+    :type batch: Mapping[Any, Any] | Tuple[Any, Any]
+    :return: A function with parameters model, batch, state, returning the processing output and eventual target
+    :rtype: Callable[[nn.Module, Any, DistributedState], Tuple[Tensor, Tensor]]
+    """
 
     train_function: Callable
 
     def attention_mask_processing(
         model: nn.Module,
-        batch: Dict[str, Any],
+        batch: Any,
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
         for key in batch.keys():
@@ -115,6 +134,20 @@ def _fedopt_setup(
     fedopt_optimizer: Optimizer,
     state: DistributedState,
 ) -> Tuple[Mapping[str, Tensor], List[Optional[Tensor]]]:
+    """Sets up the necessary FedOpt information.
+    Records the initial parameter configuration and creates a list of empty pseudo-gradients.
+
+    :param model: Model to train
+    :type model: nn.Module
+    :param optimizer: Inner (local) optimizer
+    :type optimizer: Optimizer
+    :param fedopt_optimizer: Outer (server) optimizer
+    :type fedopt_optimizer: Optimizer
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :return: Starting state dict and empty pseudo-gradients
+    :rtype: Tuple[Mapping[str, Tensor], List[Optional[Tensor]]]
+    """
     assert state.current_device is not None
 
     _move_opt_to(optimizer=optimizer, device="cpu", state=state)
@@ -145,6 +178,25 @@ def _fedopt_step(
     grads: List[Optional[Tensor]],
     state: DistributedState,
 ) -> Mapping[str, Tensor]:
+    """Executes a FedOpt optimization step.
+
+    :param model: Model to train
+    :type model: nn.Module
+    :param optimizer: Inner (local) optimizer
+    :type optimizer: Optimizer
+    :param fedopt_optimizer: Outer (server) optimizer
+    :type fedopt_optimizer: Optimizer
+    :param fedopt_lr_scheduler: Outer (server) optimizer learning rate scheduler
+    :type fedopt_lr_scheduler: Optional[LRScheduler]
+    :param origin_state_dict: Previous FedOpt step state dict
+    :type origin_state_dict: Mapping[str, Tensor]
+    :param grads: Empty pseudo-gradients
+    :type grads: List[Optional[Tensor]]
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :return: _description_
+    :rtype: Mapping[str, Tensor]
+    """
     assert state.current_device is not None
 
     _move_opt_to(optimizer=optimizer, device="cpu", state=state)
@@ -209,7 +261,7 @@ def _fedopt_step(
         )
         print("Total change after optimizer.step():", diff)
 
-    origin_state_dict = {
+    new_state_dict: Mapping[str, Tensor] = {
         k: v.detach().clone().to(device="cpu") for k, v in model.state_dict().items()
     }
 
@@ -218,29 +270,42 @@ def _fedopt_step(
 
     cuda_sync_and_empty_cache()
 
-    return origin_state_dict
+    return new_state_dict
 
 
 def _get_average_distributed_loss(
     loss: Tensor, total_length: int, state: DistributedState
 ) -> Tensor:
-    assert state.world_size is not None
+    """Calculates the average loss across the distributed process group.
+    If FederatedScaling is setup, then the average is run across only the federated process group.
 
-    dist.all_reduce(
-        tensor=loss,
-        op=dist.ReduceOp.SUM,
-    )
+    :param loss: Loss tensor to be averaged.
+    :type loss: Tensor
+    :param total_length: Number of data batches on which the loss value has been calculated.
+    :type total_length: int
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :return: Averaged loss value
+    :rtype: Tensor
+    """
 
     if state.is_federated_scaling_setup():
         assert state.federated_local_size is not None
         assert state.federated_rank is not None
-        average_loss: torch.Tensor = (loss / total_length) / state.federated_local_size[
-            state.federated_rank
-        ]
-    else:
-        average_loss: torch.Tensor = (loss / total_length) / state.world_size
 
-    return average_loss
+        scale_factor: int = state.federated_local_size[state.federated_rank]
+    else:
+        assert state.world_size is not None
+
+        scale_factor: int = state.world_size
+
+    _loss: Tensor = loss / total_length
+    dist.all_reduce(
+        tensor=_loss,
+        op=dist.ReduceOp.SUM,
+    )
+
+    return _loss / scale_factor
 
 
 # --------------------------------------------------------------------------- #
@@ -412,7 +477,6 @@ def distributed_training(
     epoch_times: List[float] = []
     checkpoint_times: List[float] = []
     results: Dict[str, float] = {}
-    best_val_loss: Tensor = tensor(float("inf"))
 
     optimizer_step: int = 0
     aggregation: int = 0
@@ -436,7 +500,8 @@ def distributed_training(
     train_function: Callable = _get_processing_function(next(iter(train_dataloader)))
     for epoch in range(_epochs):
         epoch_start_time: float = time.perf_counter()
-        logger.info(f"Starting epoch {epoch}/{_epochs}")
+        if state.rank == 0:
+            logger.info(f" --- Starting epoch {epoch+1}/{_epochs} --- ")
 
         train_step_perplexity: List[float] = []
         train_step_loss: List[float] = []
@@ -522,7 +587,7 @@ def distributed_training(
                             model=model,
                             state=state,
                             use_multiple_cuda_streams=False,
-                            use_contiguous_memory=True,
+                            use_contiguous_memory=False,
                         )
                         if _fedopt:
                             assert _fedopt_optimizer is not None
@@ -628,10 +693,6 @@ def distributed_training(
             val_step_loss.extend(_val_step_loss)
             val_step_perplexity.extend(_val_step_perplexity)
 
-            if val_epoch_loss < best_val_loss:
-                best_val_loss = val_epoch_loss
-                if state.rank == 0:
-                    logger.info(f"Best eval loss on epoch {epoch+1} is {best_val_loss}")
             val_loss.append(float(val_epoch_loss))
             val_perp.append(float(val_epoch_perplexity))
             if _val_acc is not None:
@@ -656,24 +717,29 @@ def distributed_training(
 
         if state.rank == 0:
             log_message: str = (
-                f"\n\nEpoch {epoch+1}:\n\t"
-                + f"Train perplexity:\t{train_epoch_perplexity:.2f}\n\t"
+                f"Epoch {epoch+1}:\n\t"
                 + f"Train loss:\t\t{_train_epoch_loss:.2f}\n\t"
+                + f"Train perplexity:\t{train_epoch_perplexity:.2f}\n\t"
                 + f"Epoch time:\t\t{epoch_times[-1]:.2f}s\n\t"
             )
             if val_dataloader is not None:
-                log_message += f"Validation accuracy:\t{_val_acc:.2f}%"
+                log_message = (
+                    log_message
+                    + f"Validation loss:\t{val_epoch_loss:.2f}\n\t"
+                    + f"Validation perplexity:\t{val_epoch_perplexity:.2f}\n\t"
+                    + f"Validation accuracy:\t{_val_acc:.2f}%"
+                )
             logger.info(log_message + "\n")
 
     # Results dictionary # TODO: not sure about this
-    results["Epoch time (avg)"] = sum(epoch_times) / len(epoch_times)
-    results["Train perplexity (avg)"] = sum(train_perp) / len(train_perp)
-    results["Train loss (avg)"] = sum(train_loss) / len(train_loss)
+    results["Epoch time (avg):\t\t"] = sum(epoch_times) / len(epoch_times)
+    results["Train perplexity (avg):\t"] = sum(train_perp) / len(train_perp)
+    results["Train loss (avg):\t\t"] = sum(train_loss) / len(train_loss)
     if val_dataloader is not None:
-        results["Validation perplexity (avg)"] = sum(val_perp) / len(val_perp)
-        results["Validation loss (avg)"] = sum(val_loss) / len(val_loss)
+        results["Validation perplexity (avg):\t"] = sum(val_perp) / len(val_perp)
+        results["Validation loss (avg):\t\t"] = sum(val_loss) / len(val_loss)
         if _val_acc is not None:
-            results["Validation accuracy (avg)"] = sum(val_acc) / len(val_acc)
+            results["Validation accuracy (avg):\t"] = sum(val_acc) / len(val_acc)
 
     return results
 

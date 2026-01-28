@@ -116,41 +116,45 @@ class DistributedState:
             else None
         )
         return f"""\n
-                GLOBAL:
-                    Backend={self.backend}
-                    Master address={self.master_addr}
-                    Master port={self.master_port}
-                    Rank={self.rank}
-                    World size={self.world_size}
-                NODE:
-                    Node local rank={self.node_local_rank}
-                    Node local size={self.node_local_size}
-                    Node rank={self.node_rank}
-                    Node world size={self.node_world_size}
-                REPLICA:
-                    Replica local rank={self.replica_local_rank}
-                    Replica local size={self.replica_local_size}
-                    Replica rank={self.replica_rank}
-                    Replica world size={self.replica_world_size}
-                FEDERATION:
-                    Federated local rank={self.federated_local_rank}
-                    Federated local size={self.federated_local_size}
-                    Federated rank={self.federated_rank}
-                    Federated world size={self.federated_world_size}
-                MESHES:
-                    FSDP={self.fsdp_mesh}
-                    HSDP={self.hsdp_mesh}
-                    Is sender={self.is_sender}
-                    Receives from={self.receive_from}
-                    Federated group={federated_group}
-                    Replica group={replica_group}
-                    Federation={federation}
-                DEVICE:
-                    Device type={self.device_type}
-                    Current device={self.current_device}
-                    Initialization device={self.init_device}
-                    Meta initialization={self.meta_initialization}
-                    Streams={self.streams}
+                *** xFFL Distributed Setup ***
+
+        GLOBAL --------------------------------------------------
+                    Backend\t\t\t{self.backend}
+                    Master address\t\t{self.master_addr}
+                    Master port\t\t\t{self.master_port}
+                    Rank\t\t\t{self.rank}
+                    World size\t\t\t{self.world_size}
+        NODE ----------------------------------------------------
+                    Node local rank\t\t{self.node_local_rank}
+                    Node local size\t\t{self.node_local_size}
+                    Node rank\t\t\t{self.node_rank}
+                    Node world size\t\t{self.node_world_size}
+        REPLICA -------------------------------------------------
+                    Replica local rank\t\t{self.replica_local_rank}
+                    Replica local size\t\t{self.replica_local_size}
+                    Replica rank\t\t{self.replica_rank}
+                    Replica world size\t\t{self.replica_world_size}
+        FEDERATION ----------------------------------------------
+                    Federated local rank\t{self.federated_local_rank}
+                    Federated local size\t{self.federated_local_size}
+                    Federated rank\t\t{self.federated_rank}
+                    Federated world size\t{self.federated_world_size}
+        MESHES --------------------------------------------------
+                    FSDP\t\t\t{self.fsdp_mesh}
+                    HSDP\t\t\t{self.hsdp_mesh}
+                    Is sender\t\t\t{self.is_sender}
+                    Receives from\t\t{self.receive_from}
+                    Federated group\t\t{federated_group}
+                    Replica group\t\t{replica_group}
+                    Federation\t\t\t{federation}
+        DEVICE --------------------------------------------------
+                    Device type\t\t\t{self.device_type}
+                    Current device\t\t{self.current_device}
+                    Initialization device\t{self.init_device}
+                    Meta initialization\t\t{self.meta_initialization}
+                    Streams\t\t\t{self.streams}
+
+                *** xFFL Distributed Setup ***
                 """
 
     # Methods #

@@ -49,24 +49,18 @@ def _apply_filters(
 
 
 def _apply_subsampling(
-    dataset: MutableMapping[str, Dataset], subsampling: int | Tuple[int, ...]
+    dataset: MutableMapping[str, Dataset],
+    subsampling: MutableMapping[str, int],
 ):
     """Applies subsampling to all splits of a dataset.
 
     :param dataset: Dictionary associating split name with the relative dataset instances
     :type dataset: MutableMapping[str, Dataset]
     :param subsampling: Number of samples to extract from the dataset splits, defaults to None
-    :type subsampling: int | Tuple[int, ...]
+    :type subsampling: MutableMapping[str, int]
     """
-    _subsampling: Tuple[int, ...] = (
-        (subsampling,) if isinstance(subsampling, int) else subsampling
-    )
-
-    if len(_subsampling) == 1:
-        _subsampling = _subsampling * len(dataset.items())
-
-    for (key, split), sample in zip(dataset.items(), _subsampling):
-        dataset[key] = Subset(split, range(sample))
+    for key, sample in subsampling.items():
+        dataset[key] = Subset(dataset[key], range(sample))
 
 
 # --------------------------------------------------------------------------- #
@@ -99,7 +93,7 @@ def create_dataloaders(
     state: DistributedState,
     dataset: Optional[MutableMapping[str, Dataset]] = None,
     filters: Optional[Callable | Tuple[Callable, ...]] = None,
-    subsampling: Optional[int | Tuple[int, ...]] = None,
+    subsampling: Optional[MutableMapping[str, int]] = None,
     batch_sizes: Optional[Mapping[str, int]] = None,
     workers: Optional[int] = None,
     config: Optional[XFFLConfig] = None,
@@ -119,7 +113,7 @@ def create_dataloaders(
     :param filters: Functions to be applied to the dataset splits before instantiating the dataloaders, defaults to None
     :type filters: Optional[Callable  |  Tuple[Callable, ...]], optional
     :param subsampling: Number of samples to extract from the dataset splits, defaults to None
-    :type subsampling: Optional[int  |  Tuple[int, ...]], optional
+    :type subsampling: Optional[MutableMapping[str, int]], optional
     :param batch_sizes: Batch size associated to the given dataset splits, defaults to None
     :type batch_sizes: Optional[Mapping[str, int]], optional
     :param workers: Dataloader worker to be instantiated, defaults to None
@@ -148,7 +142,7 @@ def create_dataloaders(
         _filters: Optional[Callable | Tuple[Callable, ...]] = resolve_param(
             value=filters, config=config.dataset_info, attr="filters"
         )
-        _subsampling: Optional[int | Tuple[int, ...]] = resolve_param(
+        _subsampling: Optional[MutableMapping[str, int]] = resolve_param(
             value=subsampling, config=config.dataset_info, attr="subsampling"
         )
         _batch_sizes: Optional[Mapping[str, int]] = resolve_param(
@@ -160,7 +154,7 @@ def create_dataloaders(
     else:
         _dataset: Optional[MutableMapping[str, Dataset]] = dataset
         _filters: Optional[Callable | Tuple[Callable, ...]] = filters
-        _subsampling: Optional[int | Tuple[int, ...]] = subsampling
+        _subsampling: Optional[MutableMapping[str, int]] = subsampling
         _batch_sizes: Optional[Mapping[str, int]] = batch_sizes
         _workers: Optional[int] = workers
 

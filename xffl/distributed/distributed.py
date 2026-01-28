@@ -236,7 +236,7 @@ def setup_distributed_process_group(
         init_device=init_device, meta_initialization=meta_initialization
     )
 
-    logger.debug(f"[Rank {state.rank}]: distributed setup: {state}")
+    logger.debug(f"{state}")
     return state
 
 
@@ -292,7 +292,7 @@ def cleanup_distributed_process_group(
 
 def _get_current_device(
     state: DistributedState,
-) -> torch.device | int:
+) -> torch.device:
     """PyTorch current device setup
 
     Returns the device for the current process and empties its cache if it is a GPU

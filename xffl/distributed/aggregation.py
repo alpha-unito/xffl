@@ -870,9 +870,11 @@ def bucket_optimized_coalesced_(
             stream_index += 1
             parameter_counter = 0
 
-    for stream_index, bucket in enumerate(buckets):
+    for _stream_index, bucket in enumerate(buckets):
         if use_multiple_cuda_streams:
-            stream_context = _get_stream_context(state=state, stream_index=stream_index)
+            stream_context = _get_stream_context(
+                state=state, stream_index=_stream_index
+            )
         with stream_context:
             layer_list: List[torch.Tensor] = [
                 (param_list[i].contiguous() if use_contiguous_memory else param_list[i])
@@ -881,7 +883,7 @@ def bucket_optimized_coalesced_(
             dist.all_reduce_coalesced(
                 tensors=layer_list,
                 op=reduce_op,
-                group=_get_federated_group(state=state, group_index=stream_index),
+                group=_get_federated_group(state=state, group_index=_stream_index),
             )
 
 

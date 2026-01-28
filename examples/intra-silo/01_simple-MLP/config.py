@@ -79,6 +79,9 @@ class Mnist(DatasetInfo):
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 1024, "test": 1}
     )
+    # subsampling: Mapping[str, int] = field(
+    #     default_factory=lambda: {"train": 1024, "test": 1024}
+    # )
     filters: Callable = _single_class
     path: Path = DATASET_PATH
 
