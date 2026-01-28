@@ -473,8 +473,8 @@ def distributed_training(
     val_perp: List[float] = []
     val_loss: List[float] = []
     val_acc: List[float] = []
-
     epoch_times: List[float] = []
+    val_epoch_times: List[float] = []
     checkpoint_times: List[float] = []
     results: Dict[str, float] = {}
 
@@ -526,7 +526,8 @@ def distributed_training(
         for step, batch in enumerate(train_dataloader):
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
-                start_time = time.perf_counter()
+                step_start_time: float = time.perf_counter()
+                start_time: float = time.perf_counter()
 
             # Forward
             output: Any
@@ -539,7 +540,7 @@ def distributed_training(
 
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
-                batch_time = time.perf_counter() - start_time
+                batch_time: float = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
             # Backward
@@ -549,7 +550,7 @@ def distributed_training(
 
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
-                back_time = time.perf_counter() - start_time
+                back_time: float = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
             # Optimization
@@ -573,7 +574,7 @@ def distributed_training(
 
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
-                optimizer_time = time.perf_counter() - start_time
+                optimizer_time: float = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
             # FederatedScaling
@@ -605,7 +606,7 @@ def distributed_training(
 
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
-                comm_time = time.perf_counter() - start_time
+                comm_time: float = time.perf_counter() - start_time
                 start_time = time.perf_counter()
 
             # Logging
@@ -616,22 +617,51 @@ def distributed_training(
             train_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))
             train_step_loss.append(loss.detach().float().cpu().item())
 
+            pbar.set_description(
+                f"Training Epoch: {epoch + 1}/{_epochs},   step {step+1}/{total_length} completed (loss: {train_step_loss[-1]:.4f})",
+                refresh=True,
+            )
+
+            if logging.root.level == logging.DEBUG:
+                assert batch_time
+                assert back_time
+                assert optimizer_time
+                assert comm_time
+
+                cuda_sync()
+                overall_step_time: float = time.perf_counter() - step_start_time
+                other_step_time: float = overall_step_time - (
+                    batch_time + back_time + optimizer_time + comm_time
+                )
+
+            if logging.root.level == logging.DEBUG:
+                pbar.set_postfix(
+                    ordered_dict={
+                        "F": f"{batch_time:.2f}",
+                        "B": f"{back_time:.2f}",
+                        "O": f"{optimizer_time:.2f}",
+                        "A": f"{comm_time:.2f}",
+                        "M": f"{other_step_time:.2f}",
+                        "T": f"{overall_step_time:.2f}",
+                    },
+                    refresh=True,
+                )
+
             # WandB
             if wandb_run:
                 metrics: Mapping[str, Any] = {
-                    "train/epoch": epoch + 1,
-                    "train/step": epoch * total_length + step,
-                    "train/loss": train_step_loss[-1],
-                    "train/perplexity": train_step_perplexity[-1],
-                    "train/optimizer step": optimizer_step,
-                    "train/learning rate": (
+                    "train/Step": epoch * total_length + step,
+                    "train/Step loss": train_step_loss[-1],
+                    "train/Step perplexity": train_step_perplexity[-1],
+                    "train/Optimizer step": optimizer_step,
+                    "train/Learning rate": (
                         _lr_scheduler.get_lr()
                         if _lr_scheduler is not None
                         else optimizer.param_groups[0]["lr"]
                     ),
                 }
                 if state.is_federated_scaling_setup():
-                    metrics["train/aggregation"] = aggregation
+                    metrics["train/Aggregation step"] = aggregation
                     if _fedopt:
                         assert _fedopt_lr_scheduler is not None
                         assert _fedopt_optimizer is not None
@@ -643,25 +673,19 @@ def distributed_training(
                                 else _fedopt_optimizer.param_groups[0]["lr"]
                             ),
                         )
+                if logging.root.level == logging.DEBUG:
+
+                    metrics.update(
+                        {
+                            "train/Forward time": batch_time,
+                            "train/Backward time": back_time,
+                            "train/Optimizer time": optimizer_time,
+                            "train/Aggregation time": comm_time,
+                            "train/Other time": other_step_time,
+                            "train/Overall step time": overall_step_time,
+                        }
+                    )
                 wandb_run.log(metrics)
-
-            pbar.set_description(
-                f"Training Epoch: {epoch + 1}/{_epochs},   step {step+1}/{total_length} completed (loss: {train_step_loss[-1]:.4f})",
-                refresh=True,
-            )
-            if logging.root.level == logging.DEBUG:
-                pbar.set_postfix(
-                    ordered_dict={
-                        "F": f"{batch_time:.2f}",
-                        "B": f"{back_time:.2f}",
-                        "O": f"{optimizer_time:.2f}",
-                        "A": f"{comm_time:.2f}",
-                        "Other": f"{(time.perf_counter() - start_time):.2f}",
-                    },
-                    refresh=False,
-                )
-
-        # TODO: log on WandB totals?
 
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)
@@ -673,6 +697,18 @@ def distributed_training(
         train_perp.append(float(train_epoch_perplexity))
         train_loss.append(float(_train_epoch_loss))
 
+        if wandb_run:
+            metrics: Mapping[str, Any] = {
+                "train/Epoch": epoch + 1,
+                "train/Epoch loss": _train_epoch_loss,
+                "train/Epoch perplexity": train_epoch_perplexity,
+                "train/Epoch time": epoch_times[-1],
+            }
+            wandb_run.log(
+                metrics,
+                commit=False,
+            )
+
         # Validation
         if val_dataloader is not None:
             (
@@ -680,6 +716,7 @@ def distributed_training(
                 val_epoch_perplexity,
                 _val_step_loss,
                 _val_step_perplexity,
+                val_epoch_time,
                 _val_acc,
             ) = validation(
                 model=model,
@@ -692,6 +729,7 @@ def distributed_training(
             )
             val_step_loss.extend(_val_step_loss)
             val_step_perplexity.extend(_val_step_perplexity)
+            val_epoch_times.append(val_epoch_time)
 
             val_loss.append(float(val_epoch_loss))
             val_perp.append(float(val_epoch_perplexity))
@@ -718,26 +756,31 @@ def distributed_training(
         if state.rank == 0:
             log_message: str = (
                 f"Epoch {epoch+1}:\n\t"
+                + f"Train time:\t\t{epoch_times[-1]:.2f}s\n\t"
                 + f"Train loss:\t\t{_train_epoch_loss:.2f}\n\t"
                 + f"Train perplexity:\t{train_epoch_perplexity:.2f}\n\t"
-                + f"Epoch time:\t\t{epoch_times[-1]:.2f}s\n\t"
             )
             if val_dataloader is not None:
                 log_message = (
                     log_message
+                    + f"Validation time:\t{val_epoch_time:.2f}s\n\t"
                     + f"Validation loss:\t{val_epoch_loss:.2f}\n\t"
                     + f"Validation perplexity:\t{val_epoch_perplexity:.2f}\n\t"
-                    + f"Validation accuracy:\t{_val_acc:.2f}%"
                 )
+                if _val_acc is not None:
+                    log_message += f"Validation accuracy:\t{_val_acc:.2f}%"
             logger.info(log_message + "\n")
 
-    # Results dictionary # TODO: not sure about this
+    # Results dictionary
     results["Epoch time (avg):\t\t"] = sum(epoch_times) / len(epoch_times)
-    results["Train perplexity (avg):\t"] = sum(train_perp) / len(train_perp)
     results["Train loss (avg):\t\t"] = sum(train_loss) / len(train_loss)
+    results["Train perplexity (avg):\t"] = sum(train_perp) / len(train_perp)
     if val_dataloader is not None:
-        results["Validation perplexity (avg):\t"] = sum(val_perp) / len(val_perp)
+        results["Validation epoch time (avg):\t"] = sum(val_epoch_times) / len(
+            val_epoch_times
+        )
         results["Validation loss (avg):\t\t"] = sum(val_loss) / len(val_loss)
+        results["Validation perplexity (avg):\t"] = sum(val_perp) / len(val_perp)
         if _val_acc is not None:
             results["Validation accuracy (avg):\t"] = sum(val_acc) / len(val_acc)
 
@@ -752,7 +795,7 @@ def validation(
     epochs: int,
     wandb_run: Optional[Run] = None,
     criterion: Optional[nn.Module] = None,
-) -> Tuple[Tensor, Tensor, List[float], List[float], Optional[float]]:
+) -> Tuple[Tensor, Tensor, List[float], List[float], float, Optional[float]]:
     """Generic evaluation cycle for FSDP models
 
     :param model: Model to evaluate
@@ -789,6 +832,7 @@ def validation(
     )
 
     with torch.no_grad():
+        epoch_start_time: float = time.perf_counter()
 
         # Validation
         step: int
@@ -833,13 +877,17 @@ def validation(
                 total_length * val_dataloader.batch_size
             )
 
+        epoch_total_time: float = time.perf_counter() - epoch_start_time
+
         if wandb_run:
             metrics: Mapping[str, Any] = {
-                "eval/loss": _val_epoch_loss,
-                "eval/perplexity": val_epoch_perplexity,
+                "train/Epoch": epoch + 1,
+                "eval/Epoch loss": _val_epoch_loss,
+                "eval/Epoch perplexity": val_epoch_perplexity,
+                "train/Epoch time": epoch_total_time,
             }
             if correct is not None:
-                metrics["eval/accuracy"] = (val_acc,)
+                metrics["eval/accuracy"] = val_acc
 
             wandb_run.log(
                 metrics,
@@ -851,5 +899,6 @@ def validation(
         val_epoch_perplexity,
         val_step_loss,
         val_step_perplexity,
+        epoch_total_time,
         val_acc,
     )
