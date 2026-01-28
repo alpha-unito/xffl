@@ -4,10 +4,8 @@ Inspired from llama-recipes' fine-tuning.py script:
 https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetuning.py
 """
 
-import os
 import time
 from logging import Logger, getLogger
-from pathlib import Path
 from typing import Any, MutableMapping, Optional
 
 import torch
@@ -39,18 +37,6 @@ def pretraining(config: XFFLConfig) -> None:
     # Set the requested logging level
     setup_logging(log_level=config.loglevel)
 
-    # Convert paths to the container's defaults if executing inside one
-    if "XFFL_IMAGE" in os.environ:
-        model_path: str = str(Path("/model/"))
-        dataset_path: str = str(Path("/dataset/"))
-    else:
-        model_path: str = str(
-            Path(str(config.model_info.path) + str(config.model_info.name))
-        )
-        dataset_path: str = str(
-            Path(str(config.dataset_info.path) + str(config.dataset_info.name))
-        )
-
     # Sets RNGs seeds and force PyTorch's deterministic execution
     generator: Optional[torch.Generator] = utils.set_deterministic_execution(
         config=config
@@ -69,7 +55,7 @@ def pretraining(config: XFFLConfig) -> None:
     # Large data preloading in background
     # TODO: this has to improve
     if state.node_local_rank == 0:
-        utils.preload(files=[model_path, dataset_path])
+        utils.preload(files=[config.model_info.path, config.dataset_info.path])
 
     # Model setup
     start_time: float = time.perf_counter()

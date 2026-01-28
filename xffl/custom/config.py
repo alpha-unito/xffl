@@ -1,6 +1,7 @@
 """Abstract dataset class"""
 
 import logging
+import os
 from abc import ABC
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +29,10 @@ class ModelInfo(ABC):
     attention: Optional[str] = None
     path: Optional[Path | str] = None
 
+    def __post_init__(self):
+        if "XFFL_IMAGE" in os.environ:
+            self.path = Path("/model/")
+
 
 @dataclass
 class DatasetInfo(ABC):
@@ -46,6 +51,10 @@ class DatasetInfo(ABC):
     subsampling: Optional[int | Sequence[int]] = None
     workers: Optional[int] = None
     path: Optional[Path | str] = None
+
+    def __post_init__(self):
+        if "XFFL_IMAGE" in os.environ:
+            self.path = Path("/dataset/")
 
 
 @dataclass
