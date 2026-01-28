@@ -167,7 +167,7 @@ def preload(files: Sequence[Optional[Path | str]]) -> None:
     Particularly useful on HPC, where data can be moved near the computing nodes ahead of time
 
     :param files: Paths of the files and folders to be preloaded
-    :type files: List[PathLike]
+    :type files: List[Path|str]
     :raises OSError, ValueError: If the subprocess run fails
     """
     for file in files:

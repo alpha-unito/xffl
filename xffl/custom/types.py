@@ -6,7 +6,7 @@ from typing import Union
 from xffl.cli.utils import resolve_path
 
 
-class PathLike(Path):
+class _PathLike(Path):
     """Path-like object (file or folder)."""
 
     def __init__(self, path: Union[str, Path], local=True) -> None:
@@ -19,7 +19,7 @@ class PathLike(Path):
         return super().__str__()
 
 
-class FolderLike(PathLike):
+class FolderLike(_PathLike):
     """Path to a folder."""
 
     def __init__(self, path: Union[str, Path], local=True) -> None:
@@ -29,7 +29,7 @@ class FolderLike(PathLike):
             raise ValueError(f"Invalid directory path: {self}")
 
 
-class FileLike(PathLike):
+class FileLike(_PathLike):
     """Path to a file."""
 
     def __init__(self, path: Union[str, Path], local=True) -> None:

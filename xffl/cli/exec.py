@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import xffl.cli.parser as cli_parser
 from xffl.custom.config import XFFLConfig
-from xffl.custom.types import FileLike, PathLike
+from xffl.custom.types import FileLike
 from xffl.distributed.networking import get_cells_ids
 
 logger: Logger = getLogger(__name__)
@@ -92,7 +92,7 @@ def _setup_env(
             env["XFFL_DATASET_FOLDER"] = str(config.dataset_info.path) + str(
                 config.dataset_info.name
             )
-            env["XFFL_CODE_FOLDER"] = str(PathLike(args.executable).parent)
+            env["XFFL_CODE_FOLDER"] = str(Path(args.executable).parent)
 
     return env
 

@@ -7,6 +7,7 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 import os
 import time
 from logging import Logger, getLogger
+from pathlib import Path
 from typing import Any, MutableMapping, Optional
 
 import torch
@@ -17,7 +18,6 @@ from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
 from xffl.custom.config import XFFLConfig
-from xffl.custom.types import PathLike
 from xffl.distributed import distributed
 from xffl.learning import modelling, processing, utils
 from xffl.learning.data import create_dataloaders
@@ -41,14 +41,14 @@ def pretraining(config: XFFLConfig) -> None:
 
     # Convert paths to the container's defaults if executing inside one
     if "XFFL_IMAGE" in os.environ:
-        model_path: str = str(PathLike("/model/"))
-        dataset_path: str = str(PathLike("/dataset/"))
+        model_path: str = str(Path("/model/"))
+        dataset_path: str = str(Path("/dataset/"))
     else:
         model_path: str = str(
-            PathLike(str(config.model_info.path) + str(config.model_info.name))
+            Path(str(config.model_info.path) + str(config.model_info.name))
         )
         dataset_path: str = str(
-            PathLike(str(config.dataset_info.path) + str(config.dataset_info.name))
+            Path(str(config.dataset_info.path) + str(config.dataset_info.name))
         )
 
     # Sets RNGs seeds and force PyTorch's deterministic execution

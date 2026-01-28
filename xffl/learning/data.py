@@ -4,7 +4,7 @@ import os
 import random
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Callable, Dict, Mapping, MutableMapping, Optional, Tuple
+from typing import Callable, Dict, Mapping, MutableMapping, Optional, Sequence
 
 import torch
 from datasets import DatasetDict, load_from_disk
@@ -27,7 +27,7 @@ logger: Logger = getLogger(__name__)
 def _apply_filters(
     state: DistributedState,
     dataset: MutableMapping[str, Dataset],
-    filters: Callable | Tuple[Callable, ...],
+    filters: Callable | Sequence[Callable],
     config: Optional[XFFLConfig] = None,
 ):
     """Applies filter function to all splits of a dataset.
@@ -37,11 +37,11 @@ def _apply_filters(
     :param dataset: Dictionary associating split name with the relative dataset instances
     :type dataset: MutableMapping[str, Dataset]
     :param filters: Functions to be applied to the dataset splits before instantiating the dataloaders
-    :type filters: Callable | Tuple[Callable, ...]
+    :type filters: Callable | Sequence[Callable]
     :param config: xFFL configuration, defaults to None
     :type config: Optional[XFFLConfig], optional
     """
-    _filters: Tuple[Callable, ...] = (
+    _filters: Sequence[Callable] = (
         (filters,) if isinstance(filters, Callable) else filters
     )
     for filter in _filters:
@@ -76,7 +76,7 @@ def load_datasets_from_disk(
     Useful when train, test, and validation sets are different files/folders
 
     :param splits: Dictionary of "split_name": path_to_the_dataset_split
-    :type splits: Dict[str, PathLike]
+    :type splits: Dict[str, Path]
     :param base_path: Base path for the dataset folder
     :type base_path: FolderLike
     :return: Dictionary of "split_name": HuggingFace_dataset object
@@ -92,7 +92,7 @@ def load_datasets_from_disk(
 def create_dataloaders(
     state: DistributedState,
     dataset: Optional[MutableMapping[str, Dataset]] = None,
-    filters: Optional[Callable | Tuple[Callable, ...]] = None,
+    filters: Optional[Callable | Sequence[Callable]] = None,
     subsampling: Optional[MutableMapping[str, int]] = None,
     batch_sizes: Optional[Mapping[str, int]] = None,
     workers: Optional[int] = None,
@@ -111,7 +111,7 @@ def create_dataloaders(
     :param dataset: Dictionary associating split name with the relative dataset instances, defaults to None
     :type dataset: Optional[MutableMapping[str, Dataset]], optional
     :param filters: Functions to be applied to the dataset splits before instantiating the dataloaders, defaults to None
-    :type filters: Optional[Callable  |  Tuple[Callable, ...]], optional
+    :type filters: Optional[Callable  |  Sequence[Callable]], optional
     :param subsampling: Number of samples to extract from the dataset splits, defaults to None
     :type subsampling: Optional[MutableMapping[str, int]], optional
     :param batch_sizes: Batch size associated to the given dataset splits, defaults to None
@@ -141,7 +141,7 @@ def create_dataloaders(
                 _dataset: Optional[MutableMapping[str, Dataset]] = __dataset(
                     config=config, state=state
                 )
-        _filters: Optional[Callable | Tuple[Callable, ...]] = resolve_param(
+        _filters: Optional[Callable | Sequence[Callable]] = resolve_param(
             value=filters, config=config.dataset_info, attr="filters"
         )
         _subsampling: Optional[MutableMapping[str, int]] = resolve_param(
@@ -155,7 +155,7 @@ def create_dataloaders(
         )
     else:
         _dataset: Optional[MutableMapping[str, Dataset]] = dataset
-        _filters: Optional[Callable | Tuple[Callable, ...]] = filters
+        _filters: Optional[Callable | Sequence[Callable]] = filters
         _subsampling: Optional[MutableMapping[str, int]] = subsampling
         _batch_sizes: Optional[Mapping[str, int]] = batch_sizes
         _workers: Optional[int] = workers

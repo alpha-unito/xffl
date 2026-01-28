@@ -4,6 +4,7 @@ import logging
 import os
 import time
 from logging import Logger, getLogger
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import torch
@@ -17,7 +18,6 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.config import XFFLConfig
-from xffl.custom.types import PathLike
 from xffl.distributed.aggregation import bucket_optimized_coalesced_
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_model
@@ -323,7 +323,7 @@ def distributed_training(
     fedopt: Optional[bool] = None,
     epochs: Optional[int] = None,
     federated_batches: Optional[int] = None,
-    save_path: Optional[PathLike] = None,
+    save_path: Optional[Path] = None,
     output_model_name: Optional[str] = None,
     lr_scheduler: Optional[Callable] = None,
     fedopt_lr_scheduler: Optional[LRScheduler] = None,
@@ -357,7 +357,7 @@ def distributed_training(
     :param federated_batches: Number of training batched to process between two federated averaging, defaults to None
     :type federated_batches: Optional[int]
     :param save_path: Path where to save the trained model, defaults to None
-    :type save_path: Optional[PathLike], optional
+    :type save_path: Optional[Path], optional
     :param output_model_name: Name to use for the saved trained model, defaults to None
     :type output_model_name: Optional[str], optional
     :param lr_scheduler: Learning rate scheduler, defaults to None
@@ -399,7 +399,7 @@ def distributed_training(
         logger.warning(
             "Federated batches is setup, but FederatedScaling is not: running FederatedScaling with a single model replica."
         )
-    _save_path: Optional[PathLike] = resolve_param(
+    _save_path: Optional[Path] = resolve_param(
         value=save_path, config=config, attr="save_path"
     )
     if _save_path is not None and (
