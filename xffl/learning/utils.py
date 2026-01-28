@@ -202,23 +202,35 @@ def preload(files: Sequence[Optional[Path | str]]) -> None:
 
 
 def cuda_reset_memory_stats_and_empty_cache() -> None:
+    """Reset CUDA peak memory stats and empty CUDA cache.
+    This method has no effect if CUDA is not available.
+    """
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
         torch.cuda.empty_cache()
 
 
 def cuda_sync_and_empty_cache() -> None:
+    """Synchronizes CUDA streams with the CPU state and empty CUDA cache.
+    This method has no effect if CUDA is not available.
+    """
     if torch.cuda.is_available():
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
 
 def cuda_sync() -> None:
+    """Synchronizes CUDA streams with the CPU state.
+    This method has no effect if CUDA is not available.
+    """
     if torch.cuda.is_available():
         torch.cuda.synchronize()
 
 
 def barrier(state: DistributedState) -> None:
+    """Implements a barrier.
+    This method has no effect if the distributed backend is not initialized
+    """
     if torch.distributed.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
 
@@ -233,7 +245,27 @@ def wandb_setup(
     mode: Optional[Literal["online", "offline", "disabled", "shared"]] = None,
     config: Optional[XFFLConfig] = None,
 ) -> Any:
+    """Initializes a WandB run.
 
+    :param entity: WandB entity, defaults to None
+    :type entity: Optional[str], optional
+    :param project: WandB project, defaults to None
+    :type project: Optional[str], optional
+    :param group: WandB run group, defaults to None
+    :type group: Optional[str], optional
+    :param name: WandB run name, defaults to None
+    :type name: Optional[str], optional
+    :param notes: WandB run notes, defaults to None
+    :type notes: Optional[str], optional
+    :param tags: WandB run tags, defaults to None
+    :type tags: Optional[Sequence[str]], optional
+    :param mode: WandB execution mode, defaults to None
+    :type mode: Optional[Literal["online", "offline", "disabled", "shared"]], optional
+    :param config: xFFL configuration, defaults to None
+    :type config: Optional[XFFLConfig], optional
+    :return: An instantiated WandB run
+    :rtype: Any
+    """
     # Resolve parameters
     _entity: Optional[str] = resolve_param(
         value=entity, config=config, attr="wandb_entity"
