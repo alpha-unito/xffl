@@ -31,6 +31,7 @@ def create_fsdp_model(
     wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
     decoder_layers: Optional[Type] = None,
+    activation_checkpointing: Optional[bool] = None,
     config: Optional[XFFLConfig] = None,
     use_orig_params: bool = False,
 ) -> FullyShardedDataParallel | nn.Module:  # TODO: Move to FSDP2
@@ -51,6 +52,8 @@ def create_fsdp_model(
     :type decoder_layers: Optional[Type], optional
     :param use_orig_params: If to use the original parameter format, defaults to False
     :type use_orig_params: Bool, defaults to False
+    :param activation_checkpointing: If to use activation checkpointing, defaults to None
+    :type activation_checkpointing: Bool, defaults to None
     :param config: XFFL configuration
     :type config: Optional[XFFLConfig], defaults to None
     :return: The original module wrapped by FSDP
@@ -74,11 +77,17 @@ def create_fsdp_model(
         _decoder_layers: Optional[Type] = resolve_param(
             value=decoder_layers, config=config.model_info, attr="decoder_layers"
         )
+        _activation_checkpointing: Optional[bool] = resolve_param(
+            value=activation_checkpointing,
+            config=config.model_info,
+            attr="activation_checkpointing",
+        )
     else:
         _module: Optional[nn.Module] = module
         _wrapping_policy: Optional[Callable] = wrapping_policy
         _mixed_precision: Optional[MixedPrecision] = mixed_precision
         _decoder_layers: Optional[Type] = decoder_layers
+        _activation_checkpointing: Optional[bool] = activation_checkpointing
 
     # Model and device mashes creation
     if _module is not None:
@@ -114,11 +123,13 @@ def create_fsdp_model(
 
         # Activation checkpointing
         # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
-        if _decoder_layers is not None:  # TODO: make this optional/paramterizable
-            utils.set_activation_checkpointing(
-                model=model,
-                layer=_decoder_layers,
-            )
+        if _activation_checkpointing is not None and _activation_checkpointing:
+            if _decoder_layers is not None:
+                logger.debug("Activating activation checkpointing.")
+                utils.set_activation_checkpointing(
+                    model=model,
+                    layer=_decoder_layers,
+                )
 
     else:
         logger.critical(

@@ -79,7 +79,7 @@ def setup_distributed_process_group(
     group_local_size: Optional[int] = None,
     group_rank: Optional[int] = None,
     group_world_size: Optional[int] = None,
-    backend: Optional[Backend] = None,
+    backend: Optional[str] = None,
     master_addr: Optional[str] = None,
     master_port: Optional[int] = None,
     device: Optional[torch.device] = None,
@@ -134,9 +134,11 @@ def setup_distributed_process_group(
 
     # Parameters resolution
     _rank: Optional[int] = resolve_param(value=rank, config=config, attr="rank")
+    _rank = _get_int_from_env(var=_rank, env_var="RANK")
     _world_size: Optional[int] = resolve_param(
         value=world_size, config=config, attr="world_size"
     )
+    _world_size = _get_int_from_env(var=_world_size, env_var="WORLD_SIZE")
     _group_local_rank: Optional[int] = resolve_param(
         value=group_local_rank, config=config, attr="group_local_rank"
     )
@@ -149,17 +151,31 @@ def setup_distributed_process_group(
     _group_world_size: Optional[int] = resolve_param(
         value=group_world_size, config=config, attr="group_world_size"
     )
-    _backend: Optional[Backend] = resolve_param(
+    _backend: Optional[str] = resolve_param(
         value=backend, config=config, attr="backend"
+    )
+    _backend = (
+        _backend
+        if _backend is not None
+        else (Backend("nccl") if torch.cuda.is_available() else Backend("gloo"))
     )
     _master_addr: Optional[str] = resolve_param(
         value=master_addr, config=config, attr="master_addr"
     )
+    _master_addr = (
+        os.environ.get("MASTER_ADDR") if _master_addr is None else _master_addr
+    )
     _master_port: Optional[int] = resolve_param(
         value=master_port, config=config, attr="master_port"
     )
+    _master_port = _get_int_from_env(var=_master_port, env_var="MASTER_PORT")
     _device: Optional[torch.device] = resolve_param(
         value=device, config=config, attr="device"
+    )
+    _device = (
+        _device
+        if _device is not None
+        else torch.device("cuda" if torch.cuda.is_available() else "cpu")
     )
     _hsdp: Optional[int] = resolve_param(value=hsdp, config=config, attr="hsdp")
     __federated: Optional[int | Tuple[int, ...]] = resolve_param(
@@ -176,22 +192,12 @@ def setup_distributed_process_group(
 
     # Distributed state global information
     state.set_global(
-        backend=(
-            _backend
-            if _backend is not None
-            else "nccl" if torch.cuda.is_available() else "gloo"
-        ),
-        device_type=(
-            _device
-            if _device is not None
-            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        ),
-        master_addr=(
-            os.environ.get("MASTER_ADDR") if _master_addr is None else _master_addr
-        ),
-        master_port=_get_int_from_env(var=_master_port, env_var="MASTER_PORT"),
-        rank=_get_int_from_env(var=_rank, env_var="RANK"),
-        world_size=_get_int_from_env(var=_world_size, env_var="WORLD_SIZE"),
+        backend=_backend,
+        device_type=_device,
+        master_addr=_master_addr,
+        master_port=_master_port,
+        rank=_rank,
+        world_size=_world_size,
     )
 
     # Distributed state local information

@@ -32,19 +32,15 @@ BASE_PATH: str = "/beegfs/home/gmittone/xffl"
 
 # LLM loading from saved model
 def _load_llm_from_checkpoint(config: XFFLConfig, state: DistributedState) -> nn.Module:
-
-    module: nn.Module
-    module, _ = AutoModelForCausalLM.from_pretrained(
+    return AutoModelForCausalLM.from_pretrained(
         pretrained_model_name_or_path=str(config.model_info.path),
         use_cache=False,
-        output_loading_info=config.loglevel == logging.DEBUG,
         local_files_only=True,  # Most HPCs do not have internet access from the nodes
         attn_implementation=config.model_info.attention,
         dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
         device_map=state.init_device,
         use_safetensors=True,
-    )  # type: ignore
-    return module
+    )
 
 
 def _get_llama31_cosine_schedule(
@@ -77,7 +73,7 @@ def _get_llama31_cosine_schedule(
 @dataclass
 class llama(ModelInfo):
     name: str = TINY_RANDOM_LLAMA_3
-    attention: str = "flash_attention_2"
+    attention: str = "sdpa"
     model: Callable = _load_llm_from_checkpoint
     collate_fn: Callable = default_data_collator
     decoder_layer: Type = LlamaDecoderLayer
@@ -85,6 +81,7 @@ class llama(ModelInfo):
         wrap.transformer_auto_wrap_policy,
         transformer_layer_cls={decoder_layer},
     )
+    activation_checkpointing: bool = True
     path: str = BASE_PATH + "/model/" + name
 
 

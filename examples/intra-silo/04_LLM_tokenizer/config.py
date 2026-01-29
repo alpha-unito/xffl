@@ -95,21 +95,18 @@ class babylm(ModelInfo):
     def _load_babylm_from_checkpoint(
         config: XFFLConfig, state: DistributedState
     ) -> nn.Module:
-        module: nn.Module
-        module, _ = AutoModelForCausalLM.from_pretrained(
+        return AutoModelForCausalLM.from_pretrained(
             pretrained_model_name_or_path=str(config.model_info.path),
             use_cache=False,
-            output_loading_info=config.loglevel == logging.DEBUG,
             local_files_only=True,  # Most HPCs do not have internet access from the nodes
             attn_implementation=config.model_info.attention,
             dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
-            device_map=state.init_device,
+            # device_map=state.init_device,
             use_safetensors=True,
-        )  # type: ignore
-        return module
+        )
 
     name: str = BABYLM
-    attention: str = "flash_attention_2"
+    attention: str = "sdpa"
     model: Callable = _load_babylm_from_checkpoint
     collate_fn: Callable = default_data_collator
     decoder_layer: Type = Qwen3DecoderLayer
@@ -117,6 +114,7 @@ class babylm(ModelInfo):
         wrap.transformer_auto_wrap_policy,
         transformer_layer_cls={decoder_layer},
     )
+    activation_checkpointing: bool = True
     path: str = BASE_PATH + "/model/" + name
 
 
@@ -134,7 +132,7 @@ class babylm_dataset(DatasetInfo):
     name: str = BABYLM_DATASET
     splits: Callable = _get_babylm_dataset_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 32, "val": 1}
+        default_factory=lambda: {"train": 8, "val": 1}
     )
     workers: int = 2
     path: str = BASE_PATH + "/dataset/" + name

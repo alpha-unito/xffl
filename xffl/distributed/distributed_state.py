@@ -161,7 +161,7 @@ class DistributedState:
 
     def set_global(
         self,
-        backend: str,
+        backend: Optional[str],
         device_type: torch.device,
         master_addr: Optional[str],
         master_port: Optional[int],

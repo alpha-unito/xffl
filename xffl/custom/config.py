@@ -29,6 +29,7 @@ class ModelInfo(ABC):
     decoder_layer: Optional[Type] = None
     wrapping_policy: Optional[Callable] = None
     attention: Optional[str] = None
+    activation_checkpointing: Optional[bool] = None
     path: Optional[Path | str] = None
 
     def __post_init__(self):
