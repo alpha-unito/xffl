@@ -69,7 +69,7 @@ def _apply_subsampling(
 
 
 def load_datasets_from_disk(
-    splits: Mapping[str, Path], base_path: Path
+    splits: Mapping[str, str], base_path: Path
 ) -> Dict[str, Dataset | DatasetDict]:
     """Load multiple datasets from disk
 
@@ -97,6 +97,7 @@ def create_dataloaders(
     batch_sizes: Optional[Mapping[str, int]] = None,
     workers: Optional[int] = None,
     config: Optional[XFFLConfig] = None,
+    collate_fn: Optional[Callable] = None,
     shuffle_train_split: bool = True,
     distributed_sampling: bool = True,
     generator: Optional[torch.Generator] = None,
@@ -144,6 +145,9 @@ def create_dataloaders(
         _filters: Optional[Callable | Sequence[Callable]] = resolve_param(
             value=filters, config=config.dataset_info, attr="filters"
         )
+        _collate_fn: Optional[Callable] = resolve_param(
+            value=collate_fn, config=config.model_info, attr="collate_fn"
+        )
         _subsampling: Optional[MutableMapping[str, int]] = resolve_param(
             value=subsampling, config=config.dataset_info, attr="subsampling"
         )
@@ -156,6 +160,7 @@ def create_dataloaders(
     else:
         _dataset: Optional[MutableMapping[str, Dataset]] = dataset
         _filters: Optional[Callable | Sequence[Callable]] = filters
+        _collate_fn: Optional[Callable] = collate_fn
         _subsampling: Optional[MutableMapping[str, int]] = subsampling
         _batch_sizes: Optional[Mapping[str, int]] = batch_sizes
         _workers: Optional[int] = workers
@@ -210,6 +215,7 @@ def create_dataloaders(
                 else None
             ),
             num_workers=_workers if _workers else 0,
+            collate_fn=_collate_fn,
             pin_memory=True if state.device_type == "cuda" else False,
             drop_last=True,
             worker_init_fn=(

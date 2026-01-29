@@ -83,7 +83,6 @@ def pretraining(config: XFFLConfig) -> None:
         state=state,
         config=config,
         generator=generator,
-        distributed_sampling=not config.one_class,  # type: ignore
     )
     if state.rank == 0:
         logger.debug(
@@ -118,6 +117,7 @@ def pretraining(config: XFFLConfig) -> None:
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
         val_dataloader=dataloaders["val"],
+        config=config,
         wandb_run=wandb_run,
     )
 

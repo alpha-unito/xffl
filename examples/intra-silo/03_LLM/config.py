@@ -3,7 +3,6 @@
 import functools
 import logging
 import math
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -13,7 +12,7 @@ from torch import nn
 from torch.distributed.fsdp import MixedPrecision, wrap
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, default_data_collator
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 
@@ -22,18 +21,20 @@ from xffl.distributed.distributed_state import DistributedState
 from xffl.learning.data import load_datasets_from_disk
 
 # Constants
-TINY_RANDOM_LLAMA_3: str = "tiny-random-llama-3"
+TINY_RANDOM_LLAMA_3: str = "tiny_random_Llama-3"
 LLAMA3_1_8B: str = "llama3.1-8b"
 LLAMA3_1_70B: str = "llama3.1-70b"
 MIXTRAL_8x7b_v0_1: str = "mixtral-8x7b-v0.1"
 CLEAN_MC4_IT: str = "clean_mc4_it"
 
-CURRENT_DIR: str = str(os.getcwd())
+CURRENT_DIR: str = "/beegfs/home/gmittone/xffl"
 
 
 # LLM loading from saved model
 def _load_llm_from_checkpoint(config: XFFLConfig, state: DistributedState) -> nn.Module:
-    return AutoModelForCausalLM.from_pretrained(
+
+    module: nn.Module
+    module, _ = AutoModelForCausalLM.from_pretrained(
         pretrained_model_name_or_path=str(config.model_info.path),
         use_cache=False,
         output_loading_info=config.loglevel == logging.DEBUG,
@@ -42,7 +43,8 @@ def _load_llm_from_checkpoint(config: XFFLConfig, state: DistributedState) -> nn
         dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
         device_map=state.init_device,
         use_safetensors=True,
-    )
+    )  # type: ignore
+    return module
 
 
 def _get_llama31_cosine_schedule(
@@ -75,15 +77,16 @@ def _get_llama31_cosine_schedule(
 @dataclass
 class llama(ModelInfo):
 
-    name: str = LLAMA3_1_8B
+    name: str = TINY_RANDOM_LLAMA_3
     attention: str = "sdpa"
     model: Callable = _load_llm_from_checkpoint
+    collate_fn: Callable = default_data_collator
     decoder_layers: Callable = LlamaDecoderLayer
     wrapping_policy: Callable = functools.partial(
         wrap.transformer_auto_wrap_policy,
         transformer_layer_cls={decoder_layers},
     )
-    path: str = CURRENT_DIR + "/" + LLAMA3_1_8B
+    path: str = CURRENT_DIR + "/model/" + TINY_RANDOM_LLAMA_3
 
 
 @dataclass
@@ -96,7 +99,7 @@ class mixtral(ModelInfo):
         wrap.transformer_auto_wrap_policy,
         transformer_layer_cls={decoder_layers},
     )
-    path: str = CURRENT_DIR + "/" + MIXTRAL_8x7b_v0_1
+    path: str = CURRENT_DIR + "/model/" + MIXTRAL_8x7b_v0_1
 
 
 @dataclass
@@ -105,17 +108,17 @@ class cleanmc4it(DatasetInfo):
     @staticmethod
     def _get_cleanmc4it_splits(config: XFFLConfig, state: DistributedState):
         return load_datasets_from_disk(
-            splits=config.dataset_info.splits,
+            splits={"train": "train", "val": "val"},
             base_path=Path(str(config.dataset_info.path)),
         )  # Original LLaMA training packs the datasets
 
     name: str = CLEAN_MC4_IT
     splits: Callable = _get_cleanmc4it_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 2, "val": 1}
+        default_factory=lambda: {"train": 4, "val": 1}
     )
     workers: int = 2
-    path: Path = Path(CURRENT_DIR + "/" + CLEAN_MC4_IT)
+    path: str = CURRENT_DIR + "/dataset/" + CLEAN_MC4_IT
 
 
 # XFFL configuration
@@ -146,11 +149,13 @@ class xffl_config(XFFLConfig):
     wandb_mode: str = "online"
 
     # Advanced configuration
-    mixed_precision: MixedPrecision = MixedPrecision(
-        param_dtype=torch.bfloat16,
-        reduce_dtype=torch.bfloat16,
-        buffer_dtype=torch.bfloat16,
-        cast_forward_inputs=True,
+    mixed_precision: MixedPrecision = field(
+        default_factory=lambda: MixedPrecision(
+            param_dtype=torch.bfloat16,
+            reduce_dtype=torch.bfloat16,
+            buffer_dtype=torch.bfloat16,
+            cast_forward_inputs=True,
+        )
     )
     lr_scheduler: Callable = _get_llama31_cosine_schedule
 

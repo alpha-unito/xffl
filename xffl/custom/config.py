@@ -24,6 +24,8 @@ class ModelInfo(ABC):
 
     name: str
     model: Callable
+    tokenizer: Optional[Callable] = None
+    collate_fn: Optional[Callable] = None
     decoder_layers: Optional[type] = None
     wrapping_policy: Optional[Callable | Sequence[Callable]] = None
     attention: Optional[str] = None

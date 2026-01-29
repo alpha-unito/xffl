@@ -76,6 +76,7 @@ def _get_processing_function(
         batch: Any,
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
+
         for key in batch.keys():
             batch[key] = batch[key].to(
                 device=state.current_device,
