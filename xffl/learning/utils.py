@@ -7,7 +7,7 @@ import subprocess
 import sys
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Literal, Optional, Sequence
+from typing import Any, Literal, Optional, Sequence, Type
 
 import numpy
 import torch
@@ -128,7 +128,7 @@ def seed_dataloader_worker(worker_id: int) -> None:
 
 
 def set_activation_checkpointing(
-    model: nn.Module | PreTrainedModel, layer: type
+    model: nn.Module | PreTrainedModel, layer: Type
 ) -> None:
     """Sets up activation (gradient) checkpointing
 
@@ -136,7 +136,7 @@ def set_activation_checkpointing(
 
     :param model: Model on which setting up the checkpointing
     :type model: nn.Module | PreTrainedModel
-    :param layer: Layer to wrap, needed only by Torch models, defaults to None
+    :param layer: Layers to wrap, needed only by Torch models, defaults to None
     :type layer: Optional[nn.Module], optional
     """
     if isinstance(model, PreTrainedModel):

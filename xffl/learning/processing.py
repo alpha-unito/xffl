@@ -298,7 +298,7 @@ def distributed_training(
     fedopt_optimizer: Optional[Optimizer] = None,
     criterion: Optional[nn.Module] = None,
     gradient_clipping: Optional[float] = None,
-    accumulation_steps: Optional[int] = None,
+    gradient_accumulation: Optional[int] = None,
     config: Optional[XFFLConfig] = None,
 ) -> Mapping[str, float]:
     """Generic training cycle for FSDP models.
@@ -340,8 +340,8 @@ def distributed_training(
     :type criterion: Optional[Callable], optional
     :param gradient_clipping: Gradient clipping value, defaults to None
     :type gradient_clipping: Optional[float], optional
-    :param accumulation_steps: Gradient accumulation steps, defaults to None
-    :type accumulation_steps: Optional[int], optional
+    :param gradient_accumulation: Gradient accumulation steps, defaults to None
+    :type gradient_accumulation: Optional[int], optional
     :param config: XFFL configuration
     :type config: Optional[XFFLConfig], defaults to None
     :return: Dictionary of metrics names and achieved values
@@ -430,14 +430,14 @@ def distributed_training(
             f"Gradient clipping is set to {_gradient_clipping}, which is not acceptable. Defaulting to 1.0."
         )
         _gradient_clipping = 1.0
-    _accumulation_steps: Optional[int] = resolve_param(
-        value=accumulation_steps, config=config, attr="accumulation_steps"
+    _gradient_accumulation: Optional[int] = resolve_param(
+        value=gradient_accumulation, config=config, attr="gradient_accumulation"
     )
-    if _accumulation_steps and _accumulation_steps < 1:
+    if _gradient_accumulation and _gradient_accumulation < 1:
         logger.error(
-            f"Gradient accumulation steps is set to {_accumulation_steps}, which is not acceptable. Defaulting to 1."
+            f"Gradient accumulation steps is set to {_gradient_accumulation}, which is not acceptable. Defaulting to 1."
         )
-        _accumulation_steps = 1
+        _gradient_accumulation = 1
 
     # Clear GPU cache and reset peak memory stats
     cuda_reset_memory_stats_and_empty_cache()
@@ -519,8 +519,8 @@ def distributed_training(
                 start_time = time.perf_counter()
 
             # Backward
-            if _accumulation_steps is not None:
-                loss /= _accumulation_steps
+            if _gradient_accumulation is not None:
+                loss /= _gradient_accumulation
             loss.backward()
 
             if logging.root.level == logging.DEBUG:
@@ -530,8 +530,8 @@ def distributed_training(
 
             # Optimization
             if (
-                _accumulation_steps is None
-                or (step + 1) % _accumulation_steps == 0
+                _gradient_accumulation is None
+                or (step + 1) % _gradient_accumulation == 0
                 or (step + 1) == total_length
             ):
                 if _gradient_clipping is not None:
@@ -585,8 +585,8 @@ def distributed_training(
                 start_time = time.perf_counter()
 
             # Logging
-            if _accumulation_steps is not None:
-                loss *= _accumulation_steps
+            if _gradient_accumulation is not None:
+                loss *= _gradient_accumulation
 
             train_epoch_loss += loss.detach().float().cpu()
             train_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))

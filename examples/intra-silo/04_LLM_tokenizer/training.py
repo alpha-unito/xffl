@@ -9,9 +9,9 @@ from logging import Logger, getLogger
 from typing import Any, MutableMapping, Optional
 
 import torch
-import torch.nn as nn
 import wandb
 from config import xffl_config
+from torch import nn
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
@@ -19,7 +19,8 @@ from xffl.custom.config import XFFLConfig
 from xffl.distributed import distributed
 from xffl.learning import modelling, processing, utils
 from xffl.learning.data import create_dataloaders
-from xffl.learning.utils import wandb_setup
+
+# from xffl.learning.utils import wandb_setup
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -87,8 +88,7 @@ def pretraining(config: XFFLConfig) -> None:
         lr=config.learning_rate,
         weight_decay=config.weight_decay,  # type: ignore
         betas=config.betas,  # type: ignore
-        # foreach=True,  # Optimizes performances but uses more memory
-        fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
+        fused=True,
     )
 
     if state.rank == 0:
@@ -100,7 +100,7 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # WandB setup
-    wandb_run: Any = wandb_setup(config=config)
+    wandb_run: Any = None  # wandb_setup(config=config)
 
     # Main training function
     results = processing.distributed_training(

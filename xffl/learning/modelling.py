@@ -3,7 +3,7 @@
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Type
 
 import torch
 from torch import nn
@@ -17,6 +17,7 @@ from xffl.distributed.distributed import (
     DistributedState,
     get_appropriate_sharding_strategy,
 )
+from xffl.learning import utils
 from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
@@ -28,6 +29,7 @@ def create_fsdp_model(
     module: Optional[nn.Module] = None,
     wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
+    decoder_layers: Optional[Type] = None,
     config: Optional[XFFLConfig] = None,
     use_orig_params: bool = False,
 ) -> FullyShardedDataParallel:  # TODO: Move to FSDP2
@@ -44,6 +46,8 @@ def create_fsdp_model(
     :type wrapping_policy:  Optional[Callable], optional
     :param mixed_precision: Precision to use for the module, defaults to None
     :type mixed_precision: Optional[MixedPrecision], optional
+    :param decoder_layers: Layer type to set activation checkpointing, defaults to None
+    :type decoder_layers: Optional[Type], optional
     :param use_orig_params: If to use the original parameter format, defaults to False
     :type use_orig_params: Bool, defaults to False
     :param config: XFFL configuration
@@ -66,10 +70,14 @@ def create_fsdp_model(
         _mixed_precision: Optional[MixedPrecision] = resolve_param(
             value=mixed_precision, config=config.model_info, attr="mixed_precision"
         )
+        _decoder_layers: Optional[Type] = resolve_param(
+            value=decoder_layers, config=config.model_info, attr="decoder_layers"
+        )
     else:
         _module: Optional[nn.Module] = module
         _wrapping_policy: Optional[Callable] = wrapping_policy
         _mixed_precision: Optional[MixedPrecision] = mixed_precision
+        _decoder_layers: Optional[Type] = decoder_layers
 
     # Model and device mashes creation
     if _module is not None:
@@ -96,6 +104,15 @@ def create_fsdp_model(
             device_mesh=device_mesh,
             use_orig_params=use_orig_params,
         )
+
+        # Activation checkpointing
+        # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
+        if _decoder_layers is not None:  # TODO: make this optional/paramterizable
+            utils.set_activation_checkpointing(
+                model=model,
+                layer=_decoder_layers,
+            )
+
     else:
         logger.critical(
             "Impossible setting up the distributed training: no model provided."  # TODO: add an exception?

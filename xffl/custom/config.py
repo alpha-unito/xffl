@@ -5,7 +5,7 @@ import os
 from abc import ABC
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal, Mapping, Optional, Sequence
+from typing import Any, Callable, Literal, Mapping, Optional, Sequence, Type
 
 
 @dataclass
@@ -26,8 +26,8 @@ class ModelInfo(ABC):
     model: Callable
     tokenizer: Optional[Callable] = None
     collate_fn: Optional[Callable] = None
-    decoder_layers: Optional[type] = None
-    wrapping_policy: Optional[Callable | Sequence[Callable]] = None
+    decoder_layer: Optional[Type] = None
+    wrapping_policy: Optional[Callable] = None
     attention: Optional[str] = None
     path: Optional[Path | str] = None
 
@@ -97,6 +97,8 @@ class XFFLConfig(ABC):
     scale_learning_rate: bool = False
     epochs: int = 1
     criterion: Optional[Callable] = None
+    gradient_clipping: Optional[float] = None
+    gradient_accumulation: Optional[int] = None
 
     # Output
     output_folder: Optional[Path] = None
