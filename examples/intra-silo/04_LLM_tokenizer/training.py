@@ -19,8 +19,7 @@ from xffl.custom.config import XFFLConfig
 from xffl.distributed import distributed
 from xffl.learning import modelling, processing, utils
 from xffl.learning.data import create_dataloaders
-
-# from xffl.learning.utils import wandb_setup
+from xffl.learning.utils import wandb_setup
 from xffl.utils.logging import setup_logging
 
 logger: Logger = getLogger(__name__)
@@ -100,7 +99,7 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # WandB setup
-    wandb_run: Any = None  # wandb_setup(config=config)
+    wandb_run: Any = wandb_setup(config=config)
 
     # Main training function
     results = processing.distributed_training(

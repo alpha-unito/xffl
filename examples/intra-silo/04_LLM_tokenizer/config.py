@@ -5,14 +5,14 @@ import logging
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Mapping, Sequence, Tuple, Type
+from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import torch
 from torch import nn
 from torch.distributed.fsdp import MixedPrecision, wrap
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, default_data_collator
 from transformers.models.qwen3.modeling_qwen3 import Qwen3DecoderLayer
 
 from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
@@ -111,6 +111,7 @@ class babylm(ModelInfo):
     name: str = BABYLM
     attention: str = "flash_attention_2"
     model: Callable = _load_babylm_from_checkpoint
+    collate_fn: Callable = default_data_collator
     decoder_layer: Type = Qwen3DecoderLayer
     wrapping_policy: Callable = functools.partial(
         wrap.transformer_auto_wrap_policy,
@@ -133,7 +134,7 @@ class babylm_dataset(DatasetInfo):
     name: str = BABYLM_DATASET
     splits: Callable = _get_babylm_dataset_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 64, "val": 1}
+        default_factory=lambda: {"train": 32, "val": 1}
     )
     workers: int = 2
     path: str = BASE_PATH + "/dataset/" + name
@@ -178,6 +179,10 @@ class xffl_config(XFFLConfig):
         )
     )
     lr_scheduler: Callable = _get_babylm_cosine_schedule
+
+    # Output
+    output_folder: Optional[Path] = None
+    output_model: Optional[str] = None
 
     # Custom
     final_lr_ratio: float = 0.01
