@@ -228,26 +228,29 @@ def get_average_distributed_loss(
     :rtype: Tensor
     """
 
-    if state.backend == "nccl":
-        _loss: Tensor = loss.to(device=state.current_device, non_blocking=True)
+    _loss: Tensor = loss
+    if dist.is_initialized():
+        if state.backend == "nccl":
+            _loss: Tensor = loss.to(device=state.current_device, non_blocking=True)
 
-    if state.is_federated_scaling_setup():
-        assert state.federated_local_size is not None
-        assert state.federated_rank is not None
-        assert state.federated_group is not None
+        if state.is_federated_scaling_setup():
+            assert state.federated_local_size is not None
+            assert state.federated_rank is not None
+            assert state.federated_group is not None
 
-        scale_factor: int = state.federated_local_size[state.federated_rank]
-        group: Optional[ProcessGroup] = state.federated_group[state.federated_rank]
-    else:
-        assert state.world_size is not None
+            scale_factor: int = state.federated_local_size[state.federated_rank]
+            group: Optional[ProcessGroup] = state.federated_group[state.federated_rank]
+        else:
+            assert state.world_size is not None
 
-        scale_factor: int = state.world_size
-        group: Optional[ProcessGroup] = dist.group.WORLD
+            scale_factor: int = state.world_size
+            group: Optional[ProcessGroup] = dist.group.WORLD
 
-    _loss = _loss / tensor(total_length)
-    dist.all_reduce(tensor=_loss, op=dist.ReduceOp.SUM, group=group)
+        _loss /= tensor(total_length)
+        dist.all_reduce(tensor=_loss, op=dist.ReduceOp.SUM, group=group)
+        _loss /= scale_factor
 
-    return _loss / scale_factor
+    return _loss
 
 
 def layer_by_layer(

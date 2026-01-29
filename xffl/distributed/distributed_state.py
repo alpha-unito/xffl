@@ -368,8 +368,8 @@ class DistributedState:
                 mesh_dim_names=("shard",),
             )
         else:
-            logger.error(
-                "Impossible setting up FSDP: the distributed environment is not initialized"
+            logger.info(
+                "Only one process is available - the distributed environment will not be initialized."
             )
 
         return mesh

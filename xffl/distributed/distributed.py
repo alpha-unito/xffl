@@ -29,6 +29,31 @@ def _get_int_from_env(var: Optional[int], env_var: str) -> Optional[int]:
     return var
 
 
+def _init_distributed_process_group(state: DistributedState) -> None:
+    """PyTorch's distributed backend initialization
+
+    :param state: Partially instantiated distributed state (rank, world_size, backend)
+    :type state: DistributedState
+    """
+    if state.world_size is None or state.rank is None:
+        logger.error(
+            f"Impossible setting up the distributed process group: the world size {state.world_size} and/or the rank {state.rank} are not correctly setup."
+        )
+    else:
+        dist.init_process_group(
+            backend=state.backend,
+            world_size=state.world_size,
+            rank=state.rank,
+            pg_options=(
+                get_default_nccl_process_group_options()
+                if state.backend == "nccl"
+                else None
+            ),
+            timeout=get_timeout(),
+            # device_id=state.current_device,  # TODO: this does not seems to work properly with device meshes
+        )
+
+
 def get_appropriate_sharding_strategy(state: DistributedState) -> ShardingStrategy:
     """Federated averaging of corresponding model's shards on different hosts
 
@@ -60,7 +85,7 @@ def setup_distributed_process_group(
     device: Optional[torch.device] = None,
     hsdp: Optional[int] = None,
     federated: Optional[int | Tuple[int, ...]] = None,
-    streams: Optional[int] = None,
+    cuda_streams: Optional[int] = None,
     config: Optional[XFFLConfig] = None,
 ) -> DistributedState:
     """Setup PyTorch's distributed environment
@@ -97,8 +122,8 @@ def setup_distributed_process_group(
     :type hsdp: Optional[int], optional
     :param federated: Activate Federated Scaling with specified federated group size, defaults to None
     :type federated: Optional[int | Tuple[int, ...]], optional
-    :param streams: Number of CUDA streams to instantiate, defaults to None
-    :type streams: Optional[int]
+    :param cuda_streams: Number of CUDA streams to instantiate, defaults to None
+    :type cuda_streams: Optional[int]
     :param config: XFFL configuration
     :type config: Optional[XFFLConfig], defaults to None
     :raises AttributeError: If backend is not in nccl, gloo, or mpi
@@ -143,8 +168,8 @@ def setup_distributed_process_group(
     _federated: Optional[Tuple[int, ...]] = (
         (__federated,) if isinstance(__federated, int) else __federated
     )
-    _streams: Optional[int] = resolve_param(
-        value=streams, config=config, attr="streams"
+    _cuda_streams: Optional[int] = resolve_param(
+        value=cuda_streams, config=config, attr="cuda_streams"
     )
 
     state: DistributedState = DistributedState()
@@ -212,11 +237,12 @@ def setup_distributed_process_group(
     # Setting execution device
     state.set_exec_device(
         current_device=_get_current_device(state=state),
-        streams=(_streams if _federated is not None else None),
+        streams=(_cuda_streams if _federated is not None else None),
     )
 
     # Basic PyTorch distributed setup
-    init_distributed_process_group(state=state)
+    if _world_size is not None and _world_size > 1:
+        _init_distributed_process_group(state=state)
 
     if _federated is not None:
         if sum(_federated) != state.world_size:
@@ -238,31 +264,6 @@ def setup_distributed_process_group(
 
     logger.debug(f"{state}")
     return state
-
-
-def init_distributed_process_group(state: DistributedState) -> None:
-    """PyTorch's distributed backend initialization
-
-    :param state: Partially instantiated distributed state (rank, world_size, backend)
-    :type state: DistributedState
-    """
-    if state.world_size is None or state.rank is None:
-        logger.error(
-            f"Impossible setting up the distributed process group: the world size {state.world_size} and/or the rank {state.rank} are not correctly setup."
-        )
-    else:
-        dist.init_process_group(
-            backend=state.backend,
-            world_size=state.world_size,
-            rank=state.rank,
-            pg_options=(
-                get_default_nccl_process_group_options()
-                if state.backend == "nccl"
-                else None
-            ),
-            timeout=get_timeout(),
-            # device_id=state.current_device,  # TODO: this does not seems to work properly with device meshes
-        )
 
 
 def cleanup_distributed_process_group(

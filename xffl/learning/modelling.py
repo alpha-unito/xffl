@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Optional, Type
 
 import torch
+import torch.distributed as dist
 from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.device_mesh import DeviceMesh
@@ -32,7 +33,7 @@ def create_fsdp_model(
     decoder_layers: Optional[Type] = None,
     config: Optional[XFFLConfig] = None,
     use_orig_params: bool = False,
-) -> FullyShardedDataParallel:  # TODO: Move to FSDP2
+) -> FullyShardedDataParallel | nn.Module:  # TODO: Move to FSDP2
     """Creates an FSDP model
 
     The parameters can be provided both directly and through an XFFL configuration.
@@ -81,29 +82,35 @@ def create_fsdp_model(
 
     # Model and device mashes creation
     if _module is not None:
-        device_mesh: Optional[DeviceMesh] = None
-        if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
-            device_mesh = state.hsdp_mesh
-        elif state.is_fsdp_setup():
-            device_mesh = state.fsdp_mesh
 
-        model: FullyShardedDataParallel = FullyShardedDataParallel(
-            module=_module,
-            sharding_strategy=get_appropriate_sharding_strategy(state=state),
-            auto_wrap_policy=_wrapping_policy,
-            device_id=state.current_device,
-            forward_prefetch=True,
-            limit_all_gathers=False,
-            mixed_precision=_mixed_precision,
-            sync_module_states=bool(state.meta_initialization),
-            param_init_fn=lambda layer: (
-                layer.to_empty(device=state.current_device, recurse=False)
-                if state.meta_initialization
-                else None
-            ),  # type: ignore
-            device_mesh=device_mesh,
-            use_orig_params=use_orig_params,
-        )
+        model: FullyShardedDataParallel | nn.Module
+
+        if dist.is_initialized():
+            device_mesh: Optional[DeviceMesh] = None
+            if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
+                device_mesh = state.hsdp_mesh
+            elif state.is_fsdp_setup():
+                device_mesh = state.fsdp_mesh
+
+            model = FullyShardedDataParallel(
+                module=_module,
+                sharding_strategy=get_appropriate_sharding_strategy(state=state),
+                auto_wrap_policy=_wrapping_policy,
+                device_id=state.current_device,
+                forward_prefetch=True,
+                limit_all_gathers=False,
+                mixed_precision=_mixed_precision,
+                sync_module_states=bool(state.meta_initialization),
+                param_init_fn=lambda layer: (
+                    layer.to_empty(device=state.current_device, recurse=False)
+                    if state.meta_initialization
+                    else None
+                ),  # type: ignore
+                device_mesh=device_mesh,
+                use_orig_params=use_orig_params,
+            )
+        else:
+            model = _module.to(device=state.current_device, non_blocking=True)
 
         # Activation checkpointing
         # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training

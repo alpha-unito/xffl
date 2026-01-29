@@ -77,7 +77,7 @@ def _get_llama31_cosine_schedule(
 @dataclass
 class llama(ModelInfo):
     name: str = TINY_RANDOM_LLAMA_3
-    attention: str = "sdpa"
+    attention: str = "flash_attention_2"
     model: Callable = _load_llm_from_checkpoint
     collate_fn: Callable = default_data_collator
     decoder_layer: Type = LlamaDecoderLayer

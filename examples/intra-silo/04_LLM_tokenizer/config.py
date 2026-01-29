@@ -129,7 +129,7 @@ class babylm_dataset(DatasetInfo):
         return load_datasets_from_disk(
             splits={"train": "train", "val": "test"},
             base_path=Path(str(config.dataset_info.path)),
-        )  # Original LLaMA training packs the datasets
+        )
 
     name: str = BABYLM_DATASET
     splits: Callable = _get_babylm_dataset_splits
