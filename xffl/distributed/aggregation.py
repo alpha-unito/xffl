@@ -7,7 +7,7 @@ from typing import Callable, ContextManager, List, Optional, Tuple
 
 import torch
 import torch.distributed as dist
-from torch import cuda, nn
+from torch import Tensor, cuda, nn, tensor
 from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors
 from torch.distributed import ProcessGroup
 
@@ -25,7 +25,7 @@ class Strategy:
     Each strategy is described as a mapping in which each element corresponds to a single communication
 
     :param mapping: Mapping between original layers index, layer parameter, appropriate context manager for communication, and CUDA stream index
-    :type mapping: Tuple[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int], ...]
+    :type mapping: Tuple[Tuple[Tuple[int, ...], Tensor, ContextManager, int], ...]
     :param reduce_op: All reduce operation
     :type reduce_op: dist.ReduceOp.RedOpType
     :param use_contiguous_memory: Convert tensors to contiguous memory before communication
@@ -39,13 +39,13 @@ class Strategy:
     :param requires_copy: Specified strategy requires copying back the aggregated tensors, defaults to False
     :type requires_copy: bool
     :param param_list: Original model parameter list necessary for copying, defaults to None
-    :type param_list: Optional[List[torch.Tensor]]
+    :type param_list: Optional[List[Tensor]]
     """
 
     mapping: Tuple[
         Tuple[
             Tuple[int, ...],
-            Tuple[torch.Tensor, ...] | torch.Tensor,
+            Tuple[Tensor, ...] | Tensor,
             ContextManager,
             int,
         ],
@@ -191,17 +191,17 @@ def _all_reduce(
     """
     assert state.federated_group is not None
 
-    for _, tensor, stream_context, stream_index in strategy.mapping:
+    for _, _tensor, stream_context, stream_index in strategy.mapping:
         with stream_context:
-            if isinstance(tensor, list):
+            if isinstance(_tensor, list):
                 dist.all_reduce_coalesced(
-                    tensors=tensor,
+                    tensors=_tensor,
                     op=strategy.reduce_op,
                     group=state.federated_group[stream_index],
                 )  # Coalesced all-reduce for lists of tensors will be deprecated in future versions of PyTorch
             else:
                 dist.all_reduce(
-                    tensor=tensor,
+                    tensor=_tensor,
                     op=strategy.reduce_op,
                     group=state.federated_group[stream_index],
                 )
@@ -210,6 +210,44 @@ def _all_reduce(
 # --------------------------------------------------------------------------- #
 #                               Strategy-based                                #
 # --------------------------------------------------------------------------- #
+
+
+def get_average_distributed_loss(
+    loss: Tensor, total_length: int, state: DistributedState
+) -> Tensor:
+    """Calculates the average loss across the distributed process group.
+    If FederatedScaling is setup, then the average is run across only the federated process group.
+
+    :param loss: Loss tensor to be averaged.
+    :type loss: Tensor
+    :param total_length: Number of data batches on which the loss value has been calculated.
+    :type total_length: int
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :return: Averaged loss value
+    :rtype: Tensor
+    """
+
+    if state.backend == "nccl":
+        _loss: Tensor = loss.to(device=state.current_device, non_blocking=True)
+
+    if state.is_federated_scaling_setup():
+        assert state.federated_local_size is not None
+        assert state.federated_rank is not None
+        assert state.federated_group is not None
+
+        scale_factor: int = state.federated_local_size[state.federated_rank]
+        group: Optional[ProcessGroup] = state.federated_group[state.federated_rank]
+    else:
+        assert state.world_size is not None
+
+        scale_factor: int = state.world_size
+        group: Optional[ProcessGroup] = dist.group.WORLD
+
+    _loss = _loss / tensor(total_length)
+    dist.all_reduce(tensor=_loss, op=dist.ReduceOp.SUM, group=group)
+
+    return _loss / scale_factor
 
 
 def layer_by_layer(
@@ -237,7 +275,7 @@ def layer_by_layer(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], Tensor, ContextManager, int]] = []
     for layer_index, layer in enumerate(model.parameters()):
         if use_multiple_cuda_streams:
             stream_index = layer_index % stream_number
@@ -289,7 +327,7 @@ def layer_by_layer_optimized(
     bucket_size: int = get_model_size(model=model) // stream_number
 
     parameter_counter: int = 0
-    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], Tensor, ContextManager, int]] = []
     for layer_index, layer in enumerate(model.parameters()):
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
@@ -341,18 +379,18 @@ def bucket_flatten(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
     for layer_index, _ in enumerate(model.parameters()):
         buckets[layer_index % stream_number].append(layer_index)
 
-    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], Tensor, ContextManager, int]] = []
     for stream_index, bucket in enumerate(buckets):
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
         with stream_context:
-            flatten_bucket: torch.Tensor = _flatten_dense_tensors(
+            flatten_bucket: Tensor = _flatten_dense_tensors(
                 [param_list[i] for i in bucket]
             )
             mapping.append(
@@ -402,20 +440,18 @@ def bucket_coalesced(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
     for layer_index, _ in enumerate(model.parameters()):
         buckets[layer_index % stream_number].append(layer_index)
 
-    mapping: List[
-        Tuple[Tuple[int, ...], Tuple[torch.Tensor, ...], ContextManager, int]
-    ] = []
+    mapping: List[Tuple[Tuple[int, ...], Tuple[Tensor, ...], ContextManager, int]] = []
     for stream_index, bucket in enumerate(buckets):
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
         with stream_context:
-            tensor_bucket: Tuple[torch.Tensor, ...] = tuple(
+            tensor_bucket: Tuple[Tensor, ...] = tuple(
                 [
                     (
                         param_list[i].contiguous()
@@ -468,7 +504,7 @@ def bucket_optimized_flatten(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     bucket_size: int = get_model_size(model=model) // stream_number
 
@@ -481,12 +517,12 @@ def bucket_optimized_flatten(
             stream_index += 1
             parameter_counter = 0
 
-    mapping: List[Tuple[Tuple[int, ...], torch.Tensor, ContextManager, int]] = []
+    mapping: List[Tuple[Tuple[int, ...], Tensor, ContextManager, int]] = []
     for stream_index, bucket in enumerate(buckets):
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
         with stream_context:
-            flatten_bucket: torch.Tensor = _flatten_dense_tensors(
+            flatten_bucket: Tensor = _flatten_dense_tensors(
                 [param_list[i] for i in bucket]
             )
             mapping.append(
@@ -536,7 +572,7 @@ def bucket_optimized_coalesced(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     bucket_size: int = get_model_size(model=model) // stream_number
 
@@ -549,14 +585,12 @@ def bucket_optimized_coalesced(
             stream_index += 1
             parameter_counter = 0
 
-    mapping: List[
-        Tuple[Tuple[int, ...], Tuple[torch.Tensor, ...], ContextManager, int]
-    ] = []
+    mapping: List[Tuple[Tuple[int, ...], Tuple[Tensor, ...], ContextManager, int]] = []
     for stream_index, bucket in enumerate(buckets):
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
         with stream_context:
-            tensor_bucket: Tuple[torch.Tensor, ...] = tuple(
+            tensor_bucket: Tuple[Tensor, ...] = tuple(
                 [
                     (
                         param_list[i].contiguous()
@@ -694,7 +728,7 @@ def bucket_flatten_(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
     for layer_index, _ in enumerate(model.parameters()):
@@ -704,8 +738,8 @@ def bucket_flatten_(
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
         with stream_context:
-            layer_list: List[torch.Tensor] = [param_list[i] for i in bucket]
-            flatten_bucket: torch.Tensor = _flatten_dense_tensors(layer_list)
+            layer_list: List[Tensor] = [param_list[i] for i in bucket]
+            flatten_bucket: Tensor = _flatten_dense_tensors(layer_list)
             dist.all_reduce(
                 tensor=(
                     flatten_bucket.contiguous()
@@ -749,7 +783,7 @@ def bucket_coalesced_(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
     for layer_index, _ in enumerate(model.parameters()):
@@ -759,7 +793,7 @@ def bucket_coalesced_(
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
         with stream_context:
-            layer_list: List[torch.Tensor] = [
+            layer_list: List[Tensor] = [
                 (param_list[i].contiguous() if use_contiguous_memory else param_list[i])
                 for i in bucket
             ]
@@ -795,7 +829,7 @@ def bucket_optimized_flatten_(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     bucket_size: int = get_model_size(model=model) // stream_number
 
@@ -812,8 +846,8 @@ def bucket_optimized_flatten_(
         if use_multiple_cuda_streams:
             stream_context = _get_stream_context(state=state, stream_index=stream_index)
         with stream_context:
-            layer_list: List[torch.Tensor] = [param_list[i] for i in bucket]
-            flatten_bucket: torch.Tensor = _flatten_dense_tensors(layer_list)
+            layer_list: List[Tensor] = [param_list[i] for i in bucket]
+            flatten_bucket: Tensor = _flatten_dense_tensors(layer_list)
             dist.all_reduce(
                 tensor=(
                     flatten_bucket.contiguous()
@@ -857,7 +891,7 @@ def bucket_optimized_coalesced_(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[torch.Tensor] = list(model.parameters())
+    param_list: List[Tensor] = list(model.parameters())
 
     bucket_size: int = get_model_size(model=model) // stream_number
 
@@ -876,7 +910,7 @@ def bucket_optimized_coalesced_(
                 state=state, stream_index=_stream_index
             )
         with stream_context:
-            layer_list: List[torch.Tensor] = [
+            layer_list: List[Tensor] = [
                 (param_list[i].contiguous() if use_contiguous_memory else param_list[i])
                 for i in bucket
             ]

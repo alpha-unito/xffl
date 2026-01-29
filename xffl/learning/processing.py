@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import torch
-import torch.distributed as dist
 from torch import Tensor, nn, tensor
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
@@ -18,7 +17,10 @@ from tqdm import tqdm
 from wandb.wandb_run import Run
 
 from xffl.custom.config import XFFLConfig
-from xffl.distributed.aggregation import bucket_optimized_coalesced_
+from xffl.distributed.aggregation import (
+    bucket_optimized_coalesced_,
+    get_average_distributed_loss,
+)
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_model
 from xffl.learning.utils import (
@@ -256,7 +258,7 @@ def _fedopt_step(
 
     if logging.root.level == logging.DEBUG and state.rank == 0:
         diff = sum(
-            (p.detach().clone().to("cpu") - p_before).norm().item()
+            (p.detach().clone().to(device="cpu") - p_before).norm().item()
             for p, p_before in zip(model.parameters(), current_state_dict.values())
         )
         print("Total change after optimizer.step():", diff)
@@ -271,41 +273,6 @@ def _fedopt_step(
     cuda_sync_and_empty_cache()
 
     return new_state_dict
-
-
-def _get_average_distributed_loss(
-    loss: Tensor, total_length: int, state: DistributedState
-) -> Tensor:
-    """Calculates the average loss across the distributed process group.
-    If FederatedScaling is setup, then the average is run across only the federated process group.
-
-    :param loss: Loss tensor to be averaged.
-    :type loss: Tensor
-    :param total_length: Number of data batches on which the loss value has been calculated.
-    :type total_length: int
-    :param state: xFFL distributed state
-    :type state: DistributedState
-    :return: Averaged loss value
-    :rtype: Tensor
-    """
-
-    if state.is_federated_scaling_setup():
-        assert state.federated_local_size is not None
-        assert state.federated_rank is not None
-
-        scale_factor: int = state.federated_local_size[state.federated_rank]
-    else:
-        assert state.world_size is not None
-
-        scale_factor: int = state.world_size
-
-    _loss: Tensor = loss / total_length
-    dist.all_reduce(
-        tensor=_loss,
-        op=dist.ReduceOp.SUM,
-    )
-
-    return _loss / scale_factor
 
 
 # --------------------------------------------------------------------------- #
@@ -697,7 +664,7 @@ def distributed_training(
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)
 
-        _train_epoch_loss: Tensor = _get_average_distributed_loss(
+        _train_epoch_loss: Tensor = get_average_distributed_loss(
             loss=train_epoch_loss, total_length=total_length, state=state
         )
         train_epoch_perplexity: Tensor = torch.exp(_train_epoch_loss)
@@ -873,7 +840,7 @@ def validation(
                 refresh=True,
             )
 
-        _val_epoch_loss: Tensor = _get_average_distributed_loss(
+        _val_epoch_loss: Tensor = get_average_distributed_loss(
             loss=val_epoch_loss, total_length=total_length, state=state
         )
         val_epoch_perplexity: Tensor = torch.exp(_val_epoch_loss)
