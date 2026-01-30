@@ -17,7 +17,6 @@ from types import ModuleType, SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 import xffl.cli.parser as cli_parser
-from xffl.custom.config import XFFLConfig
 from xffl.custom.types import FileLike
 from xffl.distributed.networking import get_cells_ids
 
@@ -84,7 +83,9 @@ def _setup_env(
             "configuration", args.configuration
         )
         if config_module is not None:
-            config: XFFLConfig = getattr(config_module, args.config)()
+            config = getattr(
+                config_module, args.config
+            )()  # xffl.custom.config.XFFLConfig
 
             if config.model_info.path is not None:
                 env["XFFL_MODEL_FOLDER"] = str(config.model_info.path)

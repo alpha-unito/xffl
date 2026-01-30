@@ -1,6 +1,5 @@
 """Configuration file for the xFFL-LLM+tokenizer example"""
 
-import functools
 import logging
 import math
 from dataclasses import dataclass, field
@@ -9,7 +8,7 @@ from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import torch
 from torch import nn
-from torch.distributed.fsdp import MixedPrecision, wrap
+from torch.distributed.fsdp import MixedPrecision
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from transformers import AutoModelForCausalLM, default_data_collator
@@ -110,10 +109,6 @@ class babylm(ModelInfo):
     model: Callable = _load_babylm_from_checkpoint
     collate_fn: Callable = default_data_collator
     decoder_layer: Type = Qwen3DecoderLayer
-    wrapping_policy: Callable = functools.partial(
-        wrap.transformer_auto_wrap_policy,
-        transformer_layer_cls={decoder_layer},
-    )
     activation_checkpointing: bool = True
     path: str = BASE_PATH + "/model/" + name
 

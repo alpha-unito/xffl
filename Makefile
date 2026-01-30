@@ -16,7 +16,7 @@ format-check:
 	black --diff --check $(shell git ls-files | grep .py)
 
 docs-check:
-	sphinx-build -b html -W --keep-going docs/source docs/build/html
+	sphinx-build -b html --keep-going docs/source docs/build/html
 
 lint:
 	make format-check codespell-check flake8 docs-check

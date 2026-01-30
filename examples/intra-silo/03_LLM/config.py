@@ -1,6 +1,5 @@
 """Configuration file for the xFFL-LLM example"""
 
-import functools
 import logging
 import math
 from dataclasses import dataclass, field
@@ -9,7 +8,7 @@ from typing import Callable, Mapping, Sequence, Type
 
 import torch
 from torch import nn
-from torch.distributed.fsdp import MixedPrecision, wrap
+from torch.distributed.fsdp import MixedPrecision
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 from transformers import AutoModelForCausalLM, default_data_collator
@@ -75,12 +74,7 @@ class llama(ModelInfo):
     name: str = TINY_RANDOM_LLAMA_3
     attention: str = "sdpa"
     model: Callable = _load_llm_from_checkpoint
-    collate_fn: Callable = default_data_collator
     decoder_layer: Type = LlamaDecoderLayer
-    wrapping_policy: Callable = functools.partial(
-        wrap.transformer_auto_wrap_policy,
-        transformer_layer_cls={decoder_layer},
-    )
     activation_checkpointing: bool = True
     path: str = BASE_PATH + "/model/" + name
 
@@ -90,12 +84,7 @@ class mixtral(ModelInfo):
     name: str = MIXTRAL_8x7b_v0_1
     attention: str = "sdpa"
     model: Callable = _load_llm_from_checkpoint
-    collate_fn: Callable = default_data_collator
     decoder_layer: Type = MixtralDecoderLayer
-    wrapping_policy: Callable = functools.partial(
-        wrap.transformer_auto_wrap_policy,
-        transformer_layer_cls={decoder_layer},
-    )
     path: str = BASE_PATH + "/model/" + name
 
 
@@ -115,6 +104,7 @@ class cleanmc4it(DatasetInfo):
         default_factory=lambda: {"train": 4, "val": 1}
     )
     workers: int = 2
+    collate_fn: Callable = default_data_collator
     path: str = BASE_PATH + "/dataset/" + CLEAN_MC4_IT
 
 
