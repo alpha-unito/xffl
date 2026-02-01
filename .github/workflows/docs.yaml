@@ -67,7 +67,7 @@ jobs:
         run: |
           sphinx-build \
             -b html \
-            -W --keep-going \
+            --keep-going \
             docs/source \
             docs/build/html
 

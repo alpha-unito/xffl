@@ -107,7 +107,6 @@ class babylm(ModelInfo):
     name: str = BABYLM
     attention: str = "sdpa"
     model: Callable = _load_babylm_from_checkpoint
-    collate_fn: Callable = default_data_collator
     decoder_layer: Type = Qwen3DecoderLayer
     activation_checkpointing: bool = True
     path: str = BASE_PATH + "/model/" + name
@@ -129,6 +128,7 @@ class babylm_dataset(DatasetInfo):
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 8, "val": 1}
     )
+    collate_fn: Callable = default_data_collator
     workers: int = 2
     path: str = BASE_PATH + "/dataset/" + name
 
