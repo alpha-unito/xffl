@@ -9,8 +9,11 @@ from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, Optional, Sequence, Type
 
+import torch
 from torch import nn
-from torch.distributed.fsdp import wrap
+from torch.distributed.distributed_c10d import Backend
+from torch.distributed.fsdp import MixedPrecision, wrap
+from torch.optim import Optimizer
 
 from xffl.distributed.distributed_state import DistributedState
 
@@ -47,10 +50,12 @@ class ModelInfo(ABC):
     :type decoder_layer: Optional[Type], optional
     :param wrapping_policy: Wrapping policy for FSDP/HSDP, defaults to None
     :type wrapping_policy: Optional[Callable], optional
-    :param activation_checkpointing: Activate activation checkpointing, defaults to None
+    :param activation_checkpointing: Activate activation checkpointing, defaults to False
     :type activation_checkpointing: Optional[bool], optional
     :param tokenizer: Tokenizer's class or creation function, defaults to None
     :type tokenizer: Optional[Callable[[XFFLConfig, DistributedState], nn.Module]], optional
+    :param mixed_precision: Mixed precision configuration, defaults to None
+    :type mixed_precision: Optional[MixedPrecision], optional
     :raises ValueError: If some configuration values are incompatible with their expected characteristics
     """
 
@@ -65,6 +70,7 @@ class ModelInfo(ABC):
     wrapping_policy: Optional[Callable] = None
     activation_checkpointing: Optional[bool] = None
     tokenizer: Optional[Callable[[XFFLConfig, DistributedState], nn.Module]] = None  # type: ignore
+    mixed_precision: Optional[MixedPrecision] = None
 
     def __post_init__(self) -> None | ValueError:
         """
@@ -128,18 +134,23 @@ class ModelInfo(ABC):
             )
 
         # Activation Checkpointing
-        if self.activation_checkpointing is not None and not isinstance(
-            self.activation_checkpointing, bool
-        ):
-            err_msg += f"Model configuration error: the specified activation checkpointing value is not acceptable ({self.tokenizer}).\n"
-        elif self.activation_checkpointing and self.decoder_layer is None:
-            logger.warning(
-                "Model configuration error: activation checkpointing cannot be activated without specifying a decoder layer.\n"
-            )
+        if self.activation_checkpointing is not None:
+            if not isinstance(self.activation_checkpointing, bool):
+                err_msg += f"Model configuration error: the specified activation checkpointing value is not acceptable ({self.tokenizer}).\n"
+            elif self.activation_checkpointing and self.decoder_layer is None:
+                logger.warning(
+                    "Model configuration error: activation checkpointing cannot be activated without specifying a decoder layer.\n"
+                )
 
         # Tokenizer
         if self.tokenizer is not None and not isinstance(self.tokenizer, Callable):
             err_msg += f"Model configuration error: the specified tokenizer is not callable ({self.tokenizer}).\n"
+
+        # Mixed precision
+        if self.mixed_precision is not None and not isinstance(
+            self.mixed_precision, MixedPrecision
+        ):
+            err_msg += f"Model configuration error: the provided mixed precision configuration is not valid ({self.mixed_precision}).\n"
 
         # Log errors, if any, and raise a ValueError exception
         if not err_msg == "":
@@ -187,15 +198,13 @@ class DatasetInfo(ABC):
     workers: Optional[int] = None
     subsampling: Optional[int | Mapping[str, int]] = None
     batch_sizes: Optional[int | Mapping[str, int]] = None
-    collate_fn: Optional[Callable | Mapping[str, Callable]] = (
-        None  # TODO: implement this framework-side
-    )
+    collate_fn: Optional[Callable | Mapping[str, Callable]] = None
     filters: Optional[
         Callable
         | Sequence[Callable]
         | Mapping[str, Callable]
         | Mapping[str, Sequence[Callable]]
-    ] = None  # TODO: implement this framework-side
+    ] = None
 
     def __post_init__(self) -> None | ValueError:
         """
@@ -234,31 +243,65 @@ class DatasetInfo(ABC):
             err_msg += f"Dataset configuration error: the specified workers number is invalid ({self.workers}).\n"
 
         # Subsampling
-        if self.subsampling is not None and not (
-            isinstance(self.subsampling, int) or isinstance(self.subsampling, Mapping)
-        ):
-            err_msg += f"Dataset configuration error: the specified subsampling configuration is not an integer or a mapping of split names and integers ({self.subsampling}).\n"
+        if self.subsampling is not None:
+            if isinstance(self.subsampling, int) and self.subsampling < 0:
+                err_msg += f"Dataset configuration error: the specified subsampling configuration is a negative integer ({self.subsampling}).\n"
+            elif isinstance(self.subsampling, Mapping) and not all(
+                subsample > 0 for subsample in self.subsampling.values()
+            ):
+                err_msg += f"Dataset configuration error: the specified subsampling configuration is not a mapping of split names and positive integers ({self.subsampling}).\n"
+            elif not (
+                isinstance(self.subsampling, int)
+                or isinstance(self.subsampling, Mapping)
+            ):
+                err_msg += f"Dataset configuration error: the specified subsampling configuration is not an integer or a mapping of split names and integers ({self.subsampling}).\n"
 
         # Batch size
-        if self.batch_sizes is not None and not (
-            isinstance(self.batch_sizes, int) or isinstance(self.batch_sizes, Mapping)
-        ):
-            err_msg += f"Dataset configuration error: the specified batch size configuration is not an integer or a mapping of split names and integers ({self.batch_sizes}).\n"
+        if self.batch_sizes is not None:
+            if not (
+                isinstance(self.batch_sizes, int)
+                or isinstance(self.batch_sizes, Mapping)
+            ):
+                err_msg += f"Dataset configuration error: the specified batch size configuration is not an integer or a mapping of split names and integers ({self.batch_sizes}).\n"
+            elif isinstance(self.batch_sizes, int) and self.batch_sizes < 0:
+                err_msg += f"Dataset configuration error: the specified batch size configuration is a negative integer ({self.batch_sizes}).\n"
+            elif isinstance(self.batch_sizes, Mapping) and not all(
+                subsample > 0 for subsample in self.batch_sizes.values()
+            ):
+                err_msg += f"Dataset configuration error: the specified batch size configuration is not a mapping of split names and positive integers ({self.batch_sizes}).\n"
 
         # Collate function
-        if self.collate_fn is not None and not (
-            isinstance(self.collate_fn, Callable)
-            or isinstance(self.collate_fn, Mapping)
-        ):
-            err_msg += f"Dataset configuration error: the specified collate function is not callable ({self.collate_fn}).\n"
+        if self.collate_fn is not None:
+            if not (
+                isinstance(self.collate_fn, Callable)
+                or isinstance(self.collate_fn, Mapping)
+            ):
+                err_msg += f"Dataset configuration error: the specified collate function is not callable or a mapping of split names and callables ({self.collate_fn}).\n"
+            elif isinstance(self.collate_fn, Mapping) and not all(
+                isinstance(fn, Callable) for fn in self.collate_fn.values()
+            ):
+                err_msg += f"Dataset configuration error: the specified collate functions are not a mapping of split names and callables ({self.collate_fn}).\n"
 
         # Filters
-        if self.filters is not None and not (
-            isinstance(self.filters, Callable)
-            or isinstance(self.filters, Sequence)
-            or isinstance(self.filters, Mapping)
-        ):
-            err_msg += f"Dataset configuration error: the specified filters functions are not callable or mapping of split names and callable ({self.filters}).\n"
+        if self.filters is not None:
+            if not (
+                isinstance(self.filters, Callable)
+                or isinstance(self.filters, Sequence)
+                or isinstance(self.filters, Mapping)
+            ):
+                err_msg += f"Dataset configuration error: the specified filter functions are not callable, a sequence of callables or mapping of split names and callables or sequence of callables ({self.filters}).\n"
+            elif isinstance(self.filters, Sequence) and not all(
+                isinstance(fil, Callable) for fil in self.filters
+            ):
+                err_msg += f"Dataset configuration error: the specified filters are not all callable ({self.filters}).\n"
+            elif isinstance(
+                self.filters, Mapping
+            ):  # TODO: Check callable in case of Mapping[Sequence[Callable]]
+                if not (
+                    (isinstance(fil, Callable) for fil in self.filters.values())
+                    or all(isinstance(fil, Sequence) for fil in self.filters.values())
+                ):
+                    err_msg += f"Dataset configuration error: the specified filters map is not a mapping of split names and callables or sequence of callables ({self.filters}).\n"
 
         # Log errors, if any, and raise a ValueError exception
         if not err_msg == "":
@@ -268,17 +311,77 @@ class DatasetInfo(ABC):
 
 @dataclass
 class XFFLConfig(ABC):
-    """Abstract base XFFL configuration
+    """Base xFFL configuration.
 
-    :param model: Model configuration
-    :type model: ModelInfo
-    :param dataset: Dataset configuration
-    :type dataset: DatasetInfo
+    Only the model_info, dataset_info, and optimizer fields are mandatory.
+
+    If multiple process constitute the xFFL world but no parallelization strategy is specified, FSDP will be instantiated over all the available processes.
+    If federated is specified, equal groups of federated processes will be instantiated; if federated is a sequence, the processes will be divided into federated groups according to such values.
+    In case of equal (symmtrical) federated groups, both FSDP and HSDP can be instantiated, while with unequal (asymmetrical) federated groups only HSDP is supported (given that the HSDP replica group size divides the federated group sizes, in both scenarios).
+    The federated_batches and cuda_streams parameters are effective only if a valid federated value is provided, thus setting up Federated Scaling.
+
+    To save the trained model, both output_folder and output_model should be specified. The output model name cannot be empty.
+    The output path can be overridden at configuration instantiation time if execution is happening inside a container.
+
+    The xFFL configuration is double-checked before execution.
+
+    :param model_info: Model configuration
+    :type model_info: ModelInfo
+    :param dataset_info: Dataset configuration
+    :type dataset_info: DatasetInfo
+    :param optimizer: Optimizer creation function
+    :type optimizer: Callable[[nn.Module, XFFLConfig], Optimizer]
+    :param loglevel: Logging level, expressed as an integer following the python logging package, defaults to INFO (20)
+    :type loglevel: int
+    :param seed: Random number generator seed, essential for reproducible execution, defaults to None
+    :type seed: Optional[int], optional
+    :param hsdp: Activate HSDP with the specified replica group size, defaults to None
+    :type hsdp: Optional[int], optional
+    :param federated: Activate FederatedScaling with the specified federated group sizes, defaults to None
+    :type federated: Optional[int | Sequence[int]], optional
+    :param federated_batches: Specified after how many local batches the aggregation between the federated groups should be run, defaults to None
+    :type federated_batches: Optional[int], optional
+    :param cuda_streams: Number of CUDA streams to instantiate in case FederatedScaling is setup, defaults to None
+    :type cuda_streams: Optional[int], optional
+    :param epochs: Number of epochs, defaults to None
+    :type epochs: Optional[int], optional
+    :param learning_rate: Learning rate, defaults to None
+    :type learning_rate: Optional[float], optional
+    :param lr_scheduler: Learning rate scheduler, defaults to None
+    :type lr_scheduler: Optional[Callable], optional
+    :param scale_learning_rate: If to scale the learning rate in the number of available processes, defaults to None
+    :type scale_learning_rate: Optional[bool], optional
+    :param criterion: Loss function, defaults to None
+    :type criterion: Optional[Callable], optional
+    :param gradient_clipping: Value to clip the gradient to, defaults to None
+    :type gradient_clipping: Optional[float], optional
+    :param gradient_accumulation: Number of steps of gradient accumulation before running an optimization step, defaults to None
+    :type gradient_accumulation: Optional[int], optional
+    :param output_folder: Output folder path where to save the trained model, defaults to None
+    :type output_folder: Optional[Path], optional
+    :param output_model: Saving name for the trained model, defaults to None
+    :type output_model: Optional[str], optional
+    :param wandb_entity: WandB entity, defaults to None
+    :type wandb_entity: Optional[str], optional
+    :param wandb_project: WandB project, defaults to None
+    :type wandb_project: Optional[str], optional
+    :param wandb_group: WandB run group, defaults to None
+    :type wandb_group: Optional[str], optional
+    :param wandb_name: WandB run name, defaults to None
+    :type wandb_name: Optional[str], optional
+    :param wandb_notes: WandB run notes, defaults to None
+    :type wandb_notes: Optional[str], optional
+    :param wandb_tags: WandB run tags, defaults to None
+    :type wandb_tags: Optional[Sequence[str]], optional
+    :param wandb_mode: WandB execution mode, defaults to None
+    :type wandb_mode: Optional[Literal["online", "offline", "disabled", "shared"]], optional
+    :raises ValueError: If some configuration values are incompatible with their expected characteristics
     """
 
     # Mandatory - Model and dataset
     model_info: ModelInfo
     dataset_info: DatasetInfo
+    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer]
 
     # General
     loglevel: int = logging.INFO
@@ -290,20 +393,12 @@ class XFFLConfig(ABC):
     federated_batches: Optional[int] = None
     cuda_streams: Optional[int] = None
 
-    # WandB
-    wandb_entity: Optional[str] = None
-    wandb_project: Optional[str] = None
-    wandb_group: Optional[str] = None
-    wandb_name: Optional[str] = None
-    wandb_notes: Optional[str] = None
-    wandb_tags: Optional[Sequence[str]] = None
-    wandb_mode: Literal["online", "offline", "disabled", "shared"] = "disabled"
-
     # Learning
-    learning_rate: float = 1e-3
-    scale_learning_rate: bool = False
-    epochs: int = 1
-    criterion: Optional[Callable] = None
+    epochs: Optional[int] = None
+    learning_rate: Optional[float] = None
+    lr_scheduler: Optional[Callable] = None
+    scale_learning_rate: Optional[bool] = None
+    criterion: Optional[nn.Module] = None
     gradient_clipping: Optional[float] = None
     gradient_accumulation: Optional[int] = None
 
@@ -311,16 +406,168 @@ class XFFLConfig(ABC):
     output_folder: Optional[Path] = None
     output_model: Optional[str] = None
 
-    # Advanced configuration
+    # WandB
+    wandb_entity: Optional[str] = None
+    wandb_project: Optional[str] = None
+    wandb_group: Optional[str] = None
+    wandb_name: Optional[str] = None
+    wandb_notes: Optional[str] = None
+    wandb_tags: Optional[Sequence[str]] = None
+    wandb_mode: Optional[Literal["online", "offline", "disabled", "shared"]] = None
+
+    # Manual distributed configuration
     rank: Optional[int] = None
     world_size: Optional[int] = None
     group_local_rank: Optional[int] = None
     group_local_size: Optional[int] = None
     group_rank: Optional[int] = None
     group_world_size: Optional[int] = None
-    backend: Optional[str] = None  # torch.distributed.distributed_c10d.Backend
+    backend: Optional[Backend] = None
     master_addr: Optional[str] = None
     master_port: Optional[int] = None
-    device: Optional[str] = None  # torch.device
-    mixed_precision: Optional[Any] = None  # torch.distributed.fsdp.MixedPrecision
-    lr_scheduler: Optional[Callable] = None
+    device: Optional[torch.device] = None
+
+    def __post_init__(self) -> None | ValueError:
+        """
+        xFFL configuration validation.
+
+        :raises ValueError: If some configuration values are incompatible with their expected characteristics
+        """
+
+        err_msg: str = ""
+
+        # Model info
+        if not isinstance(self.model_info, ModelInfo):
+            err_msg += f"xFFL configuration error: the provided model configuration is not an instance of ModelInfo ({self.model_info}).\n"
+
+        # Dataset info
+        if not isinstance(self.dataset_info, DatasetInfo):
+            err_msg += f"xFFL configuration error: the provided dataset configuration is not an instance of ModelInfo ({self.dataset_info}).\n"
+
+        # Optimizer
+        if not isinstance(self.optimizer, Callable):
+            err_msg += f"xFFL configuration error: the provided optimizer creation function is not callable ({self.optimizer}).\n"
+
+        # Log level
+        if not isinstance(self.loglevel, int) or self.loglevel < 0:
+            err_msg += f"xFFL configuration error: the provided logging level is not valid ({self.loglevel}).\n"
+
+        # Seed
+        if self.seed is not None and not isinstance(self.seed, int):
+            err_msg += f"xFFL configuration error: the provided seed is not an integer ({self.seed}).\n"
+
+        # HSDP
+        if self.hsdp is not None and (not isinstance(self.hsdp, int) or self.hsdp < 0):
+            err_msg += f"xFFL configuration error: the provided hsdp replica group size is not valid ({self.hsdp}).\n"
+
+        # Federated
+        if self.federated is not None:
+            if not (
+                isinstance(self.federated, int) or isinstance(self.federated, Sequence)
+            ):
+                err_msg += f"xFFL configuration error: the provided federated group size is not valid ({self.federated}).\n"
+            elif isinstance(self.federated, int) and self.federated < 0:
+                err_msg += f"xFFL configuration error: the provided federated group size is not a positive integer ({self.federated}).\n"
+            elif isinstance(self.federated, Sequence) and not all(
+                fed > 0 for fed in self.federated
+            ):
+                err_msg += f"xFFL configuration error: the provided federated group sizes are not all positive integers ({self.federated}).\n"
+
+        # Federated batches
+        if self.federated_batches is not None:
+            if self.federated is None:
+                logger.warning(
+                    f"xFFL configuration error: the provided federated batches value will be ignored since FederatedScaling is not setup ({self.federated_batches}).\n"
+                )
+                self.federated = None
+            elif (
+                not isinstance(self.federated_batches, int)
+                or self.federated_batches < 0
+            ):
+                err_msg += f"xFFL configuration error: the provided federated batches value is not valid ({self.federated_batches}).\n"
+
+        # CUDA streams
+        if self.cuda_streams is not None:
+            if self.federated is None:
+                logger.warning(
+                    f"xFFL configuration error: the provided CUDA streams number will be ignored since FederatedScaling is not setup ({self.federated_batches}).\n"
+                )
+                self.cuda_streams = None
+            elif not isinstance(self.cuda_streams, int) or self.cuda_streams < 0:
+                err_msg += f"xFFL configuration error: the provided CUDA streams number is not valid ({self.cuda_streams}).\n"
+
+        # Epochs
+        if self.epochs is not None and (
+            not isinstance(self.epochs, int) or self.epochs < 0
+        ):
+            err_msg += f"xFFL configuration error: the provided epochs value is not valid ({self.epochs}).\n"
+
+        # Learning rate
+        if self.learning_rate is not None and not isinstance(self.learning_rate, float):
+            err_msg += f"xFFL configuration error: the provided learning rate is not valid ({self.learning_rate}).\n"
+
+        # Learning rate scheduler
+        if self.lr_scheduler is not None and not isinstance(
+            self.lr_scheduler, Callable
+        ):
+            err_msg += f"Model configuration error: the specified learning rate scheduler is not callable ({self.lr_scheduler}).\n"
+
+        # Scale learning rate
+        if self.scale_learning_rate is not None and not isinstance(
+            self.scale_learning_rate, bool
+        ):
+            err_msg += f"Model configuration error: the specified value of scale_learning_rate is not acceptable ({self.scale_learning_rate}).\n"
+
+        # Criterion
+        if self.criterion is not None and not isinstance(self.criterion, Callable):
+            err_msg += f"Model configuration error: the specified criterion is not callable ({self.criterion}).\n"
+
+        # Gradient clipping
+        if self.gradient_clipping is not None and not isinstance(
+            self.gradient_clipping, float
+        ):
+            err_msg += f"xFFL configuration error: the provided gradient clipping value is not valid ({self.gradient_clipping}).\n"
+
+        # Gradient accumulation
+        if self.gradient_accumulation is not None and (
+            not isinstance(self.gradient_accumulation, int)
+            or self.gradient_accumulation < 0
+        ):
+            err_msg += f"xFFL configuration error: the provided gradient accumulation value is not valid ({self.gradient_accumulation}).\n"
+
+        # Output folder
+        if self.output_folder is not None:
+            if "XFFL_IMAGE" in os.environ:
+                logger.debug(
+                    'Automatically setting output folder path to the default one for container execution ("/output/").'
+                )
+                self.output_folder = Path("/output/")
+            else:
+                self.output_folder = Path(self.output_folder)
+
+            if not self.output_folder.exists():
+                err_msg += f"xFFL configuration error: the output folder path does not exists ({self.output_folder}).\n"
+
+        # Output model
+        if (
+            self.output_model is not None
+            and not isinstance(self.output_model, str)
+            or self.output_model == ""
+        ):
+            err_msg += f"xFFL configuration error: the specified output model name is invalid ({self.output_model}).\n"
+
+        if (self.output_folder is None and self.output_model is not None) or (
+            self.output_folder is not None and self.output_model is None
+        ):
+            logger.warning(
+                f"xFFL configuration error: the output model folder ({self.output_folder}) and name ({self.output_model}) are not both correctly specified; the model will not be saved."
+            )
+            self.output_folder, self.output_model = None, None
+
+        # Log errors, if any, and raise a ValueError exception
+        if not err_msg == "":
+            logger.critical(err_msg)
+            raise ValueError(err_msg)
+
+
+# TODO: tokenizer + collate_fn

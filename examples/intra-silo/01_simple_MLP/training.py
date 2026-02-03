@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import wandb
 from config import xffl_config
-from torch.optim import Adadelta
+from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from xffl.custom.config import XFFLConfig
@@ -73,10 +73,7 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # Optimizer and lr scheduler creation
-    optimizer: Adadelta = Adadelta(
-        params=model.parameters(),
-        lr=config.learning_rate,
-    )
+    optimizer: Optimizer = config.optimizer(model=model, config=config)  # type: ignore
 
     if state.rank == 0:
         logger.debug(

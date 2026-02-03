@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from torch import nn
+from torch.optim import SGD, Optimizer
 from torch.utils.data import Dataset
 from torchvision import datasets, models, transforms
 
@@ -16,6 +17,15 @@ from xffl.distributed.distributed_state import DistributedState
 # Constants
 CURRENT_DIR: str = str(os.getcwd())
 DATASET_PATH: Path = Path(CURRENT_DIR + "/CIFAR10")
+
+
+# Optimizer
+def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
+    return SGD(
+        params=model.parameters(),
+        lr=config.learning_rate,  # type: ignore
+        momentum=config.momentum,  # type: ignore
+    )
 
 
 # Model information
@@ -85,6 +95,7 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=CNN)
     dataset_info: DatasetInfo = field(default_factory=Cifar)
+    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
 
     # General
     loglevel: int = logging.DEBUG

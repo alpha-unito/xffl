@@ -9,7 +9,7 @@ from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
 import torch
 from torch import nn
 from torch.distributed.fsdp import MixedPrecision
-from torch.optim import Optimizer
+from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from transformers import AutoModelForCausalLM, default_data_collator
 from transformers.models.qwen3.modeling_qwen3 import Qwen3DecoderLayer
@@ -23,10 +23,10 @@ BABYLM: str = "ccc-italian-babylm-130m"
 BABYLM_MOE: str = "ccc-italian-babylm-moe"
 BABYLM_ALIBI: str = "ccc-italian-babylm-130m_alibi"
 
-BABYLM_DATASET: str = "BabyLM_Dataset_291025/tokenized"
-BABYLM_DATASET_SPECIAL_TOKENS: str = "babyLM-special-tokens/tokenized"
+BABYLM_DATASET: str = "BabyLM_Dataset_291025"
+BABYLM_DATASET_SPECIAL_TOKENS: str = "babyLM-special-tokens"
 
-BASE_PATH: str = "/beegfs/home/gmittone/xffl"
+BASE_PATH: str = "/mnt/shared/gmittone/xffl"
 
 
 def _get_babylm_cosine_schedule(
@@ -50,11 +50,11 @@ def _get_babylm_cosine_schedule(
             self.optimizer = optimizer
 
             self.peak_lr = peak_lr
-            self.final_lr = peak_lr * final_lr_ratio
+            self.final_lr = peak_lr * final_lr_ratio  # type: ignore
 
             # Converte tutto in "optimizer steps"
             self.effective_steps_per_epoch = steps_per_epoch // accum_steps  # type: ignore
-            self.total_steps = epochs * self.effective_steps_per_epoch
+            self.total_steps = epochs * self.effective_steps_per_epoch  # type: ignore
             self.warmup_steps = int(self.total_steps * warmup_frac)
 
             self.step_num = 0  # conta gli optimizer.step()
@@ -71,7 +71,7 @@ def _get_babylm_cosine_schedule(
         def get_lr(self):
             # Warmup lineare
             if self.step_num < self.warmup_steps:
-                return self.peak_lr * (self.step_num / self.warmup_steps)
+                return self.peak_lr * (self.step_num / self.warmup_steps)  # type: ignore
 
             # Cosine decay
             progress = (self.step_num - self.warmup_steps) / (
@@ -80,9 +80,20 @@ def _get_babylm_cosine_schedule(
             progress = min(max(progress, 0.0), 1.0)
 
             cosine = 0.5 * (1 + math.cos(math.pi * progress))
-            return self.final_lr + (self.peak_lr - self.final_lr) * cosine
+            return self.final_lr + (self.peak_lr - self.final_lr) * cosine  # type: ignore
 
     return _WarmupCosineLREpochsAccum()
+
+
+# Optimizer
+def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
+    return AdamW(
+        params=model.parameters(),
+        lr=config.learning_rate,  # type: ignore
+        weight_decay=config.weight_decay,  # type: ignore
+        betas=config.betas,  # type: ignore
+        fused=True,
+    )
 
 
 # Model information
@@ -140,6 +151,7 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=babylm)
     dataset_info: DatasetInfo = field(default_factory=babylm_dataset)
+    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
 
     # General
     loglevel: int = logging.DEBUG

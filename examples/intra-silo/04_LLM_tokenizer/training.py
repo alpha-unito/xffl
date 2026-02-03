@@ -12,7 +12,7 @@ import torch
 import wandb
 from config import xffl_config
 from torch import nn
-from torch.optim import AdamW
+from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from xffl.custom.config import XFFLConfig
@@ -82,13 +82,7 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # Optimizer and lr scheduler creation
-    optimizer: AdamW = AdamW(
-        params=model.parameters(),
-        lr=config.learning_rate,
-        weight_decay=config.weight_decay,  # type: ignore
-        betas=config.betas,  # type: ignore
-        fused=True,
-    )
+    optimizer: Optimizer = config.optimizer(model=model, config=config)  # type: ignore
 
     if state.rank == 0:
         logger.debug(

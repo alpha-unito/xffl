@@ -8,6 +8,7 @@ from typing import Callable, Mapping, Sequence
 
 import torch.nn.functional as F
 from torch import nn
+from torch.optim import Adadelta, Optimizer
 from torch.utils.data import Dataset
 from torchvision import datasets, transforms
 
@@ -33,6 +34,14 @@ class _Model(nn.Module):
         x = F.relu(self.fc2(x))
         output = F.log_softmax(self.fc3(x), dim=1)
         return output
+
+
+# Optimizer
+def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
+    return Adadelta(
+        params=model.parameters(),
+        lr=config.learning_rate,  # type: ignore
+    )
 
 
 # Model information
@@ -93,6 +102,7 @@ class xffl_config(XFFLConfig):
     # Model and dataset
     model_info: ModelInfo = field(default_factory=SimpleMLP)
     dataset_info: DatasetInfo = field(default_factory=Mnist)
+    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
 
     # General
     loglevel: int = logging.DEBUG

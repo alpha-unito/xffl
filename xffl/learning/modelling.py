@@ -13,7 +13,7 @@ from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
 
-from xffl.custom.config import XFFLConfig
+from xffl.custom.config import ModelInfo, XFFLConfig
 from xffl.distributed.distributed import (
     DistributedState,
     get_appropriate_sharding_strategy,
@@ -62,24 +62,25 @@ def create_fsdp_model(
 
     # Parameters resolution
     if config is not None:
+        model_info: ModelInfo = config.model_info
         if module is None:
             __module: Optional[Callable] = resolve_param(
-                value=module, config=config.model_info, attr="model"
+                value=module, config=model_info, attr="model"
             )
             if __module is not None:
                 _module: Optional[nn.Module] = __module(config=config, state=state)
         _wrapping_policy: Optional[Callable] = resolve_param(
-            value=wrapping_policy, config=config.model_info, attr="wrapping_policy"
+            value=wrapping_policy, config=model_info, attr="wrapping_policy"
         )
         _mixed_precision: Optional[MixedPrecision] = resolve_param(
-            value=mixed_precision, config=config.model_info, attr="mixed_precision"
+            value=mixed_precision, config=model_info, attr="mixed_precision"
         )
         _decoder_layers: Optional[Type] = resolve_param(
-            value=decoder_layers, config=config.model_info, attr="decoder_layers"
+            value=decoder_layers, config=model_info, attr="decoder_layers"
         )
         _activation_checkpointing: Optional[bool] = resolve_param(
             value=activation_checkpointing,
-            config=config.model_info,
+            config=model_info,
             attr="activation_checkpointing",
         )
     else:

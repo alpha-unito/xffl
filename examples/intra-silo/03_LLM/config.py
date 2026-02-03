@@ -9,7 +9,7 @@ from typing import Callable, Mapping, Sequence, Type
 import torch
 from torch import nn
 from torch.distributed.fsdp import MixedPrecision
-from torch.optim import Optimizer
+from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 from transformers import AutoModelForCausalLM, default_data_collator
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
@@ -69,6 +69,18 @@ def _get_llama31_cosine_schedule(
     return LambdaLR(optimizer, lr_lambda=lambda step: lr_lambda(step))
 
 
+# Optimizer
+def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
+    return AdamW(
+        params=model.parameters(),
+        lr=config.learning_rate,  # type: ignore
+        weight_decay=config.weight_decay,  # type: ignore
+        betas=config.betas,  # type: ignore
+        # foreach=True,  # Optimizes performances but uses more memory
+        fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
+    )
+
+
 @dataclass
 class llama(ModelInfo):
     name: str = TINY_RANDOM_LLAMA_3
@@ -115,6 +127,7 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=llama)
     dataset_info: DatasetInfo = field(default_factory=cleanmc4it)
+    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
 
     # General
     loglevel: int = logging.DEBUG

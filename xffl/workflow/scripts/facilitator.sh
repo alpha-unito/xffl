@@ -54,6 +54,9 @@ Reset_visible_devices
 LLaMA_default_env
 Gpu_detection
 
+# Increase maximum file descriptors
+ulimit -n "$(ulimit -Hn)"
+
 # Local simulation
 if [ "${XFFL_EXECUTION}" = "true" ] ; then
 	pids=()
