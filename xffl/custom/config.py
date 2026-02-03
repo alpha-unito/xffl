@@ -14,6 +14,7 @@ from torch import nn
 from torch.distributed.distributed_c10d import Backend
 from torch.distributed.fsdp import MixedPrecision, wrap
 from torch.optim import Optimizer
+from transformers import AutoTokenizer
 
 from xffl.distributed.distributed_state import DistributedState
 
@@ -69,7 +70,7 @@ class ModelInfo(ABC):
     decoder_layer: Optional[Type] = None
     wrapping_policy: Optional[Callable] = None
     activation_checkpointing: Optional[bool] = None
-    tokenizer: Optional[Callable[[XFFLConfig, DistributedState], nn.Module]] = None  # type: ignore
+    tokenizer: Optional[Callable[[XFFLConfig, DistributedState], AutoTokenizer]] = None  # type: ignore
     mixed_precision: Optional[MixedPrecision] = None
 
     def __post_init__(self) -> None | ValueError:
@@ -233,7 +234,7 @@ class DatasetInfo(ABC):
             else:
                 self.path = Path(self.path)
 
-            if not self.path.exists():
+            if not self.path.parent.exists():
                 err_msg += f"Dataset configuration error: dataset path does not exists ({self.path}).\n"
 
         # Workers

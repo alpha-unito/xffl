@@ -2,6 +2,7 @@
 
 import logging
 import math
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Mapping, Sequence, Type
@@ -26,7 +27,7 @@ LLAMA3_1_70B: str = "llama3.1-70b"
 MIXTRAL_8x7b_v0_1: str = "mixtral-8x7b-v0.1"
 CLEAN_MC4_IT: str = "clean_mc4_it"
 
-BASE_PATH: str = "/beegfs/home/gmittone/xffl"
+BASE_PATH: str = str(os.getcwd()) + "/xffl"
 
 
 # LLM loading from saved model
@@ -115,6 +116,7 @@ class cleanmc4it(DatasetInfo):
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 4, "val": 1}
     )
+    subsampling: int = 16
     workers: int = 2
     collate_fn: Callable = default_data_collator
     path: str = BASE_PATH + "/dataset/" + CLEAN_MC4_IT

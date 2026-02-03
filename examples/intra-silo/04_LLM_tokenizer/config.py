@@ -2,21 +2,26 @@
 
 import logging
 import math
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Mapping, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import torch
-from torch import nn
+from datasets import Dataset as HFDataset
+from datasets import DatasetDict, load_dataset
+from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
 from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
-from transformers import AutoModelForCausalLM, default_data_collator
-from transformers.models.qwen3.modeling_qwen3 import Qwen3DecoderLayer
+from torch.utils.data import Dataset as TorchDataset
 
 from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 from xffl.learning.data import load_datasets_from_disk
+
+# Force HuggingFace to offline mode
+os.environ["HF_HUB_OFFLINE"] = "1"
 
 # Constants
 BABYLM: str = "ccc-italian-babylm-130m"
@@ -26,7 +31,7 @@ BABYLM_ALIBI: str = "ccc-italian-babylm-130m_alibi"
 BABYLM_DATASET: str = "BabyLM_Dataset_291025"
 BABYLM_DATASET_SPECIAL_TOKENS: str = "babyLM-special-tokens"
 
-BASE_PATH: str = "/mnt/shared/gmittone/xffl"
+BASE_PATH: str = str(os.getcwd()) + "/xffl"
 
 
 def _get_babylm_cosine_schedule(
@@ -99,12 +104,15 @@ def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
 # Model information
 @dataclass
 class babylm(ModelInfo):
+    from transformers.models.qwen3.modeling_qwen3 import Qwen3DecoderLayer
 
     @staticmethod
     # LLM loading from saved model
     def _load_babylm_from_checkpoint(
         config: XFFLConfig, state: DistributedState
     ) -> nn.Module:
+        from transformers import AutoModelForCausalLM
+
         return AutoModelForCausalLM.from_pretrained(
             pretrained_model_name_or_path=str(config.model_info.path),
             use_cache=False,
@@ -128,18 +136,67 @@ class babylm(ModelInfo):
 class babylm_dataset(DatasetInfo):
 
     @staticmethod
-    def _get_babylm_dataset_splits(config: XFFLConfig, state: DistributedState):
+    def _get_tokenized_babylm_dataset_splits(
+        config: XFFLConfig, state: DistributedState
+    ) -> Mapping[str, TorchDataset | DatasetDict]:
         return load_datasets_from_disk(
             splits={"train": "train", "val": "test"},
             base_path=Path(str(config.dataset_info.path)),
         )
+
+    @staticmethod
+    def _get_babylm_dataset_splits(
+        config: XFFLConfig, state: DistributedState
+    ) -> Mapping[str, HFDataset]:
+        return {
+            "train": load_dataset(
+                "parquet",
+                data_dir=str(config.dataset_info.path) + "/data",
+                split="train",
+            ),
+            "val": load_dataset(
+                "parquet",
+                data_dir=str(config.dataset_info.path) + "/data",
+                split="test",
+            ),
+        }
+
+    @staticmethod
+    def _get_collate_fn() -> Callable:
+        from transformers import AutoTokenizer
+
+        tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(
+            pretrained_model_name_or_path=BASE_PATH + "/model/" + BABYLM,
+            local_files_only=True,
+            use_safetensors=True,
+            additional_special_tokens=(
+                "<WIKI>",  # Wikipedia
+                "<LIB>",  # LiberLiber
+                "<NEWS>",  # News
+                "<CONV>",  # Conversations
+                "<SUBT>",  # Subtitles
+                "<TWIT>",  # Twitter
+                "<FORUM>",  # Forums
+                "<LAW>",  # Law texts
+                "<OTHER>",  # Other
+            ),
+        )
+
+        # tokenizer.pad_token = tokenizer.eos_token
+        def _collate_fn(batch: Sequence[Mapping[str, Any]]) -> Tensor:
+            enc: Tensor = tokenizer([item["text"] for item in batch], truncation=True, padding="max_length", return_tensors="pt")  # type: ignore
+            enc["labels"] = enc["input_ids"].clone()  # type: ignore
+            return enc
+
+        return _collate_fn
 
     name: str = BABYLM_DATASET
     splits: Callable = _get_babylm_dataset_splits
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 8, "val": 1}
     )
-    collate_fn: Callable = default_data_collator
+    subsampling: int = 64
+    collate_fn: Callable = field(default_factory=_get_collate_fn)
     workers: int = 2
     path: str = BASE_PATH + "/dataset/" + name
 
@@ -193,14 +250,3 @@ class xffl_config(XFFLConfig):
     final_lr_ratio: float = 0.01
     weight_decay: float = 0.1
     betas: Tuple[float, float] = (0.9, 0.95)
-    special_tokens: Tuple[str, ...] = (
-        "<WIKI>",  # Wikipedia
-        "<LIB>",  # LiberLiber
-        "<NEWS>",  # News
-        "<CONV>",  # Conversations
-        "<SUBT>",  # Subtitles
-        "<TWIT>",  # Twitter
-        "<FORUM>",  # Forums
-        "<LAW>",  # Law texts
-        "<OTHER>",  # Other
-    )

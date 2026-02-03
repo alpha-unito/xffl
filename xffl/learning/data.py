@@ -66,10 +66,10 @@ def _apply_filters(
 
 
 def _apply_subsampling(
-    dataset: MutableMapping[str, Dataset],
-    split: str,
+    key: str,
+    split: Dataset,
     subsampling: int | Mapping[str, int],
-):
+) -> Dataset:
     """Applies subsampling to all splits of a dataset.
 
     :param dataset: Dictionary associating split name with the relative dataset instances
@@ -81,11 +81,11 @@ def _apply_subsampling(
     """
     _subsampling: int
     if isinstance(subsampling, Mapping):
-        _subsampling = subsampling[split]
+        _subsampling = subsampling[key]
     else:
         _subsampling = subsampling
 
-    dataset[split] = Subset(dataset[split], range(_subsampling))
+    return Subset(split, range(_subsampling))
 
 
 # --------------------------------------------------------------------------- #
@@ -222,7 +222,7 @@ def create_dataloaders(
 
         # Subsampling
         if _subsampling is not None:
-            _apply_subsampling(dataset=_dataset, split=key, subsampling=_subsampling)
+            split = _apply_subsampling(key=key, split=split, subsampling=_subsampling)
 
         _batch_size: int = 1
         if _batch_sizes is not None:

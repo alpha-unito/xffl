@@ -71,7 +71,7 @@ def _get_processing_function(
 
     train_function: Callable
 
-    def attention_mask_processing(
+    def dict_processing_no_labels(
         model: nn.Module,
         batch: Any,
         state: DistributedState,
@@ -120,9 +120,9 @@ def _get_processing_function(
         output: Tensor = model(data)
         return output, target
 
-    if isinstance(batch, dict):
-        if all(key in batch for key in ["input_ids", "attention_mask"]):
-            train_function = attention_mask_processing
+    if isinstance(batch, Mapping):
+        if "labels" not in batch.keys():
+            train_function = dict_processing_no_labels
         else:
             train_function = dict_processing
     else:
@@ -845,12 +845,11 @@ def validation(
             loss=val_epoch_loss, total_length=total_length, state=state
         )
         val_epoch_perplexity: Tensor = torch.exp(_val_epoch_loss)
+        val_acc: Optional[float] = None
         if correct is not None:
             assert val_dataloader.batch_size is not None
 
-            val_acc: float = (100.0 * correct) / (
-                total_length * val_dataloader.batch_size
-            )
+            val_acc = (100.0 * correct) / (total_length * val_dataloader.batch_size)
 
         epoch_total_time: float = time.perf_counter() - epoch_start_time
 

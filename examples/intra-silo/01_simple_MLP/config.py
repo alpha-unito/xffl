@@ -16,7 +16,7 @@ from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 
 # Constants
-CURRENT_DIR: str = str(os.getcwd())
+CURRENT_DIR: str = str(os.getcwd()) + "/xffl/examples/intra-silo/01_simple_MLP"
 DATASET_PATH: Path = Path(CURRENT_DIR + "/MNIST")
 
 
