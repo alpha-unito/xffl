@@ -25,33 +25,33 @@ logger: Logger = getLogger(__name__)
 
 
 def _apply_filters(
-    state: DistributedState,
-    dataset: MutableMapping[str, Dataset],
+    key: str,
+    split: Dataset,
     filters: (
         Callable
         | Sequence[Callable]
         | Mapping[str, Callable]
         | Mapping[str, Sequence[Callable]]
     ),
-    split: str,
-    config: Optional[XFFLConfig] = None,
-):
+    state: DistributedState,
+    config: Optional[XFFLConfig],
+) -> Dataset:
     """Applies filter function to all splits of a dataset.
 
+    :param key: Current split name
+    :type key: str
+    :param split: Current split dataset
+    :type split: Dataset
+    :param filters: Functions to be applied to the dataset splits before instantiating the dataloaders
+    :type filters: Callable | Sequence[Callable] | Mapping[str, Callable] | Mapping[str, Sequence[Callable]]
     :param state: xFFL distributed state
     :type state: DistributedState
-    :param dataset: Dictionary associating split name with the relative dataset instances
-    :type dataset: MutableMapping[str, Dataset]
-    :param filters: Functions to be applied to the dataset splits before instantiating the dataloaders
-    :type filters: Callable | Sequence[Callable]
-    :param split: Current split name
-    :type split: str
     :param config: xFFL configuration, defaults to None
     :type config: Optional[XFFLConfig], optional
     """
     _filters: Callable | Sequence[Callable]
     if isinstance(filters, Mapping):
-        _filters = filters[split]
+        _filters = filters[key]
     else:
         _filters = filters
 
@@ -62,7 +62,9 @@ def _apply_filters(
         __filters = _filters
 
     for filter in __filters:
-        filter(dataset=dataset, config=config, state=state)
+        split = filter(dataset=split, config=config, state=state)
+
+    return split
 
 
 def _apply_subsampling(
@@ -72,12 +74,12 @@ def _apply_subsampling(
 ) -> Dataset:
     """Applies subsampling to all splits of a dataset.
 
-    :param dataset: Dictionary associating split name with the relative dataset instances
-    :type dataset: MutableMapping[str, Dataset]
-    :param split: Current split name
-    :type split: str
+    :param key: Current split name
+    :type key: str
+    :param split: Current split dataset
+    :type split: Dataset
     :param subsampling: Number of samples to extract from the dataset splits, defaults to None
-    :type subsampling: MutableMapping[str, int]
+    :type subsampling: int | Mapping[str, int]
     """
     _subsampling: int
     if isinstance(subsampling, Mapping):
@@ -218,7 +220,9 @@ def create_dataloaders(
 
         # Filters application
         if _filters is not None:
-            _apply_filters(dataset=_dataset, filters=_filters, split=key, state=state)
+            split = _apply_filters(
+                key=key, split=split, filters=_filters, state=state, config=config
+            )
 
         # Subsampling
         if _subsampling is not None:
