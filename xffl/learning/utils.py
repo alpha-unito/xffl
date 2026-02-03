@@ -32,7 +32,7 @@ logger: Logger = getLogger(__name__)
 
 def set_deterministic_execution(
     seed: Optional[int] = None, config: Optional[XFFLConfig] = None
-) -> Optional[Generator]:  # TODO: Flash_attention is stochastic
+) -> Optional[Generator]:
     """Set all the necessary RNGs to obtain reproducible executions
 
     This method sets random, numpy, torch and CUDA RNGs with the same seed.
@@ -67,9 +67,20 @@ def set_deterministic_execution(
         )
         torch.use_deterministic_algorithms(mode=True)
 
-        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # TODO: check cuBLAS version
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = (
+            ":4096:2"  # or :16:8, according to https://docs.nvidia.com/deeplearning/cudnn/archives/cudnn-880/release-notes/rel_8.html
+        )
     else:
-        logger.warning("No seed provided - deterministic execution will not be set.")
+        logger.info("No seed provided - deterministic execution will not be set.")
+
+    if (
+        config is not None
+        and config.model_info.attention is not None
+        and "flash_attention" in config.model_info.attention
+    ):
+        logger.warning(
+            f"The selected attention implementation ({config.model_info.attention}) is stochastic and its behaviour is not fully reproducible."
+        )
 
     return generator
 
@@ -141,7 +152,7 @@ def set_activation_checkpointing(
     """
     if isinstance(model, PreTrainedModel):
         # Specific for HuggingFace models
-        # model.enable_input_require_grads()  # TODO: fine-tuning specific?
+        # model.enable_input_require_grads()  # TODO: enable for fine-tuning
         try:
             model.gradient_checkpointing_enable()
         except ValueError as e:

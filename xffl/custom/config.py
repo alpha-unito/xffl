@@ -569,6 +569,3 @@ class XFFLConfig(ABC):
         if not err_msg == "":
             logger.critical(err_msg)
             raise ValueError(err_msg)
-
-
-# TODO: tokenizer + collate_fn

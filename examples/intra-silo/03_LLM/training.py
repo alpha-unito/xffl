@@ -53,7 +53,6 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # Large data preloading in background
-    # TODO: this has to improve
     if state.node_local_rank == 0:
         utils.preload(files=[config.model_info.path, config.dataset_info.path])
 
