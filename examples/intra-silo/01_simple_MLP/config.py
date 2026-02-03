@@ -89,7 +89,7 @@ class Mnist(DatasetInfo):
     name: str = "MNIST"
     splits: Callable = _get_mnist_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 1, "val": 1}
+        default_factory=lambda: {"train": 1024, "val": 1}
     )
     filters: Callable = _single_class
     path: Path = DATASET_PATH

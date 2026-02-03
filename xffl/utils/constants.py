@@ -7,7 +7,7 @@ from typing import Final
 import xffl
 
 # Version #
-VERSION: Final[str] = "v0.2.1"
+VERSION: Final[str] = "v0.2.2"
 """xFFL software version"""
 
 # Paths #
