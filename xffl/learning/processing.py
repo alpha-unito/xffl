@@ -276,6 +276,48 @@ def _fedopt_step(
     return new_state_dict
 
 
+def _setup_amp(
+    fsdp_training: bool, state: DistributedState
+) -> Tuple[Optional[torch.dtype], Optional[GradScaler]]:
+    """Set up AMP in case of single-process training.
+
+    :param fsdp_training: If the training is FSDP-based or not
+    :type fsdp_training: bool
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :return: New default precision and gradient scaler, if necessary
+    :rtype: Tuple[dtype | None, GradScaler | None]
+    """
+    default_precision: Optional[torch.dtype] = None
+    scaler: Optional[GradScaler] = None
+    if not fsdp_training:
+        if state.device_type == torch.device("cuda"):
+            default_precision = (
+                torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            )
+        elif state.device_type == torch.device("cpu"):
+            default_precision = (
+                torch.bfloat16
+                if torch.cpu._is_amx_fp16_supported()
+                or torch.cpu._is_avx512_bf16_supported()
+                else torch.float16
+            )
+
+        if default_precision == torch.float16:
+            scaler = GradScaler(device=str(state.device_type))
+
+        if default_precision not in [torch.float16, torch.bfloat16]:
+            logger.info(
+                "Torch AMP is not supported on this architecture; default precision will be used."
+            )
+        else:
+            logger.info(
+                f"Torch AMP will be used with type {default_precision} based on current GPU capabilities."
+            )
+
+    return default_precision, scaler
+
+
 # --------------------------------------------------------------------------- #
 #                               Training methods                              #
 # --------------------------------------------------------------------------- #
@@ -470,19 +512,11 @@ def distributed_training(
             state=state,
         )
 
+    # Single-process AMP training
     fsdp_training: bool = state.is_fsdp_setup() or state.is_hsdp_setup()
-    if state.device_type == torch.device("cuda"):
-        default_precision: Optional[torch.dtype] = None
-        scaler: Optional[GradScaler] = None
-        if not fsdp_training:
-            default_precision = (
-                torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-            )
-            if default_precision == torch.float16:
-                scaler = GradScaler(device=str(state.device_type))
-            logger.info(
-                f"Since FSDP is not setup, Torch AMP will be used with type {default_precision} based on current GPU capabilities."
-            )
+    default_precision: Optional[torch.dtype]
+    scaler: Optional[GradScaler]
+    default_precision, scaler = _setup_amp(fsdp_training=fsdp_training, state=state)
 
     # Epoch training cycle
     epoch: int
@@ -522,15 +556,16 @@ def distributed_training(
             # Forward
             output: Any
             target: Tensor
-            if fsdp_training:
-                output, target = train_function(model=model, batch=batch, state=state)
-            else:
+            if default_precision is not None:
                 with torch.autocast(
                     device_type=str(state.device_type), dtype=default_precision
                 ):
                     output, target = train_function(
                         model=model, batch=batch, state=state
                     )
+            else:
+                output, target = train_function(model=model, batch=batch, state=state)
+
             loss: Tensor = _criterion(output, target) if _criterion else output.loss
 
             if logging.root.level == logging.DEBUG:
