@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import torch
-from torch import Tensor, nn, tensor
+from torch import GradScaler, Tensor, nn, tensor
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -444,7 +444,6 @@ def distributed_training(
     # Clear GPU cache and reset peak memory stats
     cuda_reset_memory_stats_and_empty_cache()
 
-    # TODO: if fp16 the gradients should be rescaled
     train_perp: List[float] = []
     train_loss: List[float] = []
     val_perp: List[float] = []
@@ -470,6 +469,20 @@ def distributed_training(
             fedopt_optimizer=_fedopt_optimizer,
             state=state,
         )
+
+    fsdp_training: bool = state.is_fsdp_setup() or state.is_hsdp_setup()
+    if state.device_type == torch.device("cuda"):
+        default_precision: Optional[torch.dtype] = None
+        scaler: Optional[GradScaler] = None
+        if not fsdp_training:
+            default_precision = (
+                torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            )
+            if default_precision == torch.float16:
+                scaler = GradScaler(device=str(state.device_type))
+            logger.info(
+                f"Since FSDP is not setup, Torch AMP will be used with type {default_precision} based on current GPU capabilities."
+            )
 
     # Epoch training cycle
     epoch: int
@@ -509,11 +522,16 @@ def distributed_training(
             # Forward
             output: Any
             target: Tensor
-            output, target = train_function(model=model, batch=batch, state=state)
-            if _criterion:
-                loss: Tensor = _criterion(output, target)
+            if fsdp_training:
+                output, target = train_function(model=model, batch=batch, state=state)
             else:
-                loss: Tensor = output.loss
+                with torch.autocast(
+                    device_type=str(state.device_type), dtype=default_precision
+                ):
+                    output, target = train_function(
+                        model=model, batch=batch, state=state
+                    )
+            loss: Tensor = _criterion(output, target) if _criterion else output.loss
 
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
@@ -523,7 +541,11 @@ def distributed_training(
             # Backward
             if _gradient_accumulation is not None:
                 loss /= _gradient_accumulation
-            loss.backward()
+
+            if scaler is not None:
+                scaler.scale(loss).backward()
+            else:
+                loss.backward()
 
             if logging.root.level == logging.DEBUG:
                 cuda_sync()
@@ -537,11 +559,21 @@ def distributed_training(
                 or (step + 1) == total_length
             ):
                 if _gradient_clipping is not None:
-                    torch.nn.utils.clip_grad_norm_(
-                        model.parameters(), _gradient_clipping
-                    )
-                optimizer.step()
+                    if fsdp_training:
+                        assert isinstance(model, FullyShardedDataParallel)
+                        model.clip_grad_norm_(max_norm=_gradient_clipping)
+                    else:
+                        torch.nn.utils.clip_grad_norm_(
+                            model.parameters(), _gradient_clipping
+                        )
+
+                if scaler is not None:
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
+
                 if _lr_scheduler:
                     _lr_scheduler.step()
                 optimizer_step += 1

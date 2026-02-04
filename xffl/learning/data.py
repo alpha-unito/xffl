@@ -269,7 +269,7 @@ def create_dataloaders(
             ),
             num_workers=_workers if _workers else 0,
             collate_fn=__collate_fn,
-            pin_memory=True if state.device_type == "cuda" else False,
+            pin_memory=True if state.device_type == torch.device("cuda") else False,
             drop_last=True,
             worker_init_fn=(
                 utils.seed_dataloader_worker

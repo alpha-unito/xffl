@@ -37,7 +37,7 @@ def _load_llm_from_checkpoint(config: XFFLConfig, state: DistributedState) -> nn
         use_cache=False,
         local_files_only=True,  # Most HPCs do not have internet access from the nodes
         attn_implementation=config.model_info.attention,
-        dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
+        dtype=torch.float32,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
         device_map=state.init_device,
         use_safetensors=True,
     )
@@ -132,7 +132,7 @@ class xffl_config(XFFLConfig):
     optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
 
     # General
-    loglevel: int = logging.DEBUG
+    loglevel: int = logging.INFO
     seed: int = 42
 
     # Learning
@@ -156,7 +156,7 @@ class xffl_config(XFFLConfig):
             param_dtype=torch.bfloat16,
             reduce_dtype=torch.bfloat16,
             buffer_dtype=torch.bfloat16,
-            cast_forward_inputs=True,
+            # cast_forward_inputs=True,
         )
     )
     lr_scheduler: Callable = _get_llama31_cosine_schedule

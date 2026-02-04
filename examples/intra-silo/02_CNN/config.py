@@ -98,7 +98,7 @@ class xffl_config(XFFLConfig):
     optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
 
     # General
-    loglevel: int = logging.DEBUG
+    loglevel: int = logging.INFO
     seed: int = 42
 
     # Learning

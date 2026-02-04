@@ -133,9 +133,6 @@ def create_fsdp_model(
                 )
 
     else:
-        logger.critical(
-            "Impossible setting up the distributed training: no model provided."
-        )
         raise ValueError(
             "Impossible setting up the distributed training: no model provided."
         )

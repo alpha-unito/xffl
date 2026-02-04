@@ -196,11 +196,11 @@ class DistributedState:
             logger.error(
                 f"Impossible setting up distributed environment with backend {backend}: {backend} is not available"
             )
-        elif str(device_type) not in ["cpu", "cuda"]:
+        elif device_type not in [torch.device("cpu"), torch.device("cuda")]:
             logger.error(
                 f"Impossible setting up distributed environment with device {device_type}"
             )
-        elif str(device_type) == "cuda" and not torch.cuda.is_available():
+        elif device_type == torch.device("cuda") and not torch.cuda.is_available():
             logger.error(
                 f"Impossible setting up distributed environment with device {device_type}: CUDA is not available"
             )
@@ -249,17 +249,14 @@ class DistributedState:
             logger.error(
                 f"Impossible setting up distributed environment with current device {current_device}"
             )
-        elif (
-            str(current_device).split(":")[0] == "cuda"
-            and not torch.cuda.is_available()
-        ):
+        elif "cuda" in str(current_device) and not torch.cuda.is_available():
             logger.error(
                 f"Impossible setting up distributed environment with current device {current_device}: CUDA is not available"
             )
         else:
             self.current_device = current_device
 
-            if str(current_device).split(":")[0] == "cuda" and streams is not None:
+            if "cuda" in str(current_device) and streams is not None:
                 self.streams = tuple(
                     cuda.Stream(device=current_device) for _ in range(streams)
                 )
