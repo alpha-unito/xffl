@@ -131,6 +131,13 @@ def create_fsdp_model(
                     model=model,
                     layer=_decoder_layers,
                 )
+                logger.info(
+                    f"Activation checkpointing activated on the {_decoder_layers} layers."
+                )
+            else:
+                logger.warning(
+                    "Impossible to activate activation checkpointing: no target decoder layer provided."
+                )
 
     else:
         raise ValueError(

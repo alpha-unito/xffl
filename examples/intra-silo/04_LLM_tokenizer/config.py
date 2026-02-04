@@ -30,6 +30,7 @@ BABYLM_ALIBI: str = "ccc-italian-babylm-130m_alibi"
 
 BABYLM_DATASET: str = "BabyLM_Dataset_291025"
 BABYLM_DATASET_SPECIAL_TOKENS: str = "babyLM-special-tokens"
+MLSUM_ES: str = "mlsum_es"
 
 BASE_PATH: str = str(os.getcwd()) + "/xffl"
 
@@ -127,7 +128,7 @@ class babylm(ModelInfo):
     attention: str = "sdpa"
     model: Callable = _load_babylm_from_checkpoint
     decoder_layer: Type = Qwen3DecoderLayer
-    activation_checkpointing: bool = True
+    activation_checkpointing: bool = False
     path: str = BASE_PATH + "/model/" + name
 
 
@@ -136,7 +137,7 @@ class babylm(ModelInfo):
 class babylm_dataset(DatasetInfo):
 
     @staticmethod
-    def _get_tokenized_babylm_dataset_splits(
+    def _get_tokenized_ita_dataset_splits(
         config: XFFLConfig, state: DistributedState
     ) -> Mapping[str, TorchDataset | DatasetDict]:
         return load_datasets_from_disk(
@@ -145,7 +146,7 @@ class babylm_dataset(DatasetInfo):
         )
 
     @staticmethod
-    def _get_babylm_dataset_splits(
+    def _get_ita_dataset_splits(
         config: XFFLConfig, state: DistributedState
     ) -> Mapping[str, HFDataset]:
         return {
@@ -159,7 +160,16 @@ class babylm_dataset(DatasetInfo):
                 data_dir=str(config.dataset_info.path) + "/data",
                 split="test",
             ),
-        }
+        }  # type: ignore
+
+    @staticmethod
+    def _get_esp_dataset_splits(
+        config: XFFLConfig, state: DistributedState
+    ) -> Mapping[str, HFDataset]:
+        return load_datasets_from_disk(
+            splits={"train": "train", "val": "validation"},
+            base_path=Path(str(config.dataset_info.path)),
+        )  # type: ignore
 
     @staticmethod
     def _get_collate_fn() -> Callable:
@@ -190,15 +200,17 @@ class babylm_dataset(DatasetInfo):
 
         return _collate_fn
 
-    name: str = BABYLM_DATASET
-    splits: Callable = _get_babylm_dataset_splits
+    name: str = MLSUM_ES
+    splits: Callable = _get_esp_dataset_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 8, "val": 1}
+        default_factory=lambda: {"train": 64, "val": 64}
     )
-    subsampling: int = 64
+    subsampling: Mapping[str, int] = field(
+        default_factory=lambda: {"train": 80000, "val": 40000}
+    )
     collate_fn: Callable = field(default_factory=_get_collate_fn)
     workers: int = 2
-    path: str = BASE_PATH + "/dataset/" + name
+    path: str = BASE_PATH + "/dataset/" + MLSUM_ES
 
 
 # XFFL configuration
@@ -211,7 +223,7 @@ class xffl_config(XFFLConfig):
     optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
 
     # General
-    loglevel: int = logging.INFO
+    loglevel: int = logging.DEBUG
     seed: int = 42
 
     # Learning
