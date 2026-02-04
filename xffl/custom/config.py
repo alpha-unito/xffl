@@ -1,5 +1,7 @@
 """xFFL base configuration"""
 
+from __future__ import annotations
+
 import functools
 import logging
 import os
@@ -20,11 +22,6 @@ from xffl.distributed.distributed_state import DistributedState
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
-
-
-@dataclass
-class XFFLConfig(ABC):  # type: ignore
-    ...
 
 
 @dataclass

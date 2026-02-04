@@ -73,11 +73,11 @@ class Cifar(DatasetInfo):
     @staticmethod
     def _single_class(
         dataset: Mapping[str, Dataset], config: XFFLConfig, state: DistributedState
-    ):
-        if hasattr(config, "one_class") and config.one_class:  # type: ignore
-            for _, split in dataset.items():
-                split.data = split.data[split.targets == state.rank % 10]  # type: ignore
-                split.targets = split.targets[split.targets == state.rank % 10]  # type: ignore
+    ) -> Dataset:
+        if config.one_class:  # type: ignore
+            dataset.data = dataset.data[dataset.targets == state.rank % 10]  # type: ignore
+            dataset.targets = dataset.targets[dataset.targets == state.rank % 10]  # type: ignore
+        return dataset  # type: ignore
 
     name: str = "CIFAR10"
     splits: Callable = _get_cifar10_splits
