@@ -422,6 +422,8 @@ def distributed_training(
     _criterion: Optional[nn.Module] = resolve_param(
         value=criterion, config=config, attr="criterion"
     )
+    if _criterion is not None:
+        _criterion.to(device=state.current_device, non_blocking=True)
     _gradient_clipping: Optional[float] = resolve_param(
         value=gradient_clipping, config=config, attr="gradient_clipping"
     )
