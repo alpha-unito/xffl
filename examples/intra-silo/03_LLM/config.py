@@ -89,6 +89,14 @@ class llama(ModelInfo):
     model: Callable = _load_llm_from_checkpoint
     decoder_layer: Type = LlamaDecoderLayer
     activation_checkpointing: bool = True
+    mixed_precision: MixedPrecision = field(
+        default_factory=lambda: MixedPrecision(
+            param_dtype=torch.bfloat16,
+            reduce_dtype=torch.bfloat16,
+            buffer_dtype=torch.bfloat16,
+            # cast_forward_inputs=True,
+        )
+    )
     path: str = BASE_PATH + "/model/" + name
 
 
@@ -98,6 +106,14 @@ class mixtral(ModelInfo):
     attention: str = "sdpa"
     model: Callable = _load_llm_from_checkpoint
     decoder_layer: Type = MixtralDecoderLayer
+    mixed_precision: MixedPrecision = field(
+        default_factory=lambda: MixedPrecision(
+            param_dtype=torch.bfloat16,
+            reduce_dtype=torch.bfloat16,
+            buffer_dtype=torch.bfloat16,
+            # cast_forward_inputs=True,
+        )
+    )
     path: str = BASE_PATH + "/model/" + name
 
 
@@ -151,14 +167,6 @@ class xffl_config(XFFLConfig):
     wandb_mode: str = "online"
 
     # Advanced configuration
-    mixed_precision: MixedPrecision = field(
-        default_factory=lambda: MixedPrecision(
-            param_dtype=torch.bfloat16,
-            reduce_dtype=torch.bfloat16,
-            buffer_dtype=torch.bfloat16,
-            # cast_forward_inputs=True,
-        )
-    )
     lr_scheduler: Callable = _get_llama31_cosine_schedule
 
     # Custom - optimizer

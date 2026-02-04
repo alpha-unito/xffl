@@ -125,10 +125,18 @@ class babylm(ModelInfo):
         )
 
     name: str = BABYLM
-    attention: str = "sdpa"
+    attention: str = "flash_attention_2"
     model: Callable = _load_babylm_from_checkpoint
     decoder_layer: Type = Qwen3DecoderLayer
     activation_checkpointing: bool = False
+    mixed_precision: MixedPrecision = field(
+        default_factory=lambda: MixedPrecision(
+            param_dtype=torch.bfloat16,
+            reduce_dtype=torch.bfloat16,
+            buffer_dtype=torch.bfloat16,
+            # cast_forward_inputs=True,
+        )
+    )
     path: str = BASE_PATH + "/model/" + name
 
 
@@ -142,7 +150,7 @@ class babylm_dataset(DatasetInfo):
     ) -> Mapping[str, TorchDataset | DatasetDict]:
         return load_datasets_from_disk(
             splits={"train": "train", "val": "test"},
-            base_path=Path(str(config.dataset_info.path)),
+            base_path=Path(str(config.dataset_info.path) + "/tokenized"),
         )
 
     @staticmethod
@@ -200,17 +208,17 @@ class babylm_dataset(DatasetInfo):
 
         return _collate_fn
 
-    name: str = MLSUM_ES
-    splits: Callable = _get_esp_dataset_splits
+    name: str = BABYLM_DATASET
+    splits: Callable = _get_tokenized_ita_dataset_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 64, "val": 64}
+        default_factory=lambda: {"train": 32, "val": 64}
     )
     subsampling: Mapping[str, int] = field(
         default_factory=lambda: {"train": 80000, "val": 40000}
     )
     collate_fn: Callable = field(default_factory=_get_collate_fn)
     workers: int = 2
-    path: str = BASE_PATH + "/dataset/" + MLSUM_ES
+    path: str = BASE_PATH + "/dataset/" + BABYLM_DATASET
 
 
 # XFFL configuration
@@ -244,14 +252,6 @@ class xffl_config(XFFLConfig):
     wandb_mode: str = "disabled"
 
     # Advanced configuration
-    mixed_precision: MixedPrecision = field(
-        default_factory=lambda: MixedPrecision(
-            param_dtype=torch.bfloat16,
-            reduce_dtype=torch.bfloat16,
-            buffer_dtype=torch.bfloat16,
-            # cast_forward_inputs=True,
-        )
-    )
     lr_scheduler: Callable = _get_babylm_cosine_schedule
 
     # Output

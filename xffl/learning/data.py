@@ -254,7 +254,7 @@ def create_dataloaders(
             sampler=(
                 DistributedSampler(
                     dataset=split,
-                    num_replicas=state.world_size,
+                    num_replicas=state.world_size,  # TODO: this should be a parameter or a function of FL
                     rank=state.rank,
                     shuffle=(shuffle_train_split and key == "train"),
                     seed=(

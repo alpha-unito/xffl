@@ -68,7 +68,7 @@ def set_deterministic_execution(
         torch.use_deterministic_algorithms(mode=True)
 
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = (
-            ":4096:2"  # or :16:8, according to https://docs.nvidia.com/deeplearning/cudnn/archives/cudnn-880/release-notes/rel_8.html
+            ":4096:8"  # or :16:8, according to https://docs.nvidia.com/deeplearning/cudnn/archives/cudnn-880/release-notes/rel_8.html
         )
     else:
         logger.info("No seed provided - deterministic execution will not be set.")
