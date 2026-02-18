@@ -239,7 +239,12 @@ def get_average_distributed_loss(
             assert state.federated_group is not None
 
             scale_factor: int = state.federated_local_size[state.federated_rank]
-            group: Optional[ProcessGroup] = state.federated_group[state.federated_rank]
+
+            group: Optional[ProcessGroup] = (
+                state.federated_group[0]
+                if state.streams is None
+                else state.federated_group[state.federated_rank]
+            )
         else:
             assert state.world_size is not None
 
@@ -327,7 +332,7 @@ def layer_by_layer_optimized(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    bucket_size: int = get_model_size(model=model) // stream_number
+    bucket_size: int = get_model_size(model=model, state=state) // stream_number
 
     parameter_counter: int = 0
     mapping: List[Tuple[Tuple[int, ...], Tensor, ContextManager, int]] = []
@@ -509,7 +514,7 @@ def bucket_optimized_flatten(
 
     param_list: List[Tensor] = list(model.parameters())
 
-    bucket_size: int = get_model_size(model=model) // stream_number
+    bucket_size: int = get_model_size(model=model, state=state) // stream_number
 
     parameter_counter: int = 0
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
@@ -577,7 +582,7 @@ def bucket_optimized_coalesced(
 
     param_list: List[Tensor] = list(model.parameters())
 
-    bucket_size: int = get_model_size(model=model) // stream_number
+    bucket_size: int = get_model_size(model=model, state=state) // stream_number
 
     parameter_counter: int = 0
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
@@ -688,7 +693,7 @@ def layer_by_layer_optimized_(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    bucket_size: int = get_model_size(model=model) // stream_number
+    bucket_size: int = get_model_size(model=model, state=state) // stream_number
 
     parameter_counter: int = 0
     for layer in model.parameters():
@@ -834,7 +839,7 @@ def bucket_optimized_flatten_(
 
     param_list: List[Tensor] = list(model.parameters())
 
-    bucket_size: int = get_model_size(model=model) // stream_number
+    bucket_size: int = get_model_size(model=model, state=state) // stream_number
 
     parameter_counter: int = 0
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
@@ -896,7 +901,7 @@ def bucket_optimized_coalesced_(
 
     param_list: List[Tensor] = list(model.parameters())
 
-    bucket_size: int = get_model_size(model=model) // stream_number
+    bucket_size: int = get_model_size(model=model, state=state) // stream_number
 
     parameter_counter: int = 0
     buckets: List[List[int]] = [[] for _ in range(stream_number)]

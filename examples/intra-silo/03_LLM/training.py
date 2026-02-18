@@ -53,6 +53,7 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # Large data preloading in background
+    start_time: float = time.perf_counter()
     if state.node_local_rank == 0:
         utils.preload(files=[config.model_info.path, config.dataset_info.path])
 
@@ -65,7 +66,7 @@ def pretraining(config: XFFLConfig) -> None:
             f"Model loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
         logger.debug(
-            f"Training {config.model_info.name}: {(utils.get_model_size(model=model) / 1e6):.2f} million trainable parameters"
+            f"Training {config.model_info.name}: {(utils.get_model_size(model=model, state=state) / 1e6):.2f} million trainable parameters"
         )
 
     # Dataset loading

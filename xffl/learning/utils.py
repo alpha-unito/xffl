@@ -92,7 +92,7 @@ def set_nondeterministic_execution() -> None:
     torch.use_deterministic_algorithms(mode=False)
 
 
-def get_model_size(model: nn.Module) -> int:
+def get_model_size(model: nn.Module, state: DistributedState) -> int:
     """Returns the model's trainable parameters number
 
     :param model: PyTorch model
@@ -100,7 +100,25 @@ def get_model_size(model: nn.Module) -> int:
     :return: Number of trainable parameters
     :rtype: int
     """
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    params: int = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    if state is not None:
+
+        if state.is_hsdp_setup():
+            assert state.replica_local_size is not None
+
+            params *= state.replica_local_size
+
+        elif state.is_fsdp_setup:
+            assert state.world_size is not None
+
+            params *= state.world_size
+
+            if state.is_federated_scaling_setup:
+                assert state.federated_world_size is not None
+
+                params //= state.federated_world_size
+
+    return params
 
 
 def get_model_size_in_bits(model: nn.Module) -> int:

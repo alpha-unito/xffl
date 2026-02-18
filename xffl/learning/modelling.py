@@ -105,9 +105,12 @@ def create_fsdp_model(
             model = FullyShardedDataParallel(
                 module=_module,
                 sharding_strategy=get_appropriate_sharding_strategy(state=state),
-                auto_wrap_policy=_wrapping_policy,
+                auto_wrap_policy=(
+                    _wrapping_policy() if _wrapping_policy is not None else None
+                ),
                 device_id=state.current_device,
-                forward_prefetch=True,
+                backward_prefetch=None,  # True
+                forward_prefetch=False,  # True
                 limit_all_gathers=False,
                 mixed_precision=_mixed_precision,
                 sync_module_states=bool(state.meta_initialization),
