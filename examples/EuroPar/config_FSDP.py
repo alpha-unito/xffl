@@ -2,7 +2,6 @@
 
 import logging
 import math
-import os
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
@@ -14,9 +13,8 @@ from torch.distributed.fsdp import MixedPrecision
 from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.optim import AdamW, Optimizer
 from torch.optim.lr_scheduler import LambdaLR, LRScheduler
-from transformers import AutoModelForCausalLM, default_data_collator
+from transformers import default_data_collator
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer, LlamaForCausalLM
-from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 
 from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
