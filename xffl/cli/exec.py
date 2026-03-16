@@ -183,6 +183,7 @@ def exec(args: Namespace) -> int:
     # Federated scaling
     if args.federated_scaling is not None:
         if args.federated_scaling == "auto":
+            logger.debug("Setting automatic federated scaling...")
             federated_local_size: Tuple[int, ...] = get_cells_ids(
                 nodes=args.nodelist, cell_size=180
             )

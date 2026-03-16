@@ -220,9 +220,10 @@ def setup_distributed_process_group(
         if "XFFL_FEDERATED_LOCAL_WORLD_SIZE" in os.environ:
             _federated = tuple(
                 int(item) * state.node_local_size
-                for item in str(
-                    os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE")
-                ).split(",")
+                for item in str(os.environ.get("XFFL_FEDERATED_LOCAL_WORLD_SIZE"))
+                .replace("(", "")
+                .replace(")", "")
+                .split(",")
             )
     elif len(_federated) == 1:
         if state.world_size % _federated[0] != 0:

@@ -5,6 +5,7 @@ import os
 import random
 import subprocess
 import sys
+from dataclasses import asdict
 from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, Literal, Optional, Sequence, Type
@@ -108,12 +109,12 @@ def get_model_size(model: nn.Module, state: DistributedState) -> int:
 
             params *= state.replica_local_size
 
-        elif state.is_fsdp_setup:
+        elif state.is_fsdp_setup():
             assert state.world_size is not None
 
             params *= state.world_size
 
-            if state.is_federated_scaling_setup:
+            if state.is_federated_scaling_setup():
                 assert state.federated_world_size is not None
 
                 params //= state.federated_world_size
@@ -324,4 +325,5 @@ def wandb_setup(
         notes=_notes,
         tags=_tags,
         mode=_mode,
+        config=asdict(config) if config is not None else None,
     )

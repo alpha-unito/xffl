@@ -30,7 +30,7 @@ def create_fsdp_model(
     module: Optional[nn.Module] = None,
     wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
-    decoder_layers: Optional[Type] = None,
+    decoder_layer: Optional[Type] = None,
     activation_checkpointing: Optional[bool] = None,
     config: Optional[XFFLConfig] = None,
     use_orig_params: bool = False,
@@ -75,8 +75,8 @@ def create_fsdp_model(
         _mixed_precision: Optional[MixedPrecision] = resolve_param(
             value=mixed_precision, config=model_info, attr="mixed_precision"
         )
-        _decoder_layers: Optional[Type] = resolve_param(
-            value=decoder_layers, config=model_info, attr="decoder_layers"
+        _decoder_layer: Optional[Type] = resolve_param(
+            value=decoder_layer, config=model_info, attr="decoder_layer"
         )
         _activation_checkpointing: Optional[bool] = resolve_param(
             value=activation_checkpointing,
@@ -87,7 +87,7 @@ def create_fsdp_model(
         _module: Optional[nn.Module] = module
         _wrapping_policy: Optional[Callable] = wrapping_policy
         _mixed_precision: Optional[MixedPrecision] = mixed_precision
-        _decoder_layers: Optional[Type] = decoder_layers
+        _decoder_layer: Optional[Type] = decoder_layer
         _activation_checkpointing: Optional[bool] = activation_checkpointing
 
     # Model and device mashes creation
@@ -128,14 +128,14 @@ def create_fsdp_model(
         # Activation checkpointing
         # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
         if _activation_checkpointing is not None and _activation_checkpointing:
-            if _decoder_layers is not None:
+            if _decoder_layer is not None:
                 logger.debug("Activating activation checkpointing.")
                 utils.set_activation_checkpointing(
                     model=model,
-                    layer=_decoder_layers,
+                    layer=_decoder_layer,
                 )
                 logger.info(
-                    f"Activation checkpointing activated on the {_decoder_layers} layers."
+                    f"Activation checkpointing activated on the {_decoder_layer} layer."
                 )
             else:
                 logger.warning(

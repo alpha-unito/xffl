@@ -695,38 +695,31 @@ def distributed_training(
             if wandb_run:
                 metrics: Mapping[str, Any] = {
                     "train/Step": epoch * total_length + step,
-                    "train/Step loss": train_step_loss[-1],
-                    "train/Step perplexity": train_step_perplexity[-1],
-                    "train/Optimizer step": optimizer_step,
-                    "train/Learning rate": (
-                        _lr_scheduler.get_lr()
-                        if _lr_scheduler is not None
-                        else optimizer.param_groups[0]["lr"]
-                    ),
+                    "train/Step_loss": train_step_loss[-1],
+                    "train/Step_perplexity": train_step_perplexity[-1],
+                    "opt/Step": optimizer_step,
+                    "opt/lr": optimizer.param_groups[0]["lr"],
                 }
                 if state.is_federated_scaling_setup():
-                    metrics["train/Aggregation step"] = aggregation
+                    metrics["train/Aggregation_step"] = aggregation
                     if _fedopt:
                         assert _fedopt_lr_scheduler is not None
                         assert _fedopt_optimizer is not None
 
-                        metrics["train/FedOpt learning rate"] = (
-                            (
-                                _fedopt_lr_scheduler.get_lr()
-                                if _lr_scheduler is not None
-                                else _fedopt_optimizer.param_groups[0]["lr"]
-                            ),
-                        )
+                        metrics["opt/FedOpt_lr"] = _fedopt_optimizer.param_groups[0][
+                            "lr"
+                        ]
+
                 if logging.root.level == logging.DEBUG:
 
                     metrics.update(
                         {
-                            "train/Forward time": batch_time,
-                            "train/Backward time": back_time,
-                            "train/Optimizer time": optimizer_time,
-                            "train/Aggregation time": comm_time,
-                            "train/Other time": other_step_time,
-                            "train/Overall step time": overall_step_time,
+                            "time/Forward": round(batch_time, 2),
+                            "time/Backward": round(back_time, 2),
+                            "time/Optimizer": round(optimizer_time, 2),
+                            "time/Aggregation": round(comm_time, 2),
+                            "time/Other": round(other_step_time, 2),
+                            "time/Overall_step": round(overall_step_time, 2),
                         }
                     )
                 wandb_run.log(metrics)
@@ -744,9 +737,9 @@ def distributed_training(
         if wandb_run:
             metrics: Mapping[str, Any] = {
                 "train/Epoch": epoch + 1,
-                "train/Epoch loss": _train_epoch_loss,
-                "train/Epoch perplexity": train_epoch_perplexity,
-                "train/Epoch time": epoch_times[-1],
+                "train/Epoch_loss": _train_epoch_loss,
+                "train/Epoch_perplexity": train_epoch_perplexity,
+                "train/Epoch_time": epoch_times[-1],
             }
             wandb_run.log(
                 metrics,
@@ -924,10 +917,10 @@ def validation(
 
         if wandb_run:
             metrics: Mapping[str, Any] = {
-                "train/Epoch": epoch + 1,
-                "eval/Epoch loss": _val_epoch_loss,
-                "eval/Epoch perplexity": val_epoch_perplexity,
-                "train/Epoch time": epoch_total_time,
+                "eval/Epoch": epoch + 1,
+                "eval/Epoch_loss": _val_epoch_loss,
+                "eval/Epoch_perplexity": val_epoch_perplexity,
+                "time/Eval_time": epoch_total_time,
             }
             if correct is not None:
                 metrics["eval/accuracy"] = val_acc
