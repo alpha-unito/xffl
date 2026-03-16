@@ -21,10 +21,7 @@ from xffl.distributed.distributed_state import DistributedState
 from xffl.learning.data import load_datasets_from_disk
 
 # Constants
-TINY_RANDOM_LLAMA_3: str = "tiny-random-llama-3"
 LLAMA3_1_8B: str = "llama3.1-8b-init"
-LLAMA3_1_70B: str = "llama3.1-70b"
-MIXTRAL_8x7b_v0_1: str = "mixtral-8x7b-v0.1"
 CLEAN_MC4_IT: str = "clean_mc4_it"
 
 BASE_PATH: str = "/leonardo_scratch/fast/uToID_bench/xffl"
@@ -43,7 +40,7 @@ class llama(ModelInfo):
             use_cache=True,
             local_files_only=True,  # Most HPCs do not have internet access from the nodes
             attn_implementation=config.model_info.attention,
-            dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto" # This slows down model loading
+            dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
             device_map=state.init_device,
             use_safetensors=True,
             low_cpu_mem_usage=True,
@@ -65,33 +62,14 @@ class llama(ModelInfo):
     model: Callable = _load_llm_from_checkpoint
     decoder_layer: Type = LlamaDecoderLayer
     wrapping_policy: Callable = llama_fsdp_wrap_policy
-    activation_checkpointing: bool = False  # True
     mixed_precision: MixedPrecision = field(
         default_factory=lambda: MixedPrecision(
             param_dtype=torch.bfloat16,
             reduce_dtype=torch.bfloat16,
             buffer_dtype=torch.bfloat16,
-            # cast_forward_inputs=True,
         )
     )
     path: str = BASE_PATH + "/models/" + name
-
-
-# @dataclass
-# class mixtral(ModelInfo):
-#     name: str = MIXTRAL_8x7b_v0_1
-#     attention: str = "sdpa"
-#     model: Callable = _load_llm_from_checkpoint
-#     decoder_layer: Type = MixtralDecoderLayer
-#     mixed_precision: MixedPrecision = field(
-#         default_factory=lambda: MixedPrecision(
-#             param_dtype=torch.bfloat16,
-#             reduce_dtype=torch.bfloat16,
-#             buffer_dtype=torch.bfloat16,
-#             # cast_forward_inputs=True,
-#         )
-#     )
-#     path: str = BASE_PATH + "/model/" + name
 
 
 @dataclass
@@ -109,7 +87,9 @@ class cleanmc4it(DatasetInfo):
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 2, "val": 2}
     )
-    subsampling: int = 1024
+    subsampling: Mapping[str, int] = field(
+        default_factory=lambda: {"train": 65536, "val": 4096}
+    )
     workers: int = 2
     collate_fn: Callable = default_data_collator
     path: str = BASE_PATH + "/data/" + CLEAN_MC4_IT
@@ -127,7 +107,6 @@ class xffl_config(XFFLConfig):
             lr=config.learning_rate,  # type: ignore
             weight_decay=config.weight_decay,  # type: ignore
             betas=config.betas,  # type: ignore
-            # foreach=True,  # Optimizes performances but uses more memory
             fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
         )
 
@@ -139,7 +118,6 @@ class xffl_config(XFFLConfig):
     # General
     loglevel: int = logging.DEBUG
     seed: int = 42
-    hsdp: int = 4
     federated: int = 4
     federated_batches: int = 8
 
@@ -150,12 +128,9 @@ class xffl_config(XFFLConfig):
     # WandB
     wandb_entity: str = "alpha-unito"
     wandb_project: str = "FL+DP"
-    wandb_group: str = "FL+HSDP"
-    wandb_name: str = "Prova"
-    wandb_notes: str = "Example run of xFFL with a LLM"
-    wandb_tags: Sequence[str] = field(
-        default_factory=lambda: ["xFFL", "example", "LLM"]
-    )
+    wandb_group: str = "FL+FSDP_new"
+    wandb_notes: str = "EuroPar 2026 experiments"
+    wandb_tags: Sequence[str] = field(default_factory=lambda: ["xFFL", "EuroPar"])
     wandb_mode: str = "offline"
 
     # Learning rate scheduler
@@ -177,10 +152,10 @@ class xffl_config(XFFLConfig):
 
         def lr_lambda(step):
             if step < warmup_steps:
-                # warmup lineare
+                # Linear warmup
                 return step / max(1, warmup_steps)
             else:
-                # decadimento coseno
+                # Cosine decay
                 progress = (step - warmup_steps) / max(1, decay_steps)
                 return 0.5 * (1 + math.cos(math.pi * progress))
 

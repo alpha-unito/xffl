@@ -13,7 +13,7 @@ logger: Logger = getLogger(__name__)
 
 
 def get_timeout(
-    seconds: float = 120.0,
+    seconds: float = 3600.0,
 ) -> timedelta:
     """Maximum allowed timeout for distributed communications
 

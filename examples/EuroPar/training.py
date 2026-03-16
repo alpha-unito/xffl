@@ -11,7 +11,7 @@ from typing import Any, MutableMapping, Optional
 import torch
 import torch.nn as nn
 import wandb
-from config import xffl_config
+from config_FSDP import xffl_config
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
@@ -93,7 +93,7 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # WandB setup
-    wandb_run: Any = wandb_setup(config=config)
+    wandb_run: Any = wandb_setup(name=f"rank_{state.rank}", config=config)
 
     # Main training function
     results = processing.distributed_training(
