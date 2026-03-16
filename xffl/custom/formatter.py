@@ -2,7 +2,7 @@
 
 import logging
 from logging import LogRecord
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Set
 
 
 class ExcludeLoggerFilter(logging.Filter):
@@ -13,7 +13,7 @@ class ExcludeLoggerFilter(logging.Filter):
         :param exclude: List of logger names or prefixes to exclude.
         """
         super().__init__()
-        self.exclude = set(exclude or [])
+        self.exclude: Set = set(exclude or [])
 
     def filter(self, record: LogRecord) -> bool:
         """Return True if the log should be emitted, False otherwise."""
@@ -24,15 +24,15 @@ class CustomFormatter(logging.Formatter):
     """Logging formatter with color support per log level."""
 
     # ANSI color codes
-    GREY = "\x1b[38;20m"  # Info
-    BLUE = "\x1b[38;5;39m"  # Debug
-    YELLOW = "\x1b[38;5;226m"  # Warning
-    RED = "\x1b[38;5;196m"  # Error
-    BOLD_RED = "\x1b[31;1m"  # Critical
-    RESET = "\x1b[0m"
+    GREY: str = "\x1b[38;20m"  # Info
+    BLUE: str = "\x1b[38;5;39m"  # Debug
+    YELLOW: str = "\x1b[38;5;226m"  # Warning
+    RED: str = "\x1b[38;5;196m"  # Error
+    BOLD_RED: str = "\x1b[31;1m"  # Critical
+    RESET: str = "\x1b[0m"
 
-    DEFAULT_FORMAT = "%(asctime)s | %(name)16s | %(levelname)8s | %(message)s"
-    DATE_FORMAT = "%H:%M:%S"
+    DEFAULT_FORMAT: str = "%(asctime)s | %(name)16s | %(levelname)8s | %(message)s"
+    DATE_FORMAT: str = "%H:%M:%S"
 
     def __init__(
         self,
@@ -55,9 +55,9 @@ class CustomFormatter(logging.Formatter):
             style=style,
             validate=validate,
         )
-        self.fmt = fmt or self.DEFAULT_FORMAT
+        self.fmt: str = fmt or self.DEFAULT_FORMAT
 
-        self.FORMATS = {
+        self.FORMATS: Dict[int, str] = {
             logging.DEBUG: self.BLUE + self.fmt + self.RESET,
             logging.INFO: self.GREY + self.fmt + self.RESET,
             logging.WARNING: self.YELLOW + self.fmt + self.RESET,
@@ -67,7 +67,7 @@ class CustomFormatter(logging.Formatter):
 
     def format(self, record: LogRecord) -> str:
         """Format the log record with level-specific color."""
-        formatter = logging.Formatter(
+        formatter: logging.Formatter = logging.Formatter(
             self.FORMATS.get(record.levelno, self.fmt), datefmt=self.DATE_FORMAT
         )
         return formatter.format(record)

@@ -4,21 +4,26 @@ This script wraps StreamFlow with a simple Python CLI,
 offering a homogeneous interface with xFFL.
 """
 
-import argparse
 import asyncio
+from argparse import Namespace
 from logging import Logger, getLogger
 
-from xffl.cli.parser import subparsers
+import xffl.cli.parser as cli_parser
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def run(args: argparse.Namespace) -> int:
+# --------------------------------------------------------------------------- #
+#                                   Entrypoint                                #
+# --------------------------------------------------------------------------- #
+
+
+def run(args: Namespace) -> int:
     """Run an xFFL project.
 
     :param args: Command line arguments.
-    :type args: argparse.Namespace
+    :type args: Namespace
     :return: Exit code (0 if success).
     :rtype: int
     """
@@ -30,11 +35,11 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(args: argparse.Namespace) -> int:
+def main(args: Namespace) -> int:
     """xFFL project run entrypoint.
 
     :param args: Command line arguments.
-    :type args: argparse.Namespace
+    :type args: Namespace
     :return: Exit code (0 if success, 1 if error).
     :rtype: int
     """
@@ -43,10 +48,10 @@ def main(args: argparse.Namespace) -> int:
         return run(args=args)
     except Exception as exception:  # TODO: narrow down to StreamFlow-specific errors
         logger.exception("Run failed: %s", exception)
-        raise exception
+        return 1
     finally:
         logger.info("*** Cross-Facility Federated Learning (xFFL) - Run finished ***")
 
 
 if __name__ == "__main__":
-    main(subparsers.choices["run"].parse_args())
+    main(cli_parser.subparsers.choices["run"].parse_args())

@@ -3,76 +3,159 @@
 import os
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Type
 
 import torch
+import torch.distributed as dist
 from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
-from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision, FullStateDictConfig, FullOptimStateDictConfig, StateDictType
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from torch.distributed.device_mesh import DeviceMesh
+from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
 from torch.optim import Optimizer
-from transformers import AutoModel
 
-from xffl.custom.types import PathLike
+from xffl.custom.config import ModelInfo, XFFLConfig
 from xffl.distributed.distributed import (
     DistributedState,
     get_appropriate_sharding_strategy,
 )
+from xffl.learning import utils
+from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def create_fsdp_model(
-    module: nn.Module | AutoModel,
     state: DistributedState,
-    wrapping_policy: Callable,
+    module: Optional[nn.Module] = None,
+    wrapping_policy: Optional[Callable] = None,
     mixed_precision: Optional[MixedPrecision] = None,
-) -> FullyShardedDataParallel:
+    decoder_layer: Optional[Type] = None,
+    activation_checkpointing: Optional[bool] = None,
+    config: Optional[XFFLConfig] = None,
+    use_orig_params: bool = False,
+) -> FullyShardedDataParallel | nn.Module:  # TODO: Move to FSDP2
     """Creates an FSDP model
 
+    The parameters can be provided both directly and through an XFFL configuration.
+    In case both are provided, the firsts take the precedence.
+
     :param module: FSDP-wrapped model to be saved
-    :type module: nn.Module | AutoModel
-    :param state: Instantiated distributed state
+    :type module: nn.Module
+    :param state: xFFL distributed state
     :type state: DistributedState
-    :param wrapping_policy: Model's wrapping policy
-    :type wrapping_policy:  Callable
+    :param wrapping_policy: Model's wrapping policy, defaults to None
+    :type wrapping_policy:  Optional[Callable], optional
     :param mixed_precision: Precision to use for the module, defaults to None
     :type mixed_precision: Optional[MixedPrecision], optional
+    :param decoder_layers: Layer type to set activation checkpointing, defaults to None
+    :type decoder_layers: Optional[Type], optional
+    :param use_orig_params: If to use the original parameter format, defaults to False
+    :type use_orig_params: Bool, defaults to False
+    :param activation_checkpointing: If to use activation checkpointing, defaults to None
+    :type activation_checkpointing: Bool, defaults to None
+    :param config: XFFL configuration
+    :type config: Optional[XFFLConfig], defaults to None
     :return: The original module wrapped by FSDP
     :rtype: FullyShardedDataParallel
     """
 
-    device_mesh: Optional[bool] = None
-    if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
-        device_mesh = state.hsdp_mesh
-    elif state.is_fsdp_setup():
-        device_mesh = state.fsdp_mesh
+    # Parameters resolution
+    if config is not None:
+        model_info: ModelInfo = config.model_info
+        if module is None:
+            __module: Optional[Callable] = resolve_param(
+                value=module, config=model_info, attr="model"
+            )
+            if __module is not None:
+                _module: Optional[nn.Module] = __module(config=config, state=state)
+        _wrapping_policy: Optional[Callable] = resolve_param(
+            value=wrapping_policy, config=model_info, attr="wrapping_policy"
+        )
+        _mixed_precision: Optional[MixedPrecision] = resolve_param(
+            value=mixed_precision, config=model_info, attr="mixed_precision"
+        )
+        _decoder_layer: Optional[Type] = resolve_param(
+            value=decoder_layer, config=model_info, attr="decoder_layer"
+        )
+        _activation_checkpointing: Optional[bool] = resolve_param(
+            value=activation_checkpointing,
+            config=model_info,
+            attr="activation_checkpointing",
+        )
+    else:
+        _module: Optional[nn.Module] = module
+        _wrapping_policy: Optional[Callable] = wrapping_policy
+        _mixed_precision: Optional[MixedPrecision] = mixed_precision
+        _decoder_layer: Optional[Type] = decoder_layer
+        _activation_checkpointing: Optional[bool] = activation_checkpointing
 
-    model: FullyShardedDataParallel = FullyShardedDataParallel(
-        module=module,
-        sharding_strategy=get_appropriate_sharding_strategy(state=state),
-        auto_wrap_policy=wrapping_policy,
-        device_id=state.current_device,
-        forward_prefetch=True,
-        limit_all_gathers=False,
-        mixed_precision=mixed_precision,
-        sync_module_states=state.meta_initialization,
-        param_init_fn=lambda layer: (
-            layer.to_empty(device=state.current_device, recurse=False)
-            if state.meta_initialization
-            else None
-        ),
-        device_mesh=device_mesh,
-    )
+    # Model and device mashes creation
+    if _module is not None:
+
+        model: FullyShardedDataParallel | nn.Module
+
+        if dist.is_initialized():
+            device_mesh: Optional[DeviceMesh] = None
+            if state.is_hsdp_setup():  # TODO: Add 2D FSDP-TP parallelism support
+                device_mesh = state.hsdp_mesh
+            elif state.is_fsdp_setup():
+                device_mesh = state.fsdp_mesh
+
+            model = FullyShardedDataParallel(
+                module=_module,
+                sharding_strategy=get_appropriate_sharding_strategy(state=state),
+                auto_wrap_policy=(
+                    _wrapping_policy() if _wrapping_policy is not None else None
+                ),
+                device_id=state.current_device,
+                backward_prefetch=None,  # True
+                forward_prefetch=False,  # True
+                limit_all_gathers=False,
+                mixed_precision=_mixed_precision,
+                sync_module_states=bool(state.meta_initialization),
+                param_init_fn=lambda layer: (
+                    layer.to_empty(device=state.current_device, recurse=False)
+                    if state.meta_initialization
+                    else None
+                ),  # type: ignore
+                device_mesh=device_mesh,
+                use_orig_params=use_orig_params,
+            )
+        else:
+            model = _module.to(device=state.current_device, non_blocking=True)
+
+        # Activation checkpointing
+        # This can also be called before FSDP, will result in applying the HF-specific method, giving warnings during the training
+        if _activation_checkpointing is not None and _activation_checkpointing:
+            if _decoder_layer is not None:
+                logger.debug("Activating activation checkpointing.")
+                utils.set_activation_checkpointing(
+                    model=model,
+                    layer=_decoder_layer,
+                )
+                logger.info(
+                    f"Activation checkpointing activated on the {_decoder_layer} layer."
+                )
+            else:
+                logger.warning(
+                    "Impossible to activate activation checkpointing: no target decoder layer provided."
+                )
+
+    else:
+        raise ValueError(
+            "Impossible setting up the distributed training: no model provided."
+        )
 
     return model
 
 
-def save_fsdp_model(
-    model: FullyShardedDataParallel,  # To be generalized (as for now just HF)
+def save_model(
+    model: (
+        nn.Module | FullyShardedDataParallel
+    ),  # To be generalized (as for now just HF)
     optimizer: Optimizer,
-    path: PathLike,
+    path: Path,
     name: str,
     rank: int,
     epoch: Optional[int] = None,
@@ -88,7 +171,7 @@ def save_fsdp_model(
     :param optimizer: Model optimizer
     :type optimizer: Optimizer
     :param path: Path where to save the model
-    :type path: PathLike
+    :type path: Path
     :param name: Model's name
     :type name: str
     :param rank: Calling process' global rank
@@ -103,17 +186,13 @@ def save_fsdp_model(
 
     # Clear GPU cache and reset peak memory stats
     if torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats()
         torch.cuda.empty_cache()
 
     # Gather the full, un-sharded state dict
     state_dict, _ = get_state_dict(
         model=model,
         optimizers=optimizer,
-        options=StateDictOptions(
-            full_state_dict=True,
-            cpu_offload=True
-        ),
+        options=StateDictOptions(full_state_dict=True, cpu_offload=True),
     )
 
     # Only rank 0 saves the model
@@ -134,7 +213,7 @@ def save_fsdp_model(
         # Saving state_dict changing precision
         if precision:
             for param_tensor in state_dict:
-                state_dict[param_tensor] = state_dict[param_tensor].to(
+                state_dict[param_tensor] = state_dict[param_tensor].to(  # type: ignore
                     device="cpu",
                     dtype=precision,
                     non_blocking=True,
@@ -148,6 +227,6 @@ def save_fsdp_model(
             save_directory=save_path,
             state_dict=state_dict,
             safe_serialization=True,  # Safetensor or Pickle
-        )  # Shard size can be controlled (can improve transfer performance)
+        )  # type: ignore # Shard size can be controlled (can improve transfer performance)
 
         logger.info(f"Model saved to {save_path}")

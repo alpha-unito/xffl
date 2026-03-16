@@ -5,51 +5,83 @@ import os
 import random
 import subprocess
 import sys
+from dataclasses import asdict
 from logging import Logger, getLogger
-from typing import List
+from pathlib import Path
+from typing import Any, Literal, Optional, Sequence, Type
 
 import numpy
 import torch
 import torch.nn as nn
+import wandb
+from torch import Generator
+from torch import distributed as dist
 from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     CheckpointImpl,
     apply_activation_checkpointing,
     checkpoint_wrapper,
 )
-from transformers import AutoModel, PreTrainedModel
+from transformers import PreTrainedModel
 
-from xffl.custom.types import PathLike
+from xffl.custom.config import XFFLConfig
+from xffl.distributed.distributed_state import DistributedState
+from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
 def set_deterministic_execution(
-    seed: int,
-) -> torch.Generator:  # TODO: Flash_attention is stochastic
+    seed: Optional[int] = None, config: Optional[XFFLConfig] = None
+) -> Optional[Generator]:
     """Set all the necessary RNGs to obtain reproducible executions
 
     This method sets random, numpy, torch and CUDA RNGs with the same seed.
     It also forces PyTorch's to use deterministic algorithms, reducing performance
 
+    The seed can be provided both directly and through an XFFL configuration.
+    In case both are provided, the first takes the precedence.
+
     :param seed: Random seed
-    :type seed: int
-    :return: PyTorch RNG
-    :rtype: torch.Generator
+    :type seed: Optional[int], defaults to None
+    :param config: XFFL configuration
+    :type config: Optional[XFFLConfig], defaults to None
+    :return: PyTorch RNG if a seed is provided, else None
+    :rtype: Optional[Generator]
     """
-    logger.debug(f"Setting RNGs seed to {seed}")
 
-    random.seed(seed)
-    numpy.random.seed(seed)
-    generator = torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    # Parameters resolution
+    _seed: Optional[int] = resolve_param(value=seed, config=config, attr="seed")
 
-    torch.utils.deterministic.fill_uninitialized_memory = (
-        True  # This should be True by default
-    )
-    torch.use_deterministic_algorithms(mode=True)
+    generator: Optional[Generator] = None
 
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # TODO: check cuBLAS version
+    if _seed is not None:
+        logger.debug(f"Setting RNGs seed to {_seed}")
+
+        random.seed(_seed)
+        numpy.random.seed(_seed)
+        generator = torch.manual_seed(_seed)
+        torch.cuda.manual_seed_all(_seed)
+
+        torch.utils.deterministic.fill_uninitialized_memory = (  # type: ignore
+            True  # This should be True by default
+        )
+        torch.use_deterministic_algorithms(mode=True)
+
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = (
+            ":4096:8"  # or :16:8, according to https://docs.nvidia.com/deeplearning/cudnn/archives/cudnn-880/release-notes/rel_8.html
+        )
+    else:
+        logger.info("No seed provided - deterministic execution will not be set.")
+
+    if (
+        config is not None
+        and config.model_info.attention is not None
+        and "flash_attention" in config.model_info.attention
+    ):
+        logger.warning(
+            f"The selected attention implementation ({config.model_info.attention}) is stochastic and its behaviour is not fully reproducible."
+        )
 
     return generator
 
@@ -57,11 +89,11 @@ def set_deterministic_execution(
 def set_nondeterministic_execution() -> None:
     """Deactivate deterministic execution and deterministic memory filling to improve performance"""
     logger.debug("Setting PyTorch deterministic execution")
-    torch.utils.deterministic.fill_uninitialized_memory = False
+    torch.utils.deterministic.fill_uninitialized_memory = False  # type: ignore
     torch.use_deterministic_algorithms(mode=False)
 
 
-def get_model_size(model: nn.Module | AutoModel) -> int:
+def get_model_size(model: nn.Module, state: DistributedState) -> int:
     """Returns the model's trainable parameters number
 
     :param model: PyTorch model
@@ -69,10 +101,28 @@ def get_model_size(model: nn.Module | AutoModel) -> int:
     :return: Number of trainable parameters
     :rtype: int
     """
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    params: int = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    if state is not None:
+
+        if state.is_hsdp_setup():
+            assert state.replica_local_size is not None
+
+            params *= state.replica_local_size
+
+        elif state.is_fsdp_setup():
+            assert state.world_size is not None
+
+            params *= state.world_size
+
+            if state.is_federated_scaling_setup():
+                assert state.federated_world_size is not None
+
+                params //= state.federated_world_size
+
+    return params
 
 
-def get_model_size_in_bits(model: nn.Module | AutoModel) -> int:
+def get_model_size_in_bits(model: nn.Module) -> int:
     """Returns the model's trainable parameters size in bits
 
     :param model: PyTorch model
@@ -108,7 +158,7 @@ def seed_dataloader_worker(worker_id: int) -> None:
 
 
 def set_activation_checkpointing(
-    model: nn.Module | PreTrainedModel, layer: type = None
+    model: nn.Module | PreTrainedModel, layer: Type
 ) -> None:
     """Sets up activation (gradient) checkpointing
 
@@ -116,12 +166,12 @@ def set_activation_checkpointing(
 
     :param model: Model on which setting up the checkpointing
     :type model: nn.Module | PreTrainedModel
-    :param layer: Layer to wrap, needed only by Torch models, defaults to None
+    :param layer: Layers to wrap, needed only by Torch models, defaults to None
     :type layer: Optional[nn.Module], optional
     """
     if isinstance(model, PreTrainedModel):
         # Specific for HuggingFace models
-        # model.enable_input_require_grads()  # TODO: fine-tuning specific?
+        # model.enable_input_require_grads()  # TODO: enable for fine-tuning
         try:
             model.gradient_checkpointing_enable()
         except ValueError as e:
@@ -141,39 +191,139 @@ def set_activation_checkpointing(
         logger.debug("Activated non-reentrant model (gradient) checkpointing")
 
 
-def preload(files: List[PathLike]) -> None:
+def preload(files: Sequence[Optional[Path | str]]) -> None:
     """Pre-loads the given list of files and folders
 
     Particularly useful on HPC, where data can be moved near the computing nodes ahead of time
 
     :param files: Paths of the files and folders to be preloaded
-    :type files: List[PathLike]
+    :type files: List[Path|str]
     :raises OSError, ValueError: If the subprocess run fails
     """
     for file in files:
-        logger.debug(f"Preloading: {file}")
-        command = " ".join(
-            [
-                "find",
-                str(file),
-                "-type",
-                "f",
-                "-exec",
-                "cat",
-                "{}",
-                "+",
-                ">",
-                "/dev/null",
-                "&",
-            ]
-        )
-        try:
-            subprocess.Popen(
-                command,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                shell=True,
-                universal_newlines=True,
+        if file is not None:
+            _file: Path = file if isinstance(file, Path) else Path(file)
+            logger.debug(f"Preloading: {file}")
+            command = " ".join(
+                [
+                    "find",
+                    str(_file),
+                    "-type",
+                    "f",
+                    "-exec",
+                    "cat",
+                    "{}",
+                    "+",
+                    ">",
+                    "/dev/null",
+                    "&",
+                ]
             )
-        except (OSError, ValueError) as e:
-            raise e
+            try:
+                subprocess.Popen(
+                    command,
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                    shell=True,
+                    universal_newlines=True,
+                )
+            except (OSError, ValueError) as e:
+                raise e
+
+
+def cuda_reset_memory_stats_and_empty_cache() -> None:
+    """Reset CUDA peak memory stats and empty CUDA cache.
+    This method has no effect if CUDA is not available.
+    """
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+        torch.cuda.empty_cache()
+
+
+def cuda_sync_and_empty_cache() -> None:
+    """Synchronizes CUDA streams with the CPU state and empty CUDA cache.
+    This method has no effect if CUDA is not available.
+    """
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+
+
+def cuda_sync() -> None:
+    """Synchronizes CUDA streams with the CPU state.
+    This method has no effect if CUDA is not available.
+    """
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
+def barrier(state: DistributedState) -> None:
+    """Implements a barrier.
+    This method has no effect if the distributed backend is not initialized
+    """
+    if torch.distributed.is_initialized():
+        dist.barrier(device_ids=[state.node_local_rank])
+
+
+def wandb_setup(
+    entity: Optional[str] = None,
+    project: Optional[str] = None,
+    group: Optional[str] = None,
+    name: Optional[str] = None,
+    notes: Optional[str] = None,
+    tags: Optional[Sequence[str]] = None,
+    mode: Optional[Literal["online", "offline", "disabled", "shared"]] = None,
+    config: Optional[XFFLConfig] = None,
+) -> Any:
+    """Initializes a WandB run.
+
+    :param entity: WandB entity, defaults to None
+    :type entity: Optional[str], optional
+    :param project: WandB project, defaults to None
+    :type project: Optional[str], optional
+    :param group: WandB run group, defaults to None
+    :type group: Optional[str], optional
+    :param name: WandB run name, defaults to None
+    :type name: Optional[str], optional
+    :param notes: WandB run notes, defaults to None
+    :type notes: Optional[str], optional
+    :param tags: WandB run tags, defaults to None
+    :type tags: Optional[Sequence[str]], optional
+    :param mode: WandB execution mode, defaults to None
+    :type mode: Optional[Literal["online", "offline", "disabled", "shared"]], optional
+    :param config: xFFL configuration, defaults to None
+    :type config: Optional[XFFLConfig], optional
+    :return: An instantiated WandB run
+    :rtype: Any
+    """
+    # Resolve parameters
+    _entity: Optional[str] = resolve_param(
+        value=entity, config=config, attr="wandb_entity"
+    )
+    _project: Optional[str] = resolve_param(
+        value=project, config=config, attr="wandb_project"
+    )
+    _group: Optional[str] = resolve_param(
+        value=group, config=config, attr="wandb_group"
+    )
+    _name: Optional[str] = resolve_param(value=name, config=config, attr="wandb_name")
+    _notes: Optional[str] = resolve_param(
+        value=notes, config=config, attr="wandb_notes"
+    )
+    _tags: Optional[Sequence[str]] = resolve_param(
+        value=tags, config=config, attr="wandb_tags"
+    )
+    _mode: Optional[Literal["online", "offline", "disabled", "shared"]] = resolve_param(
+        value=mode, config=config, attr="wandb_mode"
+    )
+
+    return wandb.init(
+        entity=_entity,
+        project=_project,
+        group=_group,
+        name=_name,
+        notes=_notes,
+        tags=_tags,
+        mode=_mode,
+        config=asdict(config) if config is not None else None,
+    )

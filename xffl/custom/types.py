@@ -1,49 +1,40 @@
-"""Custom types for better type hints in xFFL."""
+"""Custom types for better type hints in xFFL. Local paths are automatically resolved and expanded."""
 
 from pathlib import Path
-from typing import Any, Union
+from typing import Union
 
-from xffl.utils.utils import resolve_path
+from xffl.cli.utils import resolve_path
 
 
-class PathLike(Path):
+class _PathLike:
     """Path-like object (file or folder)."""
 
-    _flavour = Path()._flavour
+    def __init__(self, path: Union[str, Path], local=True):
+        p: Path = Path(path)
+        if local and not p.is_absolute():
+            p = resolve_path(p)
+        self.path = p
 
-    def __new__(cls, path: Union[str, Path, Any]) -> "PathLike":
-        resolved = resolve_path(path=path)
-        return super().__new__(cls, resolved)
+    def __str__(self):
+        return str(self.path)
 
-    def __call__(self, path: Any) -> "PathLike":
-        return PathLike(path)
+    def __fspath__(self):
+        return self.path
 
 
-class FolderLike(PathLike):
+class FolderLike(_PathLike):
     """Path to a folder."""
 
-    _flavour = Path()._flavour
-
-    def __new__(cls, path: Union[str, Path, Any]) -> "FolderLike":
-        resolved = resolve_path(path=path)
-        if not resolved.is_dir():
-            raise ValueError(f"Invalid folder path: {path}")
-        return super().__new__(cls, resolved)
-
-    def __call__(self, path: Any) -> "FolderLike":
-        return FolderLike(path)
+    def __init__(self, path: Union[str, Path], local=True):
+        super().__init__(path=path, local=local)
+        if local and not self.path.is_dir():
+            raise ValueError(f"Invalid directory path: {self.path}")
 
 
-class FileLike(PathLike):
+class FileLike(_PathLike):
     """Path to a file."""
 
-    _flavour = Path()._flavour
-
-    def __new__(cls, path: Union[str, Path, Any]) -> "FileLike":
-        resolved = resolve_path(path=path)
-        if not resolved.is_file():
-            raise ValueError(f"Invalid file path: {path}")
-        return super().__new__(cls, resolved)
-
-    def __call__(self, path: Any) -> "FileLike":
-        return FileLike(path)
+    def __init__(self, path: Union[str, Path], local=True):
+        super().__init__(path=path, local=local)
+        if local and not self.path.is_file():
+            raise ValueError(f"Invalid directory path: {self.path}")
