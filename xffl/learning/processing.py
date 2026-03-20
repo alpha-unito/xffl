@@ -465,7 +465,8 @@ def distributed_training(
         value=criterion, config=config, attr="criterion"
     )
     if _criterion is not None:
-        _criterion.to(device=state.current_device, non_blocking=True)
+        if isinstance(_criterion, nn.Module):
+            _criterion.to(device=state.current_device, non_blocking=True)
     _gradient_clipping: Optional[float] = resolve_param(
         value=gradient_clipping, config=config, attr="gradient_clipping"
     )
@@ -887,7 +888,7 @@ def validation(
             val_epoch_loss += loss.detach().float().cpu()
             val_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))
             val_step_loss.append(loss.detach().float().cpu().item())
-            if target:
+            if target is not None:
                 pred: Tensor = output.argmax(
                     dim=1, keepdim=True
                 )  # get the index of the max log-probability

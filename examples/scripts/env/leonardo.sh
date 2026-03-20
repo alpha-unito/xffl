@@ -2,7 +2,8 @@
 
 ulimit -n 131072
 #module load cuda/12.2 nccl/2.22.3-1--gcc--12.2.0-cuda-12.2-spack0.22
-#module load cuda/12.2 gcc/12.2.0 python/3.11.7
+#module gcc/12.2.0 load cuda/12.6 # python/3.11.7
+module load gcc/12.2.0 cuda/12.6 python/3.11.7
 
 export PYTHONUNBUFFERED=1
 
