@@ -435,7 +435,11 @@ def distributed_training(
     )
     _lr_scheduler: Optional[LRScheduler] = (
         __lr_scheduler(
-            optimizer=optimizer, total_steps=len(train_dataloader), config=config
+            optimizer=optimizer,
+            total_steps_per_epoch=len(
+                train_dataloader
+            ),  # TODO: this should be generalized
+            config=config,
         )
         if __lr_scheduler is not None
         else __lr_scheduler

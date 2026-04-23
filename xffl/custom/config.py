@@ -173,7 +173,7 @@ class DatasetInfo(ABC):
     :param splits: Dataset splits' class or creation function
     :type splits: Callable[[XFFLConfig, DistributedState], Mapping[str, Any]]
     :param path: Path to the dataset file or folder, defaults to None
-    :type path: Optional[Path | str], optional
+    :type path: Optional[Path | str | Sequence[Path | str]], optional
     :param workers: Number of worker processes to spawn to load data, defaults to None
     :type workers: Optional[int], optional
     :param subsampling: Number of samples to subsample from each data split, defaults to None
@@ -192,7 +192,7 @@ class DatasetInfo(ABC):
     splits: Callable[[XFFLConfig, DistributedState], Mapping[str, Any]]
 
     # Optional
-    path: Optional[Path | str] = None
+    path: Optional[Path | str | Sequence[Path | str]] = None
     workers: Optional[int] = None
     subsampling: Optional[int | Mapping[str, int]] = None
     batch_sizes: Optional[int | Mapping[str, int]] = None
@@ -229,10 +229,14 @@ class DatasetInfo(ABC):
                 )
                 self.path = Path("/dataset/")
             else:
-                self.path = Path(self.path)
-
-            if not self.path.parent.exists():
-                err_msg += f"Dataset configuration error: dataset path does not exists ({self.path}).\n"
+                if isinstance(self.path, Sequence):
+                    self.path = [Path(path) for path in self.path]
+                    if not all([path.parent.exists() for path in self.path]):
+                        err_msg += f"Dataset configuration error: some dataset paths do not exists ({self.path}).\n"
+                else:
+                    self.path = Path(self.path)
+                    if not self.path.parent.exists():
+                        err_msg += f"Dataset configuration error: dataset path does not exists ({self.path}).\n"
 
         # Workers
         if self.workers is not None and (
