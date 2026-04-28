@@ -4,28 +4,19 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping
 
 from torch import nn
-from torch.optim import SGD, Optimizer
+from torch.optim import SGD
 from torch.utils.data import Dataset
 from torchvision import datasets, models, transforms
 
-from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
+from xffl.custom.config import DatasetInfo, ModelInfo, OptimizerInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 
 # Constants
 CURRENT_DIR: str = str(os.getcwd()) + "/xffl/examples/intra-silo/02_CNN"
 DATASET_PATH: Path = Path(CURRENT_DIR + "/CIFAR10")
-
-
-# Optimizer
-def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
-    return SGD(
-        params=model.parameters(),
-        lr=config.learning_rate,  # type: ignore
-        momentum=config.momentum,  # type: ignore
-    )
 
 
 # Model information
@@ -88,6 +79,18 @@ class Cifar(DatasetInfo):
     path: Path = DATASET_PATH
 
 
+# Optimizer information
+@dataclass
+class SGD(OptimizerInfo):
+    """Optimizer configuration for BabyLM pretraining."""
+
+    optimizer: Callable = SGD
+
+    optimizer_params: Mapping[str, Any] = field(
+        default_factory=lambda: {"lr": 1e-2, "momentum": 0.9}
+    )
+
+
 # XFFL configuration
 @dataclass
 class xffl_config(XFFLConfig):
@@ -95,28 +98,28 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=CNN)
     dataset_info: DatasetInfo = field(default_factory=Cifar)
-    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
+    optimizer_info: OptimizerInfo = field(default_factory=SGD)
 
     # General
     loglevel: int = logging.INFO
     seed: int = 42
 
     # Learning
-    learning_rate: float = 1e-2
     epochs: int = 10
     criterion: Callable = field(default_factory=nn.CrossEntropyLoss)
 
     # WandB
-    wandb_entity: str = "alpha-unito"
-    wandb_project: str = "xFFL playground"
-    wandb_group: str = "02_CNN"
-    wandb_name: str = "Example"
-    wandb_notes: str = "Example run of xFFL with a CNN"
-    wandb_tags: Sequence[str] = field(
-        default_factory=lambda: ["xFFL", "example", "MLP"]
+    wandb_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "entity": "alpha-unito",
+            "project": "xFFL playground",
+            "group": "02_CNN",
+            "name": "Example",
+            "notes": "Example run of xFFL with a CNN",
+            "tags": ["xFFL", "example", "MLP"],
+            "mode": "online",
+        }
     )
-    wandb_mode: str = "online"
 
     # Custom
     one_class: bool = False
-    momentum: float = 0.9
