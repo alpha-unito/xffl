@@ -588,6 +588,7 @@ def distributed_training(
                 # Optimization
                 _optimizer.step()
                 _optimizer.zero_grad()
+
                 # TQDM update
                 pbar.update(1)
 
@@ -678,8 +679,8 @@ def distributed_training(
                         "train/Step": epoch * total_length + step,
                         "train/Step_loss": train_step_loss[-1],
                         "train/Step_perplexity": train_step_perplexity[-1],
-                        "opt/Step": optimizer.optimizer_step,
-                        "opt/lr": optimizer.param_groups[0]["lr"],
+                        "opt/Step": _optimizer.optimizer_step,
+                        "opt/lr": _optimizer.get_lr(),
                     }
                     if state.is_federated_scaling_setup():
                         metrics["train/Aggregation_step"] = aggregation
@@ -761,7 +762,7 @@ def distributed_training(
             checkpoint_start_time = time.perf_counter()
             save_model(
                 model=model,
-                optimizer=optimizer,
+                optimizer=_optimizer,
                 path=_save_path,
                 name=_output_model_name,
                 rank=state.rank,

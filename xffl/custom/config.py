@@ -311,10 +311,100 @@ class DatasetInfo(ABC):
 
 
 @dataclass
+class OptimizerInfo(ABC):
+    """Default optimizer information.
+
+    Only the optimizer name and split instantiation function are mandatory; dataset name cannot be empty.
+
+    The optimizer configuration is double-checked before execution.
+
+    :param optimizer: Optimizer class
+    :type optimizer: Callable
+    :param optimizer_params: Optimizer parameters
+    :type optimizer_params: Mapping[str, Any]
+    :param lr_scheduler: Learning rate scheduler, defaults to None
+    :type lr_scheduler: Optional[Callable], optional
+    :param gradient_clipping: Value to clip the gradient to, defaults to None
+    :type gradient_clipping: Optional[float], optional
+    :param gradient_accumulation: Number of steps of gradient accumulation before running an optimization step, defaults to None
+    :type gradient_accumulation: Optional[int], optional
+    :param interleaved_optim: Interleave optimizer and backward phase, defaults to None
+    :type interleaved_optim: Optional[bool], optional
+    :raises ValueError: If some configuration values are incompatible with their expected characteristics
+    """
+
+    # Mandatory
+    optimizer: Callable
+
+    # Optional
+    optimizer_params: Optional[Mapping[str, Any]] = None
+    lr_scheduler: Optional[Callable] = None
+    lr_scheduler_params: Optional[Mapping[str, Any]] = None
+    gradient_clipping: Optional[float] = None
+    gradient_accumulation: Optional[int] = None
+    interleaved_optim: Optional[bool] = None
+
+    def __post_init__(self) -> None | ValueError:
+        """
+        Optimizer configuration validation.
+
+        :raises ValueError: If some configuration values are incompatible with their expected characteristics
+        """
+
+        err_msg: str = ""
+
+        # Optimizer
+        if not isinstance(self.optimizer, Callable):
+            err_msg += f"xFFL configuration error: the provided optimizer class is not callable ({self.optimizer}).\n"
+
+        # Optimizer parameters
+        if self.optimizer_params is not None and not isinstance(
+            self.optimizer_params, Mapping
+        ):
+            err_msg += f"xFFL configuration error: the provided optimizer parameters are not a Mapping[str, Any] ({self.optimizer_params}).\n"
+
+        # Learning rate scheduler
+        if self.lr_scheduler is not None and not isinstance(
+            self.lr_scheduler, Callable
+        ):
+            err_msg += f"Model configuration error: the specified learning rate scheduler is not callable ({self.lr_scheduler}).\n"
+
+        # lr_scheduler parameters
+        if self.lr_scheduler_params is not None and not isinstance(
+            self.lr_scheduler_params, Mapping
+        ):
+            err_msg += f"xFFL configuration error: the provided learning rate scheduler parameters are not a Mapping[str, Any] ({self.lr_scheduler_params}).\n"
+
+        # Gradient clipping
+        if self.gradient_clipping is not None and not isinstance(
+            self.gradient_clipping, float
+        ):
+            err_msg += f"xFFL configuration error: the provided gradient clipping value is not valid ({self.gradient_clipping}).\n"
+
+        # Gradient accumulation
+        if self.gradient_accumulation is not None and (
+            not isinstance(self.gradient_accumulation, int)
+            or self.gradient_accumulation < 0
+        ):
+            err_msg += f"xFFL configuration error: the provided gradient accumulation value is not valid ({self.gradient_accumulation}).\n"
+
+        # Interleave optimizer and backward
+        if self.interleaved_optim is not None and not isinstance(
+            self.interleaved_optim, bool
+        ):
+            err_msg += f"Model configuration error: the specified value of interleaved_optim is not acceptable ({self.interleaved_optim}).\n"
+
+        # Log errors, if any, and raise a ValueError exception
+        if not err_msg == "":
+            logger.critical(err_msg)
+            raise ValueError(err_msg)
+
+
+@dataclass
 class XFFLConfig(ABC):
     """Base xFFL configuration.
 
-    Only the model_info, dataset_info, and optimizer fields are mandatory.
+    Only the model_info, dataset_info, and optimizer_info fields are mandatory.
 
     If multiple process constitute the xFFL world but no parallelization strategy is specified, FSDP will be instantiated over all the available processes.
     If federated is specified, equal groups of federated processes will be instantiated; if federated is a sequence, the processes will be divided into federated groups according to such values.
@@ -330,8 +420,8 @@ class XFFLConfig(ABC):
     :type model_info: ModelInfo
     :param dataset_info: Dataset configuration
     :type dataset_info: DatasetInfo
-    :param optimizer: Optimizer class
-    :type optimizer: Callable
+    :param optimizer_info: Optimizer configuration
+    :type optimizer_info: OptimizertInfo
     :param loglevel: Logging level, expressed as an integer following the python logging package, defaults to INFO (20)
     :type loglevel: int
     :param seed: Random number generator seed, essential for reproducible execution, defaults to None
@@ -346,20 +436,10 @@ class XFFLConfig(ABC):
     :type cuda_streams: Optional[int], optional
     :param epochs: Number of epochs, defaults to None
     :type epochs: Optional[int], optional
-    :param optimizer_params: Optimizer parameters
-    :type optimizer_params: Mapping[str, Any]
-    :param lr_scheduler: Learning rate scheduler, defaults to None
-    :type lr_scheduler: Optional[Callable], optional
     :param scale_learning_rate: If to scale the learning rate in the number of available processes, defaults to None
     :type scale_learning_rate: Optional[bool], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
-    :param gradient_clipping: Value to clip the gradient to, defaults to None
-    :type gradient_clipping: Optional[float], optional
-    :param gradient_accumulation: Number of steps of gradient accumulation before running an optimization step, defaults to None
-    :type gradient_accumulation: Optional[int], optional
-    :param interleaved_optim: Interleave optimizer and backward phase, defaults to None
-    :type interleaved_optim: Optional[bool], optional
     :param output_folder: Output folder path where to save the trained model, defaults to None
     :type output_folder: Optional[Path], optional
     :param output_model: Saving name for the trained model, defaults to None
@@ -370,10 +450,9 @@ class XFFLConfig(ABC):
     """
 
     # Mandatory - Model, dataset, and optimizer
-    # TODO: Check on these variables
     model_info: ModelInfo
     dataset_info: DatasetInfo
-    optimizer: Callable
+    optimizer_info: OptimizerInfo
 
     # General
     loglevel: int = logging.INFO
@@ -387,14 +466,8 @@ class XFFLConfig(ABC):
 
     # Learning
     epochs: Optional[int] = None
-    optimizer_params: Optional[Mapping[str, Any]] = None
-    lr_scheduler: Optional[Callable] = None
-    lr_scheduler_params: Optional[Mapping[str, Any]] = None
     scale_learning_rate: Optional[bool] = None
     criterion: Optional[nn.Module] = None
-    gradient_clipping: Optional[float] = None
-    gradient_accumulation: Optional[int] = None
-    interleaved_optim: Optional[bool] = None
 
     # Output
     output_folder: Optional[Path] = None
@@ -431,10 +504,6 @@ class XFFLConfig(ABC):
         # Dataset info
         if not isinstance(self.dataset_info, DatasetInfo):
             err_msg += f"xFFL configuration error: the provided dataset configuration is not an instance of ModelInfo ({self.dataset_info}).\n"
-
-        # Optimizer
-        if not isinstance(self.optimizer, Callable):
-            err_msg += f"xFFL configuration error: the provided optimizer class is not callable ({self.optimizer}).\n"
 
         # Log level
         if not isinstance(self.loglevel, int) or self.loglevel < 0:
@@ -490,24 +559,6 @@ class XFFLConfig(ABC):
         ):
             err_msg += f"xFFL configuration error: the provided epochs value is not valid ({self.epochs}).\n"
 
-        # Optimizer parameters
-        if self.optimizer_params is not None and not isinstance(
-            self.optimizer_params, Mapping
-        ):
-            err_msg += f"xFFL configuration error: the provided optimizer parameters are not a Mapping[str, Any] ({self.optimizer_params}).\n"
-
-        # Learning rate scheduler
-        if self.lr_scheduler is not None and not isinstance(
-            self.lr_scheduler, Callable
-        ):
-            err_msg += f"Model configuration error: the specified learning rate scheduler is not callable ({self.lr_scheduler}).\n"
-
-        # lr_scheduler parameters
-        if self.lr_scheduler_params is not None and not isinstance(
-            self.lr_scheduler_params, Mapping
-        ):
-            err_msg += f"xFFL configuration error: the provided learning rate scheduler parameters are not a Mapping[str, Any] ({self.lr_scheduler_params}).\n"
-
         # Scale learning rate
         if self.scale_learning_rate is not None and not isinstance(
             self.scale_learning_rate, bool
@@ -517,25 +568,6 @@ class XFFLConfig(ABC):
         # Criterion
         if self.criterion is not None and not isinstance(self.criterion, Callable):
             err_msg += f"Model configuration error: the specified criterion is not callable ({self.criterion}).\n"
-
-        # Gradient clipping
-        if self.gradient_clipping is not None and not isinstance(
-            self.gradient_clipping, float
-        ):
-            err_msg += f"xFFL configuration error: the provided gradient clipping value is not valid ({self.gradient_clipping}).\n"
-
-        # Gradient accumulation
-        if self.gradient_accumulation is not None and (
-            not isinstance(self.gradient_accumulation, int)
-            or self.gradient_accumulation < 0
-        ):
-            err_msg += f"xFFL configuration error: the provided gradient accumulation value is not valid ({self.gradient_accumulation}).\n"
-
-        # Interleave optimizer and backward
-        if self.interleaved_optim is not None and not isinstance(
-            self.interleaved_optim, bool
-        ):
-            err_msg += f"Model configuration error: the specified value of interleaved_optim is not acceptable ({self.interleaved_optim}).\n"
 
         # Output folder
         if self.output_folder is not None:
