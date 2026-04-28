@@ -8,7 +8,7 @@ import sys
 from dataclasses import asdict
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Literal, Optional, Sequence, Type, Mapping
+from typing import Any, Mapping, Optional, Sequence, Type
 
 import numpy
 import torch

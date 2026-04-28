@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import torch
+import torch.cuda.nvtx as nvtx
 from torch import GradScaler, Tensor, nn, tensor
 from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
@@ -23,14 +24,13 @@ from xffl.distributed.aggregation import (
 )
 from xffl.distributed.distributed import DistributedState
 from xffl.learning.modelling import save_model
+from xffl.learning.optim import XFFLOptimizer
 from xffl.learning.utils import (
     cuda_reset_memory_stats_and_empty_cache,
     cuda_sync,
     cuda_sync_and_empty_cache,
     resolve_param,
 )
-from xffl.learning.optim import XFFLOptimizer
-import torch.cuda.nvtx as nvtx
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""

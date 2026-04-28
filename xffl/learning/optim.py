@@ -2,14 +2,13 @@
 
 import math
 from logging import Logger, getLogger
-from typing import List, Optional, Mapping, Any, Callable
+from typing import Any, Callable, List, Mapping, Optional
 
+import torch
+from torch import GradScaler, nn
+from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
-from torch import nn
-import torch
-from torch.distributed.fsdp import FullyShardedDataParallel
-from torch import GradScaler
 
 from xffl.custom.config import XFFLConfig
 from xffl.utils.utils import resolve_param
@@ -29,7 +28,7 @@ def _is_optimizer_accumulation_step_time(
 
     :param gradient_accumulation: Gradient accumulation steps
     :type gradient_accumulation: Optional[int]
-    :param step: Curretn training epoch step
+    :param step: Current training epoch step
     :type step: int
     :param total_steps_per_epoch: Number of training steps per epoch
     :type total_steps_per_epoch: int
@@ -424,7 +423,7 @@ class XFFLOptimizer:
     def zero_grad(self, set_to_none: bool = True) -> None:
         """Reset the XFFL optimizers gradients.
 
-        :param set_to_none: Set the gradients to None istead of zero, defaults to True
+        :param set_to_none: Set the gradients to None instead of zero, defaults to True
         :type set_to_none: bool, optional
         """
         if self.interleaved_optim:
@@ -445,7 +444,7 @@ class XFFLOptimizer:
         :param closure:  A closure that reevaluates the model and
         returns the loss, defaults to None
         :type closure: Optional[Callable], optional
-        :param set_to_none: Set the gradients to None istead of zero, defaults to True
+        :param set_to_none: Set the gradients to None instead of zero, defaults to True
         :type set_to_none: bool, optional
         """
         if _is_optimizer_accumulation_step_time(
