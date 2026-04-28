@@ -280,6 +280,7 @@ class XFFLOptimizer:
 
         self.model: nn.Module | FullyShardedDataParallel = model
         self.optimizer_class: Callable = _optimizer
+        self.optimizer: Optional[Optimizer | Mapping[nn.Parameter, Optimizer]] = None
         self.optimizer_params: Mapping[str, Any] = (
             {} if _optimizer_params is None else _optimizer_params
         )
@@ -287,11 +288,12 @@ class XFFLOptimizer:
         self.gradient_clipping: Optional[float] = _gradient_clipping
         self.gradient_accumulation: Optional[int] = _gradient_accumulation
         self.lr_scheduler_class: Optional[Callable] = _lr_scheduler
+        self.lr_scheduler: Optional[LRScheduler | Mapping[nn.Parameter, LRScheduler]] = None
         self.total_steps_per_epoch: int = total_steps_per_epoch
         self.scaler: Optional[GradScaler] = scaler
 
         self.optimizer_step: int = 0
-        self._step: int = 0
+        self.training_step: int = 0
 
         if self.interleaved_optim and self.gradient_clipping is not None:
             logger.warning(
@@ -301,7 +303,7 @@ class XFFLOptimizer:
         self._create_optimizer()
 
         if self.lr_scheduler_class is not None:
-            self.lr_scheduler: LRScheduler | Mapping[nn.Parameter, LRScheduler] = (
+            self.lr_scheduler = (
                 self.lr_scheduler_class(
                     optimizer=self.optimizer,
                     total_steps_per_epoch=self.total_steps_per_epoch,
@@ -312,7 +314,6 @@ class XFFLOptimizer:
     def _create_optimizer(self) -> None:
         """Creates the specified optimizer configured for LLM pretraining."""
 
-        self.optimizer: Optimizer | Mapping[nn.Parameter, Optimizer]
         if self.interleaved_optim:
             logger.info("Enabling optimizer/backward interleaving")
 
@@ -358,7 +359,7 @@ class XFFLOptimizer:
                 self.gradient_accumulation: Optional[int] = gradient_accumulation
                 self.scaler: Optional[GradScaler] = scaler
 
-                self.step = 0
+                self.training_step = 0
                 self.total_steps_per_epoch = total_steps_per_epoch
 
             def __call__(self, parameter: nn.Parameter) -> None:
@@ -369,7 +370,7 @@ class XFFLOptimizer:
                 """
                 if _is_optimizer_accumulation_step_time(
                     gradient_accumulation=self.gradient_accumulation,
-                    step=self.step,
+                    step=self.training_step,
                     total_steps_per_epoch=self.total_steps_per_epoch,
                 ):
                     self.gradient_clipping_fn(parameter)
@@ -379,10 +380,8 @@ class XFFLOptimizer:
                         self.scaler.update()
                     else:
                         self.optimizer.step()
-
-                    self.optimizer.step()
                     self.optimizer.zero_grad(set_to_none=True)
-                self.step += 1
+                self.training_step += 1
 
         assert isinstance(self.optimizer, Mapping)
         for p in self.model.parameters():
@@ -449,7 +448,7 @@ class XFFLOptimizer:
         """
         if _is_optimizer_accumulation_step_time(
             gradient_accumulation=self.gradient_accumulation,
-            step=self._step,
+            step=self.training_step,
             total_steps_per_epoch=self.total_steps_per_epoch,
         ):
             if not self.interleaved_optim:
@@ -473,4 +472,4 @@ class XFFLOptimizer:
                     self.lr_scheduler.step()
 
             self.optimizer_step += 1
-        self._step += 1
+        self.training_step += 1

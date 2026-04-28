@@ -499,8 +499,8 @@ def distributed_training(
         )
 
     # Single-process AMP training
-    default_precision: Optional[torch.dtype]
-    scaler: Optional[GradScaler]
+    default_precision: Optional[torch.dtype] = None
+    scaler: Optional[GradScaler] = None
     default_precision, scaler = _setup_amp(state=state)
 
     # Optimizer and lr scheduler creation
