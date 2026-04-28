@@ -29,6 +29,8 @@ from xffl.learning.utils import (
     cuda_sync_and_empty_cache,
     resolve_param,
 )
+from xffl.learning.optim import XFFLOptimizer
+import torch.cuda.nvtx as nvtx
 
 logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
@@ -277,12 +279,10 @@ def _fedopt_step(
 
 
 def _setup_amp(
-    fsdp_training: bool, state: DistributedState
+    state: DistributedState,
 ) -> Tuple[Optional[torch.dtype], Optional[GradScaler]]:
     """Set up AMP in case of single-process training.
 
-    :param fsdp_training: If the training is FSDP-based or not
-    :type fsdp_training: bool
     :param state: xFFL distributed state
     :type state: DistributedState
     :return: New default precision and gradient scaler, if necessary
@@ -290,7 +290,7 @@ def _setup_amp(
     """
     default_precision: Optional[torch.dtype] = None
     scaler: Optional[GradScaler] = None
-    if not fsdp_training:
+    if not (state.is_fsdp_setup() or state.is_hsdp_setup()):
         if state.device_type == torch.device("cuda"):
             default_precision = (
                 torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -326,8 +326,8 @@ def _setup_amp(
 def distributed_training(
     model: nn.Module | FullyShardedDataParallel,
     state: DistributedState,
-    optimizer: Optimizer,
     train_dataloader: DataLoader,
+    optimizer: Optional[XFFLOptimizer] = None,
     val_dataloader: Optional[DataLoader] = None,
     wandb_run: Optional[Run] = None,
     fedopt: Optional[bool] = None,
@@ -335,7 +335,6 @@ def distributed_training(
     federated_batches: Optional[int] = None,
     save_path: Optional[Path] = None,
     output_model_name: Optional[str] = None,
-    lr_scheduler: Optional[Callable] = None,
     fedopt_lr_scheduler: Optional[LRScheduler] = None,
     fedopt_optimizer: Optional[Optimizer] = None,
     criterion: Optional[nn.Module] = None,
@@ -352,8 +351,8 @@ def distributed_training(
     :type model: nn.Module | FullyShardedDataParallel
     :param state: xFFL distributed state
     :type state: DistributedState
-    :param optimizer: Model's optimizer
-    :type optimizer: Optimizer
+    :param optimizer: Optimizer or mapping of parameters and optimizers
+    :type optimizer: Optimizer|Mapping[nn.Parameter, Optimizer]
     :param train_dataloader: Training set data loader
     :type train_dataloader: DataLoader
     :param val_dataloader: Validation set data loader, defaults to None
@@ -370,8 +369,6 @@ def distributed_training(
     :type save_path: Optional[Path], optional
     :param output_model_name: Name to use for the saved trained model, defaults to None
     :type output_model_name: Optional[str], optional
-    :param lr_scheduler: Learning rate scheduler, defaults to None
-    :type lr_scheduler: Optional[LRScheduler], optional
     :param fedopt_lr_scheduler: Learning rate scheduler for the FedOpt optimizer, defaults to None
     :type fedopt_lr_scheduler: Optional[LRScheduler], optional
     :param fedopt_optimizer: FedOpt optimizer, defaults to None
@@ -430,20 +427,6 @@ def distributed_training(
             "Output model name is provided, but save path is not - disabling model saving."
         )
         _output_model_name = None
-    __lr_scheduler: Optional[Callable] = resolve_param(
-        value=lr_scheduler, config=config, attr="lr_scheduler"
-    )
-    _lr_scheduler: Optional[LRScheduler] = (
-        __lr_scheduler(
-            optimizer=optimizer,
-            total_steps_per_epoch=len(
-                train_dataloader
-            ),  # TODO: this should be generalized
-            config=config,
-        )
-        if __lr_scheduler is not None
-        else __lr_scheduler
-    )
     _fedopt_optimizer: Optional[Optimizer] = resolve_param(
         value=fedopt_optimizer, config=config, attr="fedopt_optimizer"
     )
@@ -500,7 +483,6 @@ def distributed_training(
     checkpoint_times: List[float] = []
     results: Dict[str, float] = {}
 
-    optimizer_step: int = 0
     aggregation: int = 0
 
     # FedOpt setup
@@ -517,14 +499,21 @@ def distributed_training(
         )
 
     # Single-process AMP training
-    fsdp_training: bool = state.is_fsdp_setup() or state.is_hsdp_setup()
     default_precision: Optional[torch.dtype]
     scaler: Optional[GradScaler]
-    default_precision, scaler = _setup_amp(fsdp_training=fsdp_training, state=state)
+    default_precision, scaler = _setup_amp(state=state)
+
+    # Optimizer and lr scheduler creation
+    _optimizer: XFFLOptimizer = XFFLOptimizer(
+        model=model,
+        config=config,
+        total_steps_per_epoch=len(train_dataloader),
+        scaler=scaler,
+    )
+    _optimizer.zero_grad()
 
     # Epoch training cycle
     epoch: int
-    optimizer.zero_grad(set_to_none=True)
     train_function: Callable = _get_processing_function(next(iter(train_dataloader)))
     for epoch in range(_epochs):
         epoch_start_time: float = time.perf_counter()
@@ -552,181 +541,169 @@ def distributed_training(
         step: int
         batch: Dict[str, Any]
         for step, batch in enumerate(train_dataloader):
-            if logging.root.level == logging.DEBUG:
-                cuda_sync()
-                step_start_time: float = time.perf_counter()
-                start_time: float = time.perf_counter()
+            with nvtx.range("forward"):
+                if logging.root.level == logging.DEBUG:
+                    cuda_sync()
+                    step_start_time: float = time.perf_counter()
+                    start_time: float = time.perf_counter()
 
-            # Forward
-            output: Any
-            target: Tensor
-            if default_precision is not None:
-                with torch.autocast(
-                    device_type=str(state.device_type), dtype=default_precision
-                ):
+                # Forward
+                output: Any
+                target: Tensor
+                if default_precision is not None:
+                    with torch.autocast(
+                        device_type=str(state.device_type), dtype=default_precision
+                    ):
+                        output, target = train_function(
+                            model=model, batch=batch, state=state
+                        )
+                else:
                     output, target = train_function(
                         model=model, batch=batch, state=state
                     )
-            else:
-                output, target = train_function(model=model, batch=batch, state=state)
 
-            loss: Tensor = _criterion(output, target) if _criterion else output.loss
+                loss: Tensor = _criterion(output, target) if _criterion else output.loss
 
-            if logging.root.level == logging.DEBUG:
-                cuda_sync()
-                batch_time: float = time.perf_counter() - start_time
-                start_time = time.perf_counter()
+            with nvtx.range("Backward"):
+                if logging.root.level == logging.DEBUG:
+                    cuda_sync()
+                    batch_time: float = time.perf_counter() - start_time
+                    start_time = time.perf_counter()
 
-            # Backward
-            if _gradient_accumulation is not None:
-                loss /= _gradient_accumulation
-
-            if scaler is not None:
-                scaler.scale(loss).backward()
-            else:
-                loss.backward()
-
-            if logging.root.level == logging.DEBUG:
-                cuda_sync()
-                back_time: float = time.perf_counter() - start_time
-                start_time = time.perf_counter()
-
-            # Optimization
-            if (
-                _gradient_accumulation is None
-                or (step + 1) % _gradient_accumulation == 0
-                or (step + 1) == total_length
-            ):
-                if _gradient_clipping is not None:
-                    if fsdp_training:
-                        assert isinstance(model, FullyShardedDataParallel)
-                        model.clip_grad_norm_(max_norm=_gradient_clipping)
-                    else:
-                        torch.nn.utils.clip_grad_norm_(
-                            model.parameters(), _gradient_clipping
-                        )
+                # Backward
+                if _gradient_accumulation is not None:
+                    loss /= _gradient_accumulation
 
                 if scaler is not None:
-                    scaler.step(optimizer)
-                    scaler.update()
+                    scaler.scale(loss).backward()
                 else:
-                    optimizer.step()
-                optimizer.zero_grad(set_to_none=True)
+                    loss.backward()
 
-                if _lr_scheduler:
-                    _lr_scheduler.step()
-                optimizer_step += 1
+            with nvtx.range("Optimizer"):
+                if logging.root.level == logging.DEBUG:
+                    cuda_sync()
+                    back_time: float = time.perf_counter() - start_time
+                    start_time = time.perf_counter()
 
-            # TQDM update
-            pbar.update(1)
+                # Optimization
+                _optimizer.step()
+                _optimizer.zero_grad()
+                # TQDM update
+                pbar.update(1)
 
-            if logging.root.level == logging.DEBUG:
-                cuda_sync()
-                optimizer_time: float = time.perf_counter() - start_time
-                start_time = time.perf_counter()
+            with nvtx.range("Aggregation"):
+                if logging.root.level == logging.DEBUG:
+                    cuda_sync()
+                    optimizer_time: float = time.perf_counter() - start_time
+                    start_time = time.perf_counter()
 
-            # FederatedScaling
-            if state.is_federated_scaling_setup():
-                assert _federated_batches is not None
-                if (step + 1) % _federated_batches == 0 or (step + 1) == total_length:
+                # FederatedScaling
+                if state.is_federated_scaling_setup():
+                    assert _federated_batches is not None
+                    if (step + 1) % _federated_batches == 0 or (
+                        step + 1
+                    ) == total_length:
 
-                    # Aggregation
-                    with torch.no_grad():
-                        bucket_optimized_coalesced_(
-                            model=model,
-                            state=state,
-                            use_multiple_cuda_streams=False,
-                            use_contiguous_memory=False,
-                        )
-                        if _fedopt:
-                            assert _fedopt_optimizer is not None
-
-                            fedopt_origin_state_dict = _fedopt_step(
+                        # Aggregation
+                        with torch.no_grad():
+                            bucket_optimized_coalesced_(
                                 model=model,
-                                optimizer=optimizer,
-                                fedopt_optimizer=_fedopt_optimizer,
-                                fedopt_lr_scheduler=_fedopt_lr_scheduler,
-                                origin_state_dict=fedopt_origin_state_dict,
-                                grads=fedopt_grads,
                                 state=state,
+                                use_multiple_cuda_streams=False,
+                                use_contiguous_memory=False,
                             )
-                        aggregation += 1
+                            if _fedopt:
+                                assert _fedopt_optimizer is not None
 
-            if logging.root.level == logging.DEBUG:
-                cuda_sync()
-                comm_time: float = time.perf_counter() - start_time
-                start_time = time.perf_counter()
+                                fedopt_origin_state_dict = _fedopt_step(
+                                    model=model,
+                                    optimizer=optimizer,
+                                    fedopt_optimizer=_fedopt_optimizer,
+                                    fedopt_lr_scheduler=_fedopt_lr_scheduler,
+                                    origin_state_dict=fedopt_origin_state_dict,
+                                    grads=fedopt_grads,
+                                    state=state,
+                                )
+                            aggregation += 1
 
-            # Logging
-            if _gradient_accumulation is not None:
-                loss *= _gradient_accumulation
+            with nvtx.range("Other"):
+                if logging.root.level == logging.DEBUG:
+                    cuda_sync()
+                    comm_time: float = time.perf_counter() - start_time
+                    start_time = time.perf_counter()
 
-            train_epoch_loss += loss.detach().float().cpu()
-            train_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))
-            train_step_loss.append(loss.detach().float().cpu().item())
+                # Logging
+                if _gradient_accumulation is not None:
+                    loss *= _gradient_accumulation
 
-            pbar.set_description(
-                f"Training Epoch: {epoch + 1}/{_epochs},   step {step+1}/{total_length} completed (loss: {train_step_loss[-1]:.4f})",
-                refresh=True,
-            )
-
-            if logging.root.level == logging.DEBUG:
-                assert batch_time
-                assert back_time
-                assert optimizer_time
-                assert comm_time
-
-                cuda_sync()
-                overall_step_time: float = time.perf_counter() - step_start_time
-                other_step_time: float = overall_step_time - (
-                    batch_time + back_time + optimizer_time + comm_time
+                train_epoch_loss += loss.detach().float().cpu()
+                train_step_perplexity.append(
+                    float(torch.exp(loss.detach().float().cpu()))
                 )
+                train_step_loss.append(loss.detach().float().cpu().item())
 
-            if logging.root.level == logging.DEBUG:
-                pbar.set_postfix(
-                    ordered_dict={
-                        "F": f"{batch_time:.2f}",
-                        "B": f"{back_time:.2f}",
-                        "O": f"{optimizer_time:.2f}",
-                        "A": f"{comm_time:.2f}",
-                        "M": f"{other_step_time:.2f}",
-                        "T": f"{overall_step_time:.2f}",
-                    },
+                pbar.set_description(
+                    f"Training Epoch: {epoch + 1}/{_epochs},   step {step+1}/{total_length} completed (loss: {train_step_loss[-1]:.4f})",
                     refresh=True,
                 )
 
-            # WandB
-            if wandb_run:
-                metrics: Mapping[str, Any] = {
-                    "train/Step": epoch * total_length + step,
-                    "train/Step_loss": train_step_loss[-1],
-                    "train/Step_perplexity": train_step_perplexity[-1],
-                    "opt/Step": optimizer_step,
-                    "opt/lr": optimizer.param_groups[0]["lr"],
-                }
-                if state.is_federated_scaling_setup():
-                    metrics["train/Aggregation_step"] = aggregation
-                    if _fedopt:
-                        assert _fedopt_lr_scheduler is not None
-                        assert _fedopt_optimizer is not None
+                if logging.root.level == logging.DEBUG:
+                    assert batch_time
+                    assert back_time
+                    assert optimizer_time
+                    assert comm_time
 
-                        metrics["opt/FedOpt_lr"] = _fedopt_optimizer.param_groups[0][
-                            "lr"
-                        ]
+                    cuda_sync()
+                    overall_step_time: float = time.perf_counter() - step_start_time
+                    other_step_time: float = overall_step_time - (
+                        batch_time + back_time + optimizer_time + comm_time
+                    )
 
                 if logging.root.level == logging.DEBUG:
-
-                    metrics.update(
-                        {
-                            "time/Forward": round(batch_time, 2),
-                            "time/Backward": round(back_time, 2),
-                            "time/Optimizer": round(optimizer_time, 2),
-                            "time/Aggregation": round(comm_time, 2),
-                            "time/Other": round(other_step_time, 2),
-                            "time/Overall_step": round(overall_step_time, 2),
-                        }
+                    pbar.set_postfix(
+                        ordered_dict={
+                            "F": f"{batch_time:.2f}",
+                            "B": f"{back_time:.2f}",
+                            "O": f"{optimizer_time:.2f}",
+                            "A": f"{comm_time:.2f}",
+                            "M": f"{other_step_time:.2f}",
+                            "T": f"{overall_step_time:.2f}",
+                        },
+                        refresh=True,
                     )
-                wandb_run.log(metrics)
+
+                # WandB
+                if wandb_run:
+                    metrics: Mapping[str, Any] = {
+                        "train/Step": epoch * total_length + step,
+                        "train/Step_loss": train_step_loss[-1],
+                        "train/Step_perplexity": train_step_perplexity[-1],
+                        "opt/Step": optimizer.optimizer_step,
+                        "opt/lr": optimizer.param_groups[0]["lr"],
+                    }
+                    if state.is_federated_scaling_setup():
+                        metrics["train/Aggregation_step"] = aggregation
+                        if _fedopt:
+                            assert _fedopt_lr_scheduler is not None
+                            assert _fedopt_optimizer is not None
+
+                            metrics["opt/FedOpt_lr"] = _fedopt_optimizer.param_groups[
+                                0
+                            ]["lr"]
+
+                    if logging.root.level == logging.DEBUG:
+
+                        metrics.update(
+                            {
+                                "time/Forward": round(batch_time, 2),
+                                "time/Backward": round(back_time, 2),
+                                "time/Optimizer": round(optimizer_time, 2),
+                                "time/Aggregation": round(comm_time, 2),
+                                "time/Other": round(other_step_time, 2),
+                                "time/Overall_step": round(overall_step_time, 2),
+                            }
+                        )
+                    wandb_run.log(metrics)
 
         pbar.close()
         epoch_times.append(time.perf_counter() - epoch_start_time)

@@ -8,7 +8,7 @@ import sys
 from dataclasses import asdict
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Literal, Optional, Sequence, Type
+from typing import Any, Literal, Optional, Sequence, Type, Mapping
 
 import numpy
 import torch
@@ -266,64 +266,29 @@ def barrier(state: DistributedState) -> None:
 
 
 def wandb_setup(
-    entity: Optional[str] = None,
-    project: Optional[str] = None,
-    group: Optional[str] = None,
-    name: Optional[str] = None,
-    notes: Optional[str] = None,
-    tags: Optional[Sequence[str]] = None,
-    mode: Optional[Literal["online", "offline", "disabled", "shared"]] = None,
+    wandb_params: Optional[Mapping[str, Any]] = None,
     config: Optional[XFFLConfig] = None,
-) -> Any:
+) -> Optional[Any]:
     """Initializes a WandB run.
 
-    :param entity: WandB entity, defaults to None
-    :type entity: Optional[str], optional
-    :param project: WandB project, defaults to None
-    :type project: Optional[str], optional
-    :param group: WandB run group, defaults to None
-    :type group: Optional[str], optional
-    :param name: WandB run name, defaults to None
-    :type name: Optional[str], optional
-    :param notes: WandB run notes, defaults to None
-    :type notes: Optional[str], optional
-    :param tags: WandB run tags, defaults to None
-    :type tags: Optional[Sequence[str]], optional
-    :param mode: WandB execution mode, defaults to None
-    :type mode: Optional[Literal["online", "offline", "disabled", "shared"]], optional
+    :param wandb_params: WandB init parameters, defaults to None
+    :type wandb_params: Optional[Mapping[str, Any]], optional
     :param config: xFFL configuration, defaults to None
     :type config: Optional[XFFLConfig], optional
-    :return: An instantiated WandB run
-    :rtype: Any
+    :return: An instantiated WandB run, defaults to None
+    :rtype: Optional[Any], optional
     """
     # Resolve parameters
-    _entity: Optional[str] = resolve_param(
-        value=entity, config=config, attr="wandb_entity"
-    )
-    _project: Optional[str] = resolve_param(
-        value=project, config=config, attr="wandb_project"
-    )
-    _group: Optional[str] = resolve_param(
-        value=group, config=config, attr="wandb_group"
-    )
-    _name: Optional[str] = resolve_param(value=name, config=config, attr="wandb_name")
-    _notes: Optional[str] = resolve_param(
-        value=notes, config=config, attr="wandb_notes"
-    )
-    _tags: Optional[Sequence[str]] = resolve_param(
-        value=tags, config=config, attr="wandb_tags"
-    )
-    _mode: Optional[Literal["online", "offline", "disabled", "shared"]] = resolve_param(
-        value=mode, config=config, attr="wandb_mode"
+    _wandb_params: Optional[Mapping[str, Any]] = resolve_param(
+        value=wandb_params, config=config, attr="wandb_params"
     )
 
-    return wandb.init(
-        entity=_entity,
-        project=_project,
-        group=_group,
-        name=_name,
-        notes=_notes,
-        tags=_tags,
-        mode=_mode,
-        config=asdict(config) if config is not None else None,
-    )
+    wandb_run: Optional[Any] = None
+    if _wandb_params is not None:
+        logger.info("Setting up WandB")
+        wandb_run = wandb.init(
+            **_wandb_params,
+            config=asdict(config) if config is not None else None,
+        )
+
+    return wandb_run
