@@ -2,7 +2,7 @@
 
 import math
 from logging import Logger, getLogger
-from typing import Any, Callable, List, Mapping, Optional
+from typing import Any, Callable, List, Mapping, Optional, Sequence
 
 import torch
 from torch import GradScaler, nn
@@ -10,7 +10,7 @@ from torch.distributed.fsdp import FullyShardedDataParallel
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
-from xffl.custom.config import XFFLConfig
+from xffl.custom.config import OptimizerInfo, XFFLConfig
 from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
@@ -243,43 +243,57 @@ class XFFLOptimizer:
         config: Optional[XFFLConfig] = None,
     ) -> None:
         # Resolve parameters
-        _optimizer: Optional[Callable] = resolve_param(
-            value=optimizer, config=config, attr="optimizer"
-        )
-        if _optimizer is None:
-            logger.critical("No optimizer provided - interrupting execution.")
-            raise ValueError("No optimizer provided - interrupting execution.")
-        _optimizer_params: Optional[Mapping[str, Any]] = resolve_param(
-            value=optimizer_params, config=config, attr="optimizer_params"
-        )
-        _interleaved_optim: Optional[bool] = resolve_param(
-            value=interleaved_optim, config=config, attr="interleaved_optim"
-        )
-        _gradient_clipping: Optional[float] = resolve_param(
-            value=gradient_clipping, config=config, attr="gradient_clipping"
-        )
-        if _gradient_clipping is not None and _gradient_clipping <= 0.0:
-            logger.error(
-                f"Gradient clipping is set to {_gradient_clipping}, which is not acceptable. Defaulting to 1.0."
+        if config is not None:
+            optimizer_info: OptimizerInfo = config.optimizer_info
+            _optimizer: Optional[Callable] = resolve_param(
+                value=optimizer, config=optimizer_info, attr="optimizer"
             )
-            _gradient_clipping = 1.0
-        _gradient_accumulation: Optional[int] = resolve_param(
-            value=gradient_accumulation, config=config, attr="gradient_accumulation"
-        )
-        if _gradient_accumulation and _gradient_accumulation < 1:
-            logger.error(
-                f"Gradient accumulation steps is set to {_gradient_accumulation}, which is not acceptable. Defaulting to 1."
+            if _optimizer is None:
+                logger.critical("No optimizer provided - interrupting execution.")
+                raise ValueError("No optimizer provided - interrupting execution.")
+            _optimizer_params: Optional[Mapping[str, Any]] = resolve_param(
+                value=optimizer_params, config=optimizer_info, attr="optimizer_params"
             )
-            _gradient_accumulation = 1
-        _lr_scheduler: Optional[Callable] = resolve_param(
-            value=lr_scheduler, config=config, attr="lr_scheduler"
-        )
+            _interleaved_optim: Optional[bool] = resolve_param(
+                value=interleaved_optim, config=optimizer_info, attr="interleaved_optim"
+            )
+            _gradient_clipping: Optional[float] = resolve_param(
+                value=gradient_clipping, config=optimizer_info, attr="gradient_clipping"
+            )
+            if _gradient_clipping is not None and _gradient_clipping <= 0.0:
+                logger.error(
+                    f"Gradient clipping is set to {_gradient_clipping}, which is not acceptable. Defaulting to 1.0."
+                )
+                _gradient_clipping = 1.0
+            _gradient_accumulation: Optional[int] = resolve_param(
+                value=gradient_accumulation,
+                config=optimizer_info,
+                attr="gradient_accumulation",
+            )
+            if _gradient_accumulation and _gradient_accumulation < 1:
+                logger.error(
+                    f"Gradient accumulation steps is set to {_gradient_accumulation}, which is not acceptable. Defaulting to 1."
+                )
+                _gradient_accumulation = 1
+            _lr_scheduler: Optional[Callable] = resolve_param(
+                value=lr_scheduler, config=optimizer_info, attr="lr_scheduler"
+            )
+        else:
+            _optimizer: Optional[Callable] = optimizer
+            _optimizer_params: Optional[Mapping[str, Any]] = optimizer_params
+            _interleaved_optim: Optional[bool] = interleaved_optim
+            _gradient_clipping: Optional[float] = gradient_clipping
+            _gradient_accumulation: Optional[int] = gradient_accumulation
+            _lr_scheduler: Optional[Callable] = lr_scheduler
 
         if _gradient_accumulation is not None and _gradient_accumulation <= 0:
-            raise ValueError("gradient_accumulation must be > 0")
+            raise ValueError("Gradient_accumulation must be > 0.")
+        if _optimizer is None:
+            raise ValueError("No optimizer class provided.")
 
         self.model: nn.Module | FullyShardedDataParallel = model
         self.optimizer_class: Callable = _optimizer
+        self.optimizer: Optional[Optimizer | Mapping[nn.Parameter, Optimizer]] = None
         self.optimizer_params: Mapping[str, Any] = (
             {} if _optimizer_params is None else _optimizer_params
         )
@@ -287,11 +301,14 @@ class XFFLOptimizer:
         self.gradient_clipping: Optional[float] = _gradient_clipping
         self.gradient_accumulation: Optional[int] = _gradient_accumulation
         self.lr_scheduler_class: Optional[Callable] = _lr_scheduler
+        self.lr_scheduler: Optional[
+            LRScheduler | Mapping[nn.Parameter, LRScheduler]
+        ] = None
         self.total_steps_per_epoch: int = total_steps_per_epoch
         self.scaler: Optional[GradScaler] = scaler
 
         self.optimizer_step: int = 0
-        self._step: int = 0
+        self.training_step: int = 0
 
         if self.interleaved_optim and self.gradient_clipping is not None:
             logger.warning(
@@ -301,18 +318,15 @@ class XFFLOptimizer:
         self._create_optimizer()
 
         if self.lr_scheduler_class is not None:
-            self.lr_scheduler: LRScheduler | Mapping[nn.Parameter, LRScheduler] = (
-                self.lr_scheduler_class(
-                    optimizer=self.optimizer,
-                    total_steps_per_epoch=self.total_steps_per_epoch,
-                    config=config,
-                )
+            self.lr_scheduler = self.lr_scheduler_class(
+                optimizer=self.optimizer,
+                total_steps_per_epoch=self.total_steps_per_epoch,
+                config=config,
             )
 
     def _create_optimizer(self) -> None:
         """Creates the specified optimizer configured for LLM pretraining."""
 
-        self.optimizer: Optimizer | Mapping[nn.Parameter, Optimizer]
         if self.interleaved_optim:
             logger.info("Enabling optimizer/backward interleaving")
 
@@ -358,7 +372,7 @@ class XFFLOptimizer:
                 self.gradient_accumulation: Optional[int] = gradient_accumulation
                 self.scaler: Optional[GradScaler] = scaler
 
-                self.step = 0
+                self.training_step = 0
                 self.total_steps_per_epoch = total_steps_per_epoch
 
             def __call__(self, parameter: nn.Parameter) -> None:
@@ -369,7 +383,7 @@ class XFFLOptimizer:
                 """
                 if _is_optimizer_accumulation_step_time(
                     gradient_accumulation=self.gradient_accumulation,
-                    step=self.step,
+                    step=self.training_step,
                     total_steps_per_epoch=self.total_steps_per_epoch,
                 ):
                     self.gradient_clipping_fn(parameter)
@@ -379,10 +393,8 @@ class XFFLOptimizer:
                         self.scaler.update()
                     else:
                         self.optimizer.step()
-
-                    self.optimizer.step()
                     self.optimizer.zero_grad(set_to_none=True)
-                self.step += 1
+                self.training_step += 1
 
         assert isinstance(self.optimizer, Mapping)
         for p in self.model.parameters():
@@ -420,6 +432,32 @@ class XFFLOptimizer:
         else:
             return lambda _: None
 
+    def get_lr(self) -> float:
+        """Returns the current learning rate.
+
+        :return: Current learning rate
+        :rtype: float
+        """
+        if self.interleaved_optim:
+            assert isinstance(self.optimizer, Mapping)
+            return next(iter(self.optimizer.values())).param_groups[0]["lr"]
+        else:
+            assert isinstance(self.optimizer, Optimizer)
+            return self.optimizer.param_groups[0]["lr"]
+
+    def get_optimizer(self) -> Optimizer | Sequence[Optimizer]:
+        """Returns the optimizer(s).
+
+        :return: Optimizer(s)
+        :rtype: Optimizer|Sequence[Optimizer]
+        """
+        if self.interleaved_optim:
+            assert isinstance(self.optimizer, Mapping)
+            return tuple(self.optimizer.values())
+        else:
+            assert isinstance(self.optimizer, Optimizer)
+            return self.optimizer
+
     def zero_grad(self, set_to_none: bool = True) -> None:
         """Reset the XFFL optimizers gradients.
 
@@ -449,7 +487,7 @@ class XFFLOptimizer:
         """
         if _is_optimizer_accumulation_step_time(
             gradient_accumulation=self.gradient_accumulation,
-            step=self._step,
+            step=self.training_step,
             total_steps_per_epoch=self.total_steps_per_epoch,
         ):
             if not self.interleaved_optim:
@@ -473,4 +511,4 @@ class XFFLOptimizer:
                     self.lr_scheduler.step()
 
             self.optimizer_step += 1
-        self._step += 1
+        self.training_step += 1

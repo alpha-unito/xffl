@@ -4,15 +4,15 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping
 
 import torch.nn.functional as F
 from torch import nn
-from torch.optim import Adadelta, Optimizer
+from torch.optim import Adadelta
 from torch.utils.data import Dataset
 from torchvision import datasets, transforms
 
-from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
+from xffl.custom.config import DatasetInfo, ModelInfo, OptimizerInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 
 # Constants
@@ -34,14 +34,6 @@ class _Model(nn.Module):
         x = F.relu(self.fc2(x))
         output = F.log_softmax(self.fc3(x), dim=1)
         return output
-
-
-# Optimizer
-def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
-    return Adadelta(
-        params=model.parameters(),
-        lr=config.learning_rate,  # type: ignore
-    )
 
 
 # Model information
@@ -95,6 +87,20 @@ class Mnist(DatasetInfo):
     path: Path = DATASET_PATH
 
 
+# Optimizer information
+@dataclass
+class AdaDelta(OptimizerInfo):
+    """Optimizer configuration for BabyLM pretraining."""
+
+    optimizer: Callable = Adadelta
+
+    optimizer_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "lr": 1e-2,
+        }
+    )
+
+
 # XFFL configuration
 @dataclass
 class xffl_config(XFFLConfig):
@@ -102,14 +108,13 @@ class xffl_config(XFFLConfig):
     # Model and dataset
     model_info: ModelInfo = field(default_factory=SimpleMLP)
     dataset_info: DatasetInfo = field(default_factory=Mnist)
-    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
+    optimizer_info: OptimizerInfo = field(default_factory=AdaDelta)
 
     # General
     loglevel: int = logging.INFO
     seed: int = 42
 
     # Learning
-    learning_rate: float = 1e-2
     epochs: int = 3
     criterion: nn.Module = field(default_factory=nn.NLLLoss)
 
@@ -117,12 +122,14 @@ class xffl_config(XFFLConfig):
     one_class: bool = False
 
     # WandB
-    wandb_entity: str = "alpha-unito"
-    wandb_project: str = "xFFL playground"
-    wandb_group: str = "01_simple_MLP"
-    wandb_name: str = "Example"
-    wandb_notes: str = "Example run of xFFL with a simple MLP"
-    wandb_tags: Sequence[str] = field(
-        default_factory=lambda: ["xFFL", "example", "MLP"]
+    wandb_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "entity": "alpha-unito",
+            "project": "xFFL playground",
+            "group": "01_simple_MLP",
+            "name": "Example",
+            "notes": "Example run of xFFL with a simple MLP",
+            "tags": ["xFFL", "example", "MLP"],
+            "mode": "online",
+        }
     )
-    wandb_mode: str = "online"

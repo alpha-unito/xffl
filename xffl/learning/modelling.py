@@ -11,7 +11,6 @@ from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
-from torch.optim import Optimizer
 
 from xffl.custom.config import ModelInfo, XFFLConfig
 from xffl.distributed.distributed import (
@@ -155,7 +154,7 @@ def save_model(
     model: (
         nn.Module | FullyShardedDataParallel
     ),  # To be generalized (as for now just HF)
-    optimizer: Optimizer | XFFLOptimizer,
+    optimizer: XFFLOptimizer,
     path: Path,
     name: str,
     rank: int,
@@ -192,9 +191,7 @@ def save_model(
     # Gather the full, un-sharded state dict
     state_dict, _ = get_state_dict(
         model=model,
-        optimizers=(
-            optimizer if isinstance(optimizer, Optimizer) else optimizer.optimizer
-        ),
+        optimizers=optimizer.get_optimizer(),
         options=StateDictOptions(full_state_dict=True, cpu_offload=True),
     )
 
