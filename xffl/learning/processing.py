@@ -504,11 +504,13 @@ def distributed_training(
     default_precision, scaler = _setup_amp(state=state)
 
     # Optimizer and lr scheduler creation
-    _optimizer: XFFLOptimizer = XFFLOptimizer(
-        model=model,
-        config=config,
-        total_steps_per_epoch=len(train_dataloader),
-        scaler=scaler,
+    _optimizer: XFFLOptimizer = (
+        XFFLOptimizer(  # TODO: Improve interoperability between optimizer and _optimizer
+            model=model,
+            config=config,
+            total_steps_per_epoch=len(train_dataloader),
+            scaler=scaler,
+        )
     )
     _optimizer.zero_grad()
 
@@ -678,8 +680,8 @@ def distributed_training(
                         "train/Step": epoch * total_length + step,
                         "train/Step_loss": train_step_loss[-1],
                         "train/Step_perplexity": train_step_perplexity[-1],
-                        "opt/Step": optimizer.optimizer_step,
-                        "opt/lr": optimizer.param_groups[0]["lr"],
+                        "opt/Step": _optimizer.optimizer_step,
+                        "opt/lr": _optimizer.optimizer.param_groups[0]["lr"],
                     }
                     if state.is_federated_scaling_setup():
                         metrics["train/Aggregation_step"] = aggregation
@@ -761,7 +763,7 @@ def distributed_training(
             checkpoint_start_time = time.perf_counter()
             save_model(
                 model=model,
-                optimizer=optimizer,
+                optimizer=_optimizer,
                 path=_save_path,
                 name=_output_model_name,
                 rank=state.rank,

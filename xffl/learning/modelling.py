@@ -19,6 +19,7 @@ from xffl.distributed.distributed import (
     get_appropriate_sharding_strategy,
 )
 from xffl.learning import utils
+from xffl.learning.optim import XFFLOptimizer
 from xffl.utils.utils import resolve_param
 
 logger: Logger = getLogger(__name__)
@@ -154,7 +155,7 @@ def save_model(
     model: (
         nn.Module | FullyShardedDataParallel
     ),  # To be generalized (as for now just HF)
-    optimizer: Optimizer,
+    optimizer: Optimizer | XFFLOptimizer,
     path: Path,
     name: str,
     rank: int,
@@ -191,24 +192,27 @@ def save_model(
     # Gather the full, un-sharded state dict
     state_dict, _ = get_state_dict(
         model=model,
-        optimizers=optimizer,
+        optimizers=(
+            optimizer if isinstance(optimizer, Optimizer) else optimizer.optimizer
+        ),
         options=StateDictOptions(full_state_dict=True, cpu_offload=True),
     )
 
     # Only rank 0 saves the model
+    save_path = Path(path, name)
+    save_path.mkdir(parents=True, exist_ok=True)
     if rank == 0:
         # Saving path creation
         if not os.path.exists(path):
             raise Exception(f"Save model path {path} does not exist")
         if not os.path.isdir(path):
             raise Exception(f"Save model path {path} must be a directory")
-        if epoch:
+        if epoch is not None:
             save_path = Path(path, name, f"epoch_{epoch}")
-        elif checkpoint:
+            save_path.mkdir(parents=True, exist_ok=True)
+        elif checkpoint is not None:
             save_path = Path(path, name, f"checkpoint_{checkpoint}")
-        else:
-            save_path = Path(path, name)
-        save_path.mkdir(parents=True, exist_ok=True)
+            save_path.mkdir(parents=True, exist_ok=True)
 
         # Saving state_dict changing precision
         if precision:
