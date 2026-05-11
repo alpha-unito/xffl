@@ -11,7 +11,7 @@ from typing import Any, MutableMapping, Optional
 import torch
 import torch.nn as nn
 import wandb
-from config_FSDP import xffl_config
+from config_HSDP import xffl_config
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
@@ -101,7 +101,6 @@ def pretraining(config: XFFLConfig) -> None:
         state=state,
         optimizer=optimizer,
         train_dataloader=dataloaders["train"],
-        val_dataloader=dataloaders["val"],
         config=config,
         wandb_run=wandb_run,
     )

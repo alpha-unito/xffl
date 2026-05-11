@@ -21,10 +21,10 @@ from xffl.distributed.distributed_state import DistributedState
 from xffl.learning.data import load_datasets_from_disk
 
 # Constants
-LLAMA3_1_8B: str = "llama3.1-8b-init"
+LLAMA3_1_8B: str = "llama3.1-8b"
 CLEAN_MC4_IT: str = "clean_mc4_it"
 
-BASE_PATH: str = "/leonardo_scratch/fast/uToID_bench/xffl"
+BASE_PATH: str = ""  # <--- TODO: Insert the absolute path of the EuroPar folder
 
 
 @dataclass
@@ -41,7 +41,7 @@ class llama(ModelInfo):
             local_files_only=True,  # Most HPCs do not have internet access from the nodes
             attn_implementation=config.model_info.attention,
             dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto"
-            device_map=state.init_device,
+            device_map=state.current_device,
             use_safetensors=True,
             low_cpu_mem_usage=True,
             tie_word_embeddings=True,
@@ -78,18 +78,14 @@ class cleanmc4it(DatasetInfo):
     @staticmethod
     def _get_cleanmc4it_splits(config: XFFLConfig, state: DistributedState):
         return load_datasets_from_disk(
-            splits={"train": "train", "val": "val"},
+            splits={"train": "train"},
             base_path=Path(str(config.dataset_info.path)),
         )  # Original LLaMA training packs the datasets
 
     name: str = CLEAN_MC4_IT
     splits: Callable = _get_cleanmc4it_splits
-    batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 2, "val": 2}
-    )
-    subsampling: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 65536, "val": 4096}
-    )
+    batch_sizes: Mapping[str, int] = field(default_factory=lambda: {"train": 2})
+    subsampling: Mapping[str, int] = field(default_factory=lambda: {"train": 65536})
     workers: int = 2
     collate_fn: Callable = default_data_collator
     path: str = BASE_PATH + "/data/" + CLEAN_MC4_IT
@@ -123,13 +119,15 @@ class xffl_config(XFFLConfig):
     learning_rate: float = 3e-4
     epochs: int = 1
 
-    # WandB
-    wandb_entity: str = "alpha-unito"
+    # WandB # <--- TODO: personalize your WandB account
+    wandb_entity: str = ""
     wandb_project: str = "FL+DP"
-    wandb_group: str = "FSDP_new"
+    wandb_group: str = "FSDP"
     wandb_notes: str = "EuroPar 2026 experiments"
-    wandb_tags: Sequence[str] = field(default_factory=lambda: ["xFFL", "EuroPar"])
-    wandb_mode: str = "offline"
+    wandb_tags: Sequence[str] = field(
+        default_factory=lambda: ["xFFL", "EuroPar", "FSDP"]
+    )
+    wandb_mode: str = "online"
 
     # Learning rate scheduler
     @staticmethod
