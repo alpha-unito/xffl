@@ -764,6 +764,7 @@ def distributed_training(
             checkpoint_start_time = time.perf_counter()
             save_model(
                 model=model,
+                tokenizer=config.tokenizer,
                 optimizer=_optimizer,
                 path=_save_path,
                 name=_output_model_name,

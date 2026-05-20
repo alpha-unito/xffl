@@ -194,6 +194,16 @@ def exec(args: Namespace) -> int:
         else:
             env["XFFL_FEDERATED_LOCAL_WORLD_SIZE"] = str(args.federated_scaling)
 
+    ###
+    import os
+
+    env["MODEL_NAME"] = os.getenv("ILM_MODEL", "BabyLM-130M")
+    env["ILM_TYPE"] = os.getenv("ILM_TYPE")
+    env["ILM_LANGUAGE_A"] = os.getenv("ILM_LANGUAGE_A")
+    env["ILM_LANGUAGE_B"] = os.getenv("ILM_LANGUAGE_B")
+    env["ILM_TOKENIZER"] = os.getenv("ILM_TOKENIZER")
+    #######
+
     env_str: str = " ".join(f"{k}={v}" for k, v in env.items())
 
     logger.info("Running local execution...")

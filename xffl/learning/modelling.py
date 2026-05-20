@@ -158,6 +158,7 @@ def save_model(
     path: Path,
     name: str,
     rank: int,
+    tokenizer: Optional[nn.Module] = None,
     epoch: Optional[int] = None,
     checkpoint: Optional[int] = None,
     precision: Optional[torch.dtype] = None,
@@ -229,5 +230,7 @@ def save_model(
             state_dict=state_dict,
             safe_serialization=True,  # Safetensor or Pickle
         )  # type: ignore # Shard size can be controlled (can improve transfer performance)
+        if tokenizer is not None:
+            tokenizer.save_pretrained(save_directory=save_path)
 
         logger.info(f"Model saved to {save_path}")
