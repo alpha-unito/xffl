@@ -22,13 +22,13 @@ from xffl.learning.optim import warmup_cosine_decay
 os.environ["HF_HUB_OFFLINE"] = "1"
 
 # Constants
-BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl")
+BASE_PATH: Path = Path("/home/gmittone/xffl")
 
 
 # Model information
 @dataclass
 class evo_2(ModelInfo):
-    from StripedHyena2 import AttentionBlock
+    from StripedHyena2 import AttentionBlock, ParallelGatedConvBlock
 
     @staticmethod
     # LLM loading from saved model
@@ -48,9 +48,9 @@ class evo_2(ModelInfo):
         model: nn.Module = StripedHyena(
             evo2_config, current_device=state.current_device
         )
-        model.load_state_dict(
+        model.custom_load_state_dict(
             torch.load(
-                config.model_info.path / "evo2_1b_base.pt",
+                str(config.model_info.path) + f"/{config.model_info.name}.pt",
                 weights_only=False,
                 map_location="cpu",
             ),
@@ -62,7 +62,7 @@ class evo_2(ModelInfo):
     name: str = "evo2_1b_base"
     attention: str = "flash_attention_2"
     model: Callable = _load_evo2_from_checkpoint
-    decoder_layer: Type = AttentionBlock
+    decoder_layer: Tuple[Type, ...] = (AttentionBlock, ParallelGatedConvBlock)
     activation_checkpointing: bool = True
     mixed_precision: MixedPrecision = field(
         default_factory=lambda: MixedPrecision(
@@ -117,7 +117,7 @@ class opengenome(DatasetInfo):
     name: str = "opengenome2-metagenomes-plantcad2-c4096"
     splits: Callable = _get_dataset_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 4, "val": 1}
+        default_factory=lambda: {"train": 8, "val": 1}
     )
     subsampling: Mapping[str, int] = field(
         default_factory=lambda: {"train": 1000, "val": 20}

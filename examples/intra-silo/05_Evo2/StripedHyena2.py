@@ -2,7 +2,6 @@
 
 import io  # For BytesIO handling
 import logging
-import math
 
 import torch
 import torch.nn as nn
@@ -30,7 +29,6 @@ from vortex.model.utils import (
     fixup_fp8_extra_states,
     fixup_te_workspace,
     interleave,
-    move_to_device,
     print_rank_0,
 )
 
@@ -92,7 +90,7 @@ class AttentionBlock(nn.Module):
 
     def forward(self, u, inference_params=None, padding_mask=None, *args, **kwargs):
         if (
-            type(padding_mask) == torch.Tensor
+            type(padding_mask) is torch.Tensor
         ):  # workaround for masking bug in FA. This works because Wqkv does not have bias
             # and attention scores will be also automatically zeroed.
             u = u * padding_mask[..., None]
@@ -110,7 +108,7 @@ class AttentionBlock(nn.Module):
         if self.print_activations:
             activations_logger.info(f"post mha: {u}")
 
-        if type(padding_mask) == torch.Tensor:  # guard against bias
+        if type(padding_mask) is torch.Tensor:  # guard against bias
             u = u * padding_mask[..., None]
 
         if self.print_activations:
@@ -232,10 +230,7 @@ class HyenaCascade(nn.Module):
             # poles[..., 0] = 1e-2 * torch.randn(self.num_systems, self.state_size, 1)
             # poles[..., 1] = 1e-3 * torch.randn(self.num_systems, self.state_size, 1)
 
-            # self.log_poles = nn.Parameter(log_poles)
-            self.log_poles = nn.Parameter(
-                -torch.exp(torch.randn(self.num_systems, self.state_size, 1))
-            )  ### NEW (SUGGESTED) CODE
+            self.log_poles = nn.Parameter(log_poles)
             self.residues = nn.Parameter(
                 torch.randn(self.num_systems, self.state_size, dtype=torch.float32)
             )
@@ -263,7 +258,7 @@ class HyenaCascade(nn.Module):
             self.hyena_filter_groups,
         )
         if self.print_activations:
-            activations_logger.info(f"pre 1 parallel fir: {u}, {u.min()}, {u.max()}")
+            print(f"pre 1 parallel fir: {u}, {u.min()}, {u.max()}")
 
         z_pre, fir_state = self.engine.parallel_fir(
             self.fir_fn,
@@ -300,7 +295,7 @@ class HyenaCascade(nn.Module):
         # prefilling is handled by the engine.
         if self.fir_inner_filter_length is not None:
             if self.print_activations:
-                activations_logger.info(
+                print(
                     f"pre 2 parallel fir: {z_pre}, {z_pre.min()}, {z_pre.max()}, {self.fir_inner_filter_length}"
                 )
             y, fir_inner_state = self.engine.parallel_fir(
@@ -320,17 +315,13 @@ class HyenaCascade(nn.Module):
                 groups=self.hyena_filter_groups,
             )
             if self.print_activations:
-                activations_logger.info(
-                    f"post 2 parallel fir: {y}, {y.min()}, {y.max()}"
-                )
+                print(f"post 2 parallel fir: {y}, {y.min()}, {y.max()}")
             y = y.permute(0, 2, 1)
             if inference_params:
                 inference_params.fir_inner_state_dict[self.layer_idx] = fir_inner_state
         else:
             if self.print_activations:
-                activations_logger.info(
-                    f"pre 2 parallel iir: {z_pre}, {z_pre.min()}, {z_pre.max()}"
-                )
+                print(f"pre 2 parallel iir: {z_pre}, {z_pre.min()}, {z_pre.max()}")
             y = self.engine.parallel_iir(
                 z_pre,
                 h,
@@ -350,9 +341,7 @@ class HyenaCascade(nn.Module):
                 padding_mask=padding_mask,
             )
             if self.print_activations:
-                activations_logger.info(
-                    f"post 2 parallel iir: {y}, {y.min()}, {y.max()}"
-                )
+                print(f"post 2 parallel iir: {y}, {y.min()}, {y.max()}")
 
         return y, inference_params
 
@@ -442,7 +431,6 @@ class HyenaCascade(nn.Module):
             self.log_poles.to(filter_dtype),
         )
         h = (residues[..., None] * (log_poles * self.t).exp()).sum(1)[None]  # B, D, L
-
         return h, filter_dtype, log_poles, residues
 
 
@@ -453,7 +441,7 @@ class ParallelGatedConvBlock(nn.Module):
         super().__init__()
         self.config = config
         self.layer_idx = layer_idx
-        self.print_activations = True  # config.get("print_activations", False)
+        self.print_activations = config.get("print_activations", False)
         self.ground_truth_activations_path = config.get(
             "ground_truth_activations_path", None
         )
@@ -595,7 +583,7 @@ class ParallelGatedConvBlock(nn.Module):
     def forward(self, u, inference_params=None, padding_mask=None, *args, **kwargs):
         z = self.proj_norm(u)
 
-        if type(padding_mask) == torch.Tensor:  # guard against bias
+        if type(padding_mask) is torch.Tensor:  # guard against bias
             z = z * padding_mask[..., None]
 
         if self.print_activations:
@@ -651,7 +639,7 @@ class ParallelGatedConvBlock(nn.Module):
         # if self.layer_idx == 0:
         #    z_in = z_savanna.squeeze() + u + self.out_filter_dense.bias
 
-        if type(padding_mask) == torch.Tensor:  # guard against bias
+        if type(padding_mask) is torch.Tensor:  # guard against bias
             z_in = z_in * padding_mask[..., None]
 
         y = self.res_mlp_norm(z_in)
@@ -691,17 +679,17 @@ class StripedHyena(nn.Module):
     def __init__(self, config, current_device):
         super().__init__()
         if HAS_TE:
-            fixup_te_workspace()  # Workaround global cublas workspaces in TE
+            fixup_te_workspace()  # Workaround global cublas workspaces in Transformer Engine
 
         if config.get("use_fp8_input_projections", False) and not HAS_TE:
             raise ImportError(
                 "This model requires FP8 input projections (use_fp8_input_projections=True) "
-                "which depends on Transformer Engine, but TE is not installed.\n"
+                "which depends on Transformer Engine, but Transformer Engine is not installed.\n"
                 "Only 7b models (8k, 262k, 1m) can run without Transformer Engine."
             )
 
         self.config = config
-        self.print_activations = False  # config.get("print_activations", False)
+        self.print_activations = config.get("print_activations", False)
 
         if self.print_activations:
             enable_activations_logging()
@@ -777,7 +765,7 @@ class StripedHyena(nn.Module):
         # self.logger.info("Initialized model")
 
     def forward(self, x, inference_params_dict=None, padding_mask=None):
-        L = x.shape[1]
+        # L = x.shape[1]
         if self.print_activations:
             activations_logger.info(f"pre embedding: {x}, {x.min()}, {x.max()}")
 
@@ -867,7 +855,7 @@ class StripedHyena(nn.Module):
         return x, inference_params_dict
 
     def stateless_forward(self, x, padding_mask=None):
-        if type(padding_mask) == torch.Tensor:
+        if type(padding_mask) is torch.Tensor:
             x = x * padding_mask[..., None]
 
         for block_idx, block in enumerate(self.blocks):
@@ -903,15 +891,15 @@ class StripedHyena(nn.Module):
         return x, None
 
     def initialize_inference_params(self, max_seqlen=None):
-        ## Input seqlen takes priority over config!
-        ## WARNING: This avoids potential errors but means the model can be used beyond length it was trained at
+        # Input seqlen takes priority over config!
+        # WARNING: This avoids potential errors but means the model can be used beyond length it was trained at
         config_seqlen = self.config.get("max_seqlen", None)
         if config_seqlen is None:
             print("No max_seqlen found in config!!! using default value of 8192")
             config_seqlen = 8192
-        new_max_seqlen = max_seqlen if max_seqlen != None else config_seqlen
+        new_max_seqlen = max_seqlen if max_seqlen is not None else config_seqlen
         # self.config["max_seqlen"] = new_max_seqlen
-        ## Note: changing the stored config max_seqlen will change the max_seqlen used in flash attention, leading to minor logit differences
+        # Note: changing the stored config max_seqlen will change the max_seqlen used in flash attention, leading to minor logit differences
         print(f"Initializing inference params with max_seqlen={new_max_seqlen}")
 
         inference_params_dict = {
@@ -939,9 +927,9 @@ class StripedHyena(nn.Module):
         return inference_params_dict
 
     def precompute_filters(self, L, device):
-        for block_idx, block in enumerate(self.blocks):
-            if type(block) == ParallelGatedConvBlock:
-                if type(block.filter) == HyenaCascade:
+        for _, block in enumerate(self.blocks):
+            if type(block) is ParallelGatedConvBlock:
+                if type(block.filter) is HyenaCascade:
                     L = block.filter.long_fir_threshold or L
                     print_rank_0(f"Precomputing filters, L={L}...")
 
@@ -961,8 +949,8 @@ class StripedHyena(nn.Module):
     def load_poles_residues(self, path):
         "Load different poles and residues for each layer."
         for block_idx, block in enumerate(self.blocks):
-            if type(block) == ParallelGatedConvBlock:
-                if type(block.filter) == HyenaCascade:
+            if type(block) is ParallelGatedConvBlock:
+                if type(block.filter) is HyenaCascade:
                     self.logger.info(
                         f"Loading approximatepoles and residues for block {block_idx}"
                     )
@@ -980,13 +968,14 @@ class StripedHyena(nn.Module):
                     block.filter.poles = nn.Parameter(poles)
                     block.filter.residues = nn.Parameter(residues)
 
-    def custom_load_state_dict(self, state_dict, strict=True):
+    def custom_load_state_dict(self, state_dict, strict=True, silent=True):
         """
         Post-processes the state_dict to convert savanna checkpoints to vortex checkpoints.
         """
-        self.logger.debug(
-            f"Loading state dict: {state_dict}, (ignoring extra keys) with strict: {strict}"
-        )
+        if not silent:
+            self.logger.debug(
+                f"Loading state dict: {state_dict}, (ignoring extra keys) with strict: {strict}"
+            )
         model_dict = self.state_dict()
 
         # Find keys that are in model_dict but not in state_dict
@@ -994,10 +983,11 @@ class StripedHyena(nn.Module):
         # Find keys that are in state_dict but not in model_dict
         extra_in_state_dict = state_dict.keys() - model_dict.keys()
 
-        if missing_in_state_dict:
-            print(f"Keys missing in state_dict: {missing_in_state_dict}")
-        if extra_in_state_dict:
-            print(f"Extra keys in state_dict: {extra_in_state_dict}")
+        if not silent:
+            if missing_in_state_dict:
+                print(f"Keys missing in state_dict: {missing_in_state_dict}")
+            if extra_in_state_dict:
+                print(f"Extra keys in state_dict: {extra_in_state_dict}")
 
         filtered_dict = {k: v for k, v in state_dict.items() if k in model_dict}
 
@@ -1008,7 +998,7 @@ class StripedHyena(nn.Module):
                 fp8_format=fp8_format, amax_history_len=16, amax_compute_algo="max"
             )
 
-            # Iterate over filtered_dict to ensure _extra_state for TE Linear layers have 'recipe'
+            # Iterate over filtered_dict to ensure _extra_state for Transformer Engine Linear layers have 'recipe'
             for k in list(filtered_dict.keys()):
                 if k.endswith("._extra_state"):
                     module_path = k.rsplit("._extra_state", 1)[0]
@@ -1027,7 +1017,10 @@ class StripedHyena(nn.Module):
                             elif isinstance(extra_state_value, dict):
                                 te_fp8_meta = extra_state_value
                             elif extra_state_value is None:
-                                self.logger.info(f"Initialized empty fp8_meta for {k}")
+                                if not silent:
+                                    self.logger.info(
+                                        f"Initialized empty fp8_meta for {k}"
+                                    )
                                 te_fp8_meta = {}
 
                             if "recipe" not in te_fp8_meta:
@@ -1086,9 +1079,10 @@ class StripedHyena(nn.Module):
                         for attr in module_path.split("."):
                             current_module = getattr(current_module, attr)
                         if isinstance(current_module, TELinear):
-                            self.logger.info(
-                                f"Adding missing FP8 extra state with default recipe for {k}"
-                            )
+                            if not silent:
+                                self.logger.info(
+                                    f"Adding missing FP8 extra state with default recipe for {k}"
+                                )
                             te_fp8_meta = {"recipe": default_recipe}
                             if hasattr(current_module, "fp8_meta"):
                                 if hasattr(current_module.fp8_meta, "scaling_fwd"):
@@ -1112,30 +1106,32 @@ class StripedHyena(nn.Module):
                             f"Error creating missing _extra_state for {k}: {e}"
                         )
         else:
-            # Without TE, strip any _extra_state keys from the checkpoint
+            # Without Transformer Engine, strip any _extra_state keys from the checkpoint
             # (these are FP8 metadata that the fallback TELinear doesn't use)
             extra_state_keys = [k for k in filtered_dict if k.endswith("._extra_state")]
             for k in extra_state_keys:
                 del filtered_dict[k]
             if extra_state_keys:
-                self.logger.info(
-                    f"Stripped {len(extra_state_keys)} FP8 _extra_state keys from checkpoint "
-                    f"(Transformer Engine not installed)"
-                )
+                if not silent:
+                    self.logger.info(
+                        f"Stripped {len(extra_state_keys)} FP8 _extra_state keys from checkpoint "
+                        f"(Transformer Engine not installed)"
+                    )
 
         self.load_state_dict(filtered_dict, strict=strict)
         fixup_fp8_extra_states(self)
 
         if self.config.get("column_split", True):
-            self.logger.info("Adjusting Wqkv for column split (permuting rows)")
+            if not silent:
+                self.logger.info("Adjusting Wqkv for column split (permuting rows)")
             for layer_idx, block in enumerate(self.blocks):
-                if type(block) == AttentionBlock:
+                if type(block) is AttentionBlock:
                     target_device = block.inner_mha_cls.Wqkv.weight.device
 
                     Wqkv = state_dict[f"blocks.{layer_idx}.inner_mha_cls.Wqkv.weight"]
                     try:
                         bias = state_dict[f"blocks.{layer_idx}.inner_mha_cls.Wqkv.bias"]
-                    except:
+                    except Exception:
                         bias = None
 
                     size_att_head = block.hidden_size_per_attention_head
@@ -1164,7 +1160,7 @@ class StripedHyena(nn.Module):
                         bias = torch.cat([bias_q, bias_k, bias_v], dim=0)
                         try:
                             block.inner_mha_cls.Wqkv.bias.data = bias.to(target_device)
-                        except:
+                        except Exception:
                             pass
 
     def to_bfloat16_except_pr_lc(self, to_float32=False):
@@ -1174,7 +1170,7 @@ class StripedHyena(nn.Module):
         """
         excluded_shapes = [(4096, 1, 128)]
         for k, p in self.named_parameters():
-            if "projections" not in k:  # avoid TE linears
+            if "projections" not in k:  # avoid Transformer Engine linears
                 if (
                     "log_poles" not in k
                     and "residues" not in k

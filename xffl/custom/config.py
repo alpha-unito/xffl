@@ -9,7 +9,7 @@ from abc import ABC
 from dataclasses import dataclass
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence, Type
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import torch
 from torch import nn
@@ -63,7 +63,7 @@ class ModelInfo(ABC):
     # Optional
     path: Optional[Path | str] = None
     attention: Optional[str] = None
-    decoder_layer: Optional[Type] = None
+    decoder_layer: Optional[Tuple[Type]] = None
     wrapping_policy: Optional[Callable] = None
     activation_checkpointing: Optional[bool] = None
     tokenizer: Optional[Callable[[XFFLConfig, DistributedState], AutoTokenizer]] = None  # type: ignore
@@ -113,7 +113,10 @@ class ModelInfo(ABC):
             err_msg += f"Model configuration error: the specified attention implementation is not supported ({self.attention}).\n"
 
         # Decoder layer
-        if self.decoder_layer is not None and not isinstance(self.decoder_layer, Type):
+        if self.decoder_layer is not None and not (
+            isinstance(self.decoder_layer, Tuple)
+            or isinstance(self.decoder_layer, Type)
+        ):
             err_msg += f"Model configuration error: the specified decoder layer is not a type ({self.decoder_layer}).\n"
 
         # Wrapping policy
@@ -125,10 +128,16 @@ class ModelInfo(ABC):
             logger.debug(
                 f"Automatically setting the wrap policy to the default one based on {self.decoder_layer}."
             )
-            self.wrapping_policy = functools.partial(
-                wrap.transformer_auto_wrap_policy,
-                transformer_layer_cls={self.decoder_layer},
-            )
+            if isinstance(self.decoder_layer, Type):
+                self.wrapping_policy = functools.partial(
+                    wrap.transformer_auto_wrap_policy,
+                    transformer_layer_cls={self.decoder_layer},  # type: ignore
+                )
+            else:
+                self.wrapping_policy = functools.partial(
+                    wrap.transformer_auto_wrap_policy,
+                    transformer_layer_cls={_cls for _cls in self.decoder_layer},  # type: ignore
+                )
 
         # Activation Checkpointing
         if self.activation_checkpointing is not None:
