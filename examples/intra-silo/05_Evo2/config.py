@@ -1,7 +1,6 @@
 """Configuration file for the xFFL-LLM+tokenizer example"""
 
 import logging
-import math
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,19 +12,17 @@ from datasets import Dataset as HFDataset
 from datasets import load_dataset
 from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
-from torch.optim import AdamW, Optimizer
-from torch.optim.lr_scheduler import LRScheduler
+from torch.optim import AdamW
 
-from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
+from xffl.custom.config import DatasetInfo, ModelInfo, OptimizerInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
+from xffl.learning.optim import warmup_cosine_decay
 
 # Force HuggingFace to offline mode
 os.environ["HF_HUB_OFFLINE"] = "1"
 
 # Constants
-EVO2_1B: str = "evo2_1b_base"
-OPENGENOME2: str = "opengenome2-metagenomes-plantcad2-c4096"
-BASE_PATH: str = "/leonardo_scratch/fast/uToID_bench/xffl"
+BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl")
 
 
 # Model information
@@ -35,42 +32,38 @@ class evo_2(ModelInfo):
 
     @staticmethod
     # LLM loading from saved model
-    def _load_from_checkpoint(config: XFFLConfig, state: DistributedState) -> nn.Module:
+    def _load_evo2_from_checkpoint(
+        config: XFFLConfig, state: DistributedState
+    ) -> nn.Module:
         import pkgutil
 
         import yaml
         from StripedHyena2 import StripedHyena
         from vortex.model.utils import dotdict
 
-        config = yaml.safe_load(pkgutil.get_data("evo2.utils", "configs/evo2-1b-8k.yml"))  # type: ignore
-        config = dotdict(config)  # type: ignore
-        config.use_fp8_input_projections = False  # type: ignore
+        evo2_config = yaml.safe_load(pkgutil.get_data("evo2.utils", "configs/evo2-1b-8k.yml"))  # type: ignore
+        evo2_config = dotdict(evo2_config)  # type: ignore
+        evo2_config.use_fp8_input_projections = False  # type: ignore
 
-        return StripedHyena(config, current_device=state.current_device).to(
-            dtype=torch.bfloat16
+        model: nn.Module = StripedHyena(
+            evo2_config, current_device=state.current_device
+        )
+        model.load_state_dict(
+            torch.load(
+                config.model_info.path / "evo2_1b_base.pt",
+                weights_only=False,
+                map_location="cpu",
+            ),
+            strict=False,
         )
 
-    # Auto wrap policy
-    @staticmethod
-    def llama_fsdp_wrap_policy():
-        from functools import partial
+        return model.to(dtype=torch.bfloat16)
 
-        from StripedHyena2 import AttentionBlock
-        from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
-
-        return partial(
-            transformer_auto_wrap_policy,
-            transformer_layer_cls={
-                AttentionBlock,
-            },
-        )
-
-    name: str = EVO2_1B
+    name: str = "evo2_1b_base"
     attention: str = "flash_attention_2"
-    model: Callable = _load_from_checkpoint
-    # decoder_layer: Type = AttentionBlock
-    # wrapping_policy: Callable = llama_fsdp_wrap_policy
-    activation_checkpointing: bool = False
+    model: Callable = _load_evo2_from_checkpoint
+    decoder_layer: Type = AttentionBlock
+    activation_checkpointing: bool = True
     mixed_precision: MixedPrecision = field(
         default_factory=lambda: MixedPrecision(
             param_dtype=torch.bfloat16,
@@ -78,7 +71,7 @@ class evo_2(ModelInfo):
             buffer_dtype=torch.bfloat16,
         )
     )
-    path: str = BASE_PATH + "/models/" + name
+    path: Path = BASE_PATH / "model" / name
 
 
 # Dataset information
@@ -104,46 +97,60 @@ class opengenome(DatasetInfo):
 
     @staticmethod
     def _get_collate_fn() -> Callable:
-        from torch.nn.utils.rnn import pad_sequence
         from vortex.model.tokenizer import CharLevelTokenizer
 
-        tokenizer = CharLevelTokenizer(512)
+        tokenizer: CharLevelTokenizer = CharLevelTokenizer(512)
 
-        def _collate_fn(batch: Sequence[Mapping[str, str]]) -> Tuple[Tensor, Tensor]:
-            tokens = torch.tensor(
+        def _collate_fn(batch: Sequence[Mapping[str, Any]]) -> Tuple[Tensor, Tensor]:
+            enc: Tensor = torch.tensor(
                 tokenizer.tokenize_batch([sample["text"] for sample in batch]),
-                dtype=int,  # type: ignore
+                dtype=torch.long,
             )
 
-            inputs = tokens[:, :-1]
-            targets = tokens[:, 1:]
+            inputs = enc[:, :-1]
+            targets = enc[:, 1:]
 
             return inputs, targets
 
         return _collate_fn
 
-    name: str = OPENGENOME2
+    name: str = "opengenome2-metagenomes-plantcad2-c4096"
     splits: Callable = _get_dataset_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 2, "val": 1}
+        default_factory=lambda: {"train": 4, "val": 1}
     )
     subsampling: Mapping[str, int] = field(
         default_factory=lambda: {"train": 1000, "val": 20}
     )
     collate_fn: Callable = field(default_factory=_get_collate_fn)
     workers: int = 2
-    path: str = BASE_PATH + "/data/" + OPENGENOME2
+    path: Path = BASE_PATH / "dataset" / name
 
 
-# Optimizer
-def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
-    return AdamW(
-        params=model.parameters(),
-        lr=config.learning_rate,  # type: ignore
-        weight_decay=config.weight_decay,  # type: ignore
-        betas=config.betas,  # type: ignore
-        fused=True,
+# Optimizer information
+@dataclass
+class AdamW(OptimizerInfo):
+    """Optimizer configuration for BabyLM pretraining."""
+
+    optimizer: Callable = AdamW
+
+    optimizer_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "lr": 1e-6,
+            "weight_decay": 0.1,
+            "betas": (0.9, 0.95),
+            "fused": True,
+        }
     )
+    lr_scheduler: Callable = warmup_cosine_decay
+    lr_scheduler_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "warmup_fraction": 0.01,
+            "final_lr_ratio": 0.01,
+        }
+    )
+    gradient_clipping: float = 1.0
+    gradient_accumulation: int = 1
 
 
 # XFFL configuration
@@ -153,17 +160,14 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=evo_2)
     dataset_info: DatasetInfo = field(default_factory=opengenome)
-    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
+    optimizer_info: OptimizerInfo = field(default_factory=AdamW)
 
     # General
     loglevel: int = logging.DEBUG
     seed: int = 42
 
     # Learning
-    learning_rate: float = 1e-6
     epochs: int = 1
-    gradient_clipping: float = 1.0
-    gradient_accumulation: int = 1
 
     # Custom criterion
     @staticmethod
@@ -175,80 +179,18 @@ class xffl_config(XFFLConfig):
     criterion: Callable = _evo2_CrossEntropy
 
     # WandB
-    wandb_entity: str = "alpha-unito"
-    wandb_project: str = "xFFL playground"
-    wandb_group: str = "02_CNN"
-    wandb_name: str = "Example"
-    wandb_notes: str = "Example run of xFFL with a CNN"
-    wandb_tags: Sequence[str] = field(
-        default_factory=lambda: ["xFFL", "example", "MLP"]
+    wandb_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "entity": "alpha-unito",
+            "project": "xFFL playground",
+            "group": "05_Evo2",
+            "name": "Example",
+            "notes": "Example run of xFFL with Evo2 for bioinformatics",
+            "tags": ["xFFL", "example", "Evo2"],
+            "mode": "disabled",
+        }
     )
-    wandb_mode: str = "disabled"
-
-    # Advanced configuration
-    @staticmethod
-    def _get_cosine_schedule(
-        optimizer: Optimizer, total_steps: int, config: XFFLConfig
-    ) -> LRScheduler:
-
-        class _WarmupCosineLREpochsAccum(LRScheduler):
-            def __init__(
-                self,
-                optimizer=optimizer,
-                epochs=config.epochs,
-                accum_steps=config.gradient_accumulation,
-                peak_lr=config.learning_rate,
-                steps_per_epoch=total_steps,
-                warmup_frac=0.01,
-                final_lr_ratio=0.1,
-            ):
-                """
-                Warmup + Cosine Decay compatible with Gradient Accumulation.
-                """
-                self.optimizer = optimizer
-
-                self.peak_lr = peak_lr
-                self.final_lr = peak_lr * final_lr_ratio  # type: ignore
-
-                # Converte tutto in "optimizer steps"
-                self.effective_steps_per_epoch = steps_per_epoch // accum_steps  # type: ignore
-                self.total_steps = epochs * self.effective_steps_per_epoch  # type: ignore
-                self.warmup_steps = int(self.total_steps * warmup_frac)
-
-                self.step_num = 0  # conta gli optimizer.step()
-
-            def step(self):
-                self.step_num += 1
-                lr = self.get_lr()
-
-                for group in self.optimizer.param_groups:
-                    group["lr"] = lr
-
-                return lr
-
-            def get_lr(self):
-                # Warmup lineare
-                if self.step_num < self.warmup_steps:
-                    return self.peak_lr * (self.step_num / self.warmup_steps)  # type: ignore
-
-                # Cosine decay
-                progress = (self.step_num - self.warmup_steps) / (
-                    self.total_steps - self.warmup_steps
-                )
-                progress = min(max(progress, 0.0), 1.0)
-
-                cosine = 0.5 * (1 + math.cos(math.pi * progress))
-                return self.final_lr + (self.peak_lr - self.final_lr) * cosine  # type: ignore
-
-        return _WarmupCosineLREpochsAccum()
-
-    lr_scheduler: Callable = _get_cosine_schedule
 
     # Output
     output_folder: Optional[Path] = None
     output_model: Optional[str] = None
-
-    # Custom
-    final_lr_ratio: float = 0.01
-    weight_decay: float = 0.1
-    betas: Tuple[float, float] = (0.9, 0.95)

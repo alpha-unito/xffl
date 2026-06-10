@@ -1,205 +1,242 @@
-# xFFL Large Language Model (LLM) Pre‑Training Example
+# xFFL Evo2 Genomics Pre‑Training Example
 
-This example demonstrates how to pre‑train a **Large Language Model (LLaMA/Mixtral family)** using **xFFL** in an HPC environment. It showcases how to configure transformer models, load large datasets, initialize multi‑node distributed execution (FSDP/HSDP/FL), and run scalable training using xFFL.
+This example demonstrates how to train the **Evo2 1B Base** genomic foundation model using **xFFL** on an HPC cluster. The configuration is tailored for distributed training with FSDP and focuses on genomic sequence modeling using the OpenGenome dataset and a character-level tokenizer.
 
 ## Overview
 
-This example includes:
+The example contains:
 
-* A **configuration file** (`config.py`) defining the LLM architecture (LLaMA or Mixtral), dataset paths, training hyperparameters, and distributed options.
+- `config.py` – complete xFFL configuration, including model loading, dataset definition, optimizer, scheduler, and experiment settings.
+- `training.py` – xFFL-compatible training script (expected to be executed through `xffl exec`).
 
-* A **training script** (`training.py`) implementing a full xFFL-compliant LLM training pipeline with:
-  * deterministic setup
-  * distributed initialization (FSDP/HSDP/FL)
-  * activation checkpointing
-  * dataset loading from disk
-  * AdamW optimizer + cosine decay schedule
-  * optional WandB logging
-  * multi‑node training via xFFL
+Key characteristics:
 
-This example is designed for **large‑scale pre‑training**, not fine‑tuning (no LoRA/QLoRA, no parameter‑efficient methods). Models are trained fully in **bfloat16**.
+- Evo2 1B Base model (`evo2_1b_base`)
+- Genomic sequence modeling
+- Character-level tokenization
+- bfloat16 training
+- AdamW optimizer
+- Warmup + cosine learning-rate schedule
+- Offline Hugging Face execution
+- Distributed HPC execution through xFFL
 
 ## File Structure
 
-```
-llm_example/
-│
-├── config.py          # LLaMA/Mixtral + clean-mC4-it configuration
-├── training.py        # Main distributed LLM training script
-```
-
-## `config.py`
-
-The configuration defines all aspects of the example.
-
-### **Model**
-
-Two architectures are provided:
-
-* **LLaMA 3.1 8B** (`llama`)
-* **Mixtral 8×7B** (`mixtral`)
-
-Available model fields:
-
-* `model_type`: HF model class (LlamaForCausalLM or MixtralForCausalLM)
-* `decoder_layers`: transformer layer classes for auto‑wrapping
-* `wrapping_policy`: FSDP wrap policy for transformer layers
-* `path`: base storage path for saved model weights
-
-### **Dataset**
-
-This example uses **clean_mc4_it**, an Italian‑language subset of mC4.
-
-`cleanmc4it` specifies:
-
-* dataset name
-* train/val splits
-* dataset base path
-
-**Important:** dataset must already be tokenized and saved via `datasets.save_to_disk()`.
-
-### **Training Configuration (`xffl_config`)**
-
-Includes:
-
-* logging level (same as ```python.logging```)
-* random seed
-* distributed strategy (`hsdp`, `federated_scaling`)
-* attention backend (e.g., `sdpa`)
-* subsampling for debugging
-* batch sizes
-* workers
-* learning rate + AdamW betas
-* optional LR scaling by world size
-* output paths for checkpoints
-* WandB configuration
-* number of epochs (default: 1)
-* federated batching (i.e., how many batches are processed between two FL aggregations)
-
-This object is passed directly into `training.py`.
-
-## `training.py`
-
-This is a complete distributed LLM pre‑training script.
-
-### **1. Distributed Setup**
-
-Initializes multi‑node execution through:
-
-```
-distributed.setup_distributed_process_group(
-    hsdp=config.hsdp,
-    federated=config.federated_scaling,
-    streams=config.cuda_streams,
-)
+```text
+project/
+├── config.py
+├── training.py
+├── requirements.txt
+└── README.md
 ```
 
-Supports:
+## Model Configuration
 
-* Standard FSDP
-* HSDP hierarchical groups
-* Federated Learning scaling
-* Multiple CUDA-streams usage to optimize GPU communications
+### Evo2 1B Base
 
+The configuration defines the model through the `evo_2` dataclass.
 
-### **2. Model Loading**
+Main settings:
 
-Models are loaded from disk:
+| Parameter | Value |
+|-----------|--------|
+| Model | Evo2 1B Base |
+| Internal name | `evo2_1b_base` |
+| Attention backend | `flash_attention_2` |
+| Precision | bfloat16 |
+| Activation checkpointing | Disabled |
+| Weight source | Local checkpoint |
+| Hugging Face mode | Offline |
 
-```
-AutoModelForCausalLM.from_pretrained(
-    pretrained_model_name_or_path=model_path,
-    use_cache=False,
-    local_files_only=not config.online,
-    attn_implementation=config.attention,
-    dtype=torch.bfloat16,
-    device_map=state.init_device,
-)
-```
+The model is loaded from the Evo2 configuration file contained in the evo2.utils package:
 
-Weights can optionally be **re‑initialized** for true pre‑training.
-
-### **3. FSDP/HSDP Wrapping + Activation Checkpointing**
-
-```
-model = modelling.create_fsdp_model(...)
-utils.set_activation_checkpointing(model=model, layer=config.model.decoder_layers)
+```python
+configs/evo2-1b-8k.yml
 ```
 
-Ensures memory‑efficient training of multi‑billion‑parameter models.
+and instantiated through the StripedHyena implementation.
 
-### **4. Dataset Loading + Dataloaders**
+## Dataset Configuration
 
-Datasets are loaded via HF `load_from_disk`:
+### OpenGenome
 
-```
-datasets = data.load_datasets_from_disk(...)
-```
+Dataset identifier:
 
-Distributed samplers ensure sharding and reproducibility.
-
-### **5. Optimizer + Scheduler**
-
-Uses **AdamW** with a simplified **LLaMA‑style cosine schedule** (warmup + cosine decay).
-
-### **6. Training Loop**
-
-Training is executed through xFFL’s:
-
-```
-processing.distributed_training(...)
+```text
+opengenome2-metagenomes-plantcad2-c4096
 ```
 
-This handles:
+Dataset splits:
 
-* training
-* evaluation
-* checkpointing
-* federated batch aggregation
-* WandB metric logging
+- Train
+- Validation
 
-### **7. Cleanup**
+Data are loaded from local parquet files.
 
-Distributed groups and objects are properly destroyed.
+### Tokenization
 
+The dataset uses:
+
+```python
+CharLevelTokenizer(512)
+```
+
+Training samples are transformed into:
+
+- Inputs: all tokens except the last
+- Targets: all tokens except the first
+
+This enables standard next-token prediction training.
+
+### Dataset Parameters
+
+| Parameter | Value |
+|-----------|--------|
+| Train batch size | 2 |
+| Validation batch size | 1 |
+| Train subsampling | 1000 samples |
+| Validation subsampling | 20 samples |
+| Workers | 2 |
+
+## Training Configuration
+
+### General
+
+| Parameter | Value |
+|-----------|--------|
+| Seed | 42 |
+| Epochs | 1 |
+| Gradient accumulation | 1 |
+| Gradient clipping | 1.0 |
+
+### Optimization
+
+Optimizer:
+
+```python
+AdamW
+```
+
+Parameters:
+
+| Parameter | Value |
+|-----------|--------|
+| Learning rate | 1e-6 |
+| Weight decay | 0.1 |
+| Betas | (0.9, 0.95) |
+| Fused optimizer | Enabled |
+
+### Loss Function
+
+Cross-entropy loss with:
+
+```python
+ignore_index = 0
+```
+
+applied to next-token prediction.
+
+## Learning Rate Scheduler
+
+The example implements a custom scheduler featuring:
+
+1. Linear warmup
+2. Cosine decay
+3. Gradient-accumulation awareness
+
+Scheduler parameters:
+
+| Parameter | Value |
+|-----------|--------|
+| Warmup fraction | 1% |
+| Final LR ratio | 0.1 (scheduler default) |
+
+The configuration also exposes:
+
+```python
+final_lr_ratio = 0.01
+```
+
+for future customization.
+
+## Distributed Training
+
+The configuration is designed for xFFL distributed execution.
+
+Features include:
+
+- FSDP-compatible model loading
+- Transformer auto-wrap policy for Evo2 attention blocks
+- Mixed precision (bfloat16)
+- Multi-node HPC execution
+
+## Experiment Tracking
+
+Weights & Biases settings:
+
+| Parameter | Value |
+|-----------|--------|
+| Entity | alpha-unito |
+| Project | xFFL playground |
+| Group | 02_CNN |
+| Run name | Example |
+| Mode | disabled |
+
+By default, WandB logging is disabled.
 
 ## Installation
 
-You must also have **xFFL**, **PyTorch**, **Transformers**, and a properly configured HPC environment.
+Minimal dependency specified by the example:
 
-## Running the Example
+```bash
+pip install -r requirements.txt
+```
 
-After allocating nodes and activating your environment:
+Current requirements:
 
-### Basic execution
+```text
+evo2
+```
+
+A working xFFL installation, PyTorch distributed environment, and Evo2 dependencies are also required.
+
+## Running
+
+Execute the training through xFFL:
 
 ```bash
 xffl exec training.py config.py
 ```
 
-### Debug mode
+Debug mode:
 
 ```bash
 xffl --debug exec training.py config.py
 ```
 
-xFFL will:
+## Paths
 
-* initialize distributed execution
-* preload large weights
-* load the selected LLM
-* wrap it with FSDP/HSDP/FL
-* load the specified dataset
-* start multi‑node training
+The configuration assumes the following base path:
 
-## Dependencies
+```text
+/leonardo_scratch/fast/uToID_bench/xffl
+```
 
-PyTorch, xFFL, and WandB must already be installed.
+Expected directory layout:
 
+```text
+BASE_PATH/
+├── models/
+│   └── evo2_1b_base/
+└── data/
+    └── opengenome2-metagenomes-plantcad2-c4096/
+```
+
+Adapt these paths to your local HPC environment before execution.
 
 ## Notes
 
-* This is an **advanced example**: training LLaMA/Mixtral models requires significant GPU memory.
-* Intended for **research HPC clusters**, not consumer hardware.
-* All paths in the config file should be adapted to match local scratch/project directories.
-* The script is designed for **pre‑training** but can be adapted for fine‑tuning.
+- The example is intended for HPC systems.
+- All training is performed in bfloat16.
+- Hugging Face online access is disabled (`HF_HUB_OFFLINE=1`).
+- The dataset and model checkpoints must already be available locally.
