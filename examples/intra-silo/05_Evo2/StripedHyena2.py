@@ -38,7 +38,7 @@ if HAS_TE:
 try:
     from vortex.model.positional_embeddings import swap_mha_rope
 except ImportError:
-    "could not import swap_mha_rope from src.positional_embeddings"
+    print("could not import swap_mha_rope from src.positional_embeddings")
 
 
 class AttentionBlock(nn.Module):
