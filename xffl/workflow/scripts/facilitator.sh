@@ -76,6 +76,12 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 		if [ -n "${XFFL_VENV}" ] ; then # Python virtual environment
 			XFFL_RANKS="RANK=$RANK LOCAL_RANK=$LOCAL_RANK ROLE_RANK=$ROLE_RANK GROUP_RANK=$GROUP_RANK"
 
+			#TRACE=""
+			# if (( $RANK == 0 )); then
+			# 	TRACE="nsys profile -o report_xffl -t cuda,nvtx,cudnn,cublas,osrt,nccl --capture-range=nvtx -s none"
+			# fi
+
+			#COMMAND="${XFFL_RANKS} ${XFFL_TASKSET} ${TRACE} python $*"
 			COMMAND="${XFFL_RANKS} ${XFFL_TASKSET} python $*"
 		else # Container image
 			export ENVIRONMENT="${ENVIRONMENT} ${PREFIX}XFFL_IMAGE=${XFFL_IMAGE}"

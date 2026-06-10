@@ -306,6 +306,11 @@ class XFFLOptimizer:
         ] = None
         self.total_steps_per_epoch: int = total_steps_per_epoch
         self.scaler: Optional[GradScaler] = scaler
+        self.optim_stream: torch.cuda.Stream = (
+            torch.cuda.Stream()
+            if self.interleaved_optim
+            else torch.cuda.current_stream()
+        )
 
         self.optimizer_step: int = 0
         self.training_step: int = 0
@@ -352,6 +357,7 @@ class XFFLOptimizer:
                 gradient_accumulation: Optional[int] = None,
                 total_steps_per_epoch: int = -1,
                 scaler: Optional[GradScaler] = None,
+                optim_stream: Optional[torch.cuda.Stream] = None,
             ) -> None:
                 """Per-parameter optimizer hook class providing stateful functionalities and callable behaviour.
 
@@ -363,20 +369,27 @@ class XFFLOptimizer:
                 :type gradient_accumulation: Optional[int], optional
                 :param total_steps_per_epoch: Number of training steps per epoch (before gradient accumulation), defaults to -1
                 :type total_steps_per_epoch: int
-                :param scaler: Gradient scaler, if necessary
+                :param scaler: Gradient scaler, defaults to None
                 :type scaler: Optional[GradScaler]
+                :param optim_stream: CUDA stream for the optimizer, defaults to None
+                :type optim_stream: Optional[torch.cuda.Stream]
                 """
 
                 self.optimizer: Optimizer = optimizer
                 self.gradient_clipping_fn: Callable = gradient_clipping_fn
                 self.gradient_accumulation: Optional[int] = gradient_accumulation
                 self.scaler: Optional[GradScaler] = scaler
+                self.stream: torch.cuda.Stream = (
+                    optim_stream
+                    if optim_stream is not None
+                    else torch.cuda.current_stream()
+                )
 
                 self.training_step = 0
                 self.total_steps_per_epoch = total_steps_per_epoch
 
             def __call__(self, parameter: nn.Parameter) -> None:
-                """Set a per-parameter optimizer phase for FSDP.
+                """Set a per-parameter optimizer phase.
 
                 :param parameter: Current model parameter
                 :type parameter: nn.Parameter
@@ -386,27 +399,34 @@ class XFFLOptimizer:
                     step=self.training_step,
                     total_steps_per_epoch=self.total_steps_per_epoch,
                 ):
-                    self.gradient_clipping_fn(parameter)
+                    with torch.cuda.stream(self.stream):
+                        self.stream.wait_stream(torch.cuda.current_stream())
+                        if parameter.grad is not None:
+                            parameter.grad.record_stream(self.stream)
 
-                    if self.scaler is not None:
-                        self.scaler.step(self.optimizer)
-                        self.scaler.update()
-                    else:
-                        self.optimizer.step()
-                    self.optimizer.zero_grad(set_to_none=True)
+                        self.gradient_clipping_fn(parameter)
+
+                        if self.scaler is not None:
+                            self.scaler.step(self.optimizer)
+                            self.scaler.update()
+                        else:
+                            self.optimizer.step()
+                        self.optimizer.zero_grad(set_to_none=True)
                 self.training_step += 1
 
         assert isinstance(self.optimizer, Mapping)
         for p in self.model.parameters():
-            p.register_post_accumulate_grad_hook(
-                optimizer_hook(
-                    optimizer=self.optimizer[p],
-                    gradient_clipping_fn=self._get_clip_fn(),
-                    gradient_accumulation=self.gradient_accumulation,
-                    total_steps_per_epoch=self.total_steps_per_epoch,
-                    scaler=self.scaler,
+            if p.requires_grad:
+                p.register_post_accumulate_grad_hook(
+                    optimizer_hook(
+                        optimizer=self.optimizer[p],
+                        gradient_clipping_fn=self._get_clip_fn(),
+                        gradient_accumulation=self.gradient_accumulation,
+                        total_steps_per_epoch=self.total_steps_per_epoch,
+                        scaler=self.scaler,
+                        optim_stream=self.optim_stream,
+                    )
                 )
-            )
 
     def _get_clip_fn(self) -> Callable:
         """Get the right gradient clip function.
@@ -511,4 +531,9 @@ class XFFLOptimizer:
                     self.lr_scheduler.step()
 
             self.optimizer_step += 1
+
+            # if self.interleaved_optim:
+            #     logger.info("Waiting...")
+            #     torch.cuda.current_stream().wait_stream(self.optim_stream)
+
         self.training_step += 1

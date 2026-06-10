@@ -21,7 +21,8 @@ from transformers.models.mixtral.modeling_mixtral import (
 from xffl.custom.config import DatasetInfo, ModelInfo, OptimizerInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 from xffl.learning.data import load_datasets_from_disk
-from xffl.learning.optim import warmup_cosine_decay
+
+# from xffl.learning.optim import warmup_cosine_decay
 
 # Constants
 TINY_RANDOM_LLAMA_3: str = "tiny-random-llama-3"
@@ -30,7 +31,7 @@ LLAMA3_1_70B: str = "llama3.1-70b"
 MIXTRAL_8x7b_v0_1: str = "mixtral-8x7b-v0.1"
 CLEAN_MC4_IT: str = "clean_mc4_it"
 
-BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl/")
+BASE_PATH: Path = Path("/home/gmittone/xffl/")
 
 
 @dataclass
@@ -163,13 +164,13 @@ class AdamW(OptimizerInfo):
             "fused": True,
         }
     )
-    lr_scheduler: Callable = warmup_cosine_decay
-    lr_scheduler_params: Mapping[str, Any] = field(
-        default_factory=lambda: {
-            "warmup_fraction": 0.01,
-            "final_lr_ratio": 0.01,
-        }
-    )
+    # lr_scheduler: Callable = warmup_cosine_decay
+    # lr_scheduler_params: Mapping[str, Any] = field(
+    #     default_factory=lambda: {
+    #         "warmup_fraction": 0.01,
+    #         "final_lr_ratio": 0.01,
+    #     }
+    # )
     interleaved_optim: bool = True
 
 
@@ -185,9 +186,9 @@ class xffl_config(XFFLConfig):
     # General
     loglevel: int = logging.DEBUG
     seed: int = 42
-    hsdp: int = 4
-    federated: int = 4
-    federated_batches: int = 8
+    # hsdp: int = 4
+    # federated: int = 4
+    # federated_batches: int = 8
 
     # Learning
     epochs: int = 1
