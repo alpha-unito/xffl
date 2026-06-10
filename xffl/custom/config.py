@@ -9,13 +9,12 @@ from abc import ABC
 from dataclasses import dataclass
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Callable, Literal, Mapping, Optional, Sequence, Type
+from typing import Any, Callable, Mapping, Optional, Sequence, Type
 
 import torch
 from torch import nn
 from torch.distributed.distributed_c10d import Backend
 from torch.distributed.fsdp import MixedPrecision, wrap
-from torch.optim import Optimizer
 from transformers import AutoTokenizer
 
 from xffl.distributed.distributed_state import DistributedState
@@ -173,7 +172,7 @@ class DatasetInfo(ABC):
     :param splits: Dataset splits' class or creation function
     :type splits: Callable[[XFFLConfig, DistributedState], Mapping[str, Any]]
     :param path: Path to the dataset file or folder, defaults to None
-    :type path: Optional[Path | str], optional
+    :type path: Optional[Path | str | Sequence[Path | str]], optional
     :param workers: Number of worker processes to spawn to load data, defaults to None
     :type workers: Optional[int], optional
     :param subsampling: Number of samples to subsample from each data split, defaults to None
@@ -192,7 +191,7 @@ class DatasetInfo(ABC):
     splits: Callable[[XFFLConfig, DistributedState], Mapping[str, Any]]
 
     # Optional
-    path: Optional[Path | str] = None
+    path: Optional[Path | str | Sequence[Path | str]] = None
     workers: Optional[int] = None
     subsampling: Optional[int | Mapping[str, int]] = None
     batch_sizes: Optional[int | Mapping[str, int]] = None
@@ -229,10 +228,14 @@ class DatasetInfo(ABC):
                 )
                 self.path = Path("/dataset/")
             else:
-                self.path = Path(self.path)
-
-            if not self.path.parent.exists():
-                err_msg += f"Dataset configuration error: dataset path does not exists ({self.path}).\n"
+                if isinstance(self.path, Sequence):
+                    self.path = [Path(path) for path in self.path]
+                    if not all([path.parent.exists() for path in self.path]):
+                        err_msg += f"Dataset configuration error: some dataset paths do not exists ({self.path}).\n"
+                else:
+                    self.path = Path(self.path)
+                    if not self.path.parent.exists():
+                        err_msg += f"Dataset configuration error: dataset path does not exists ({self.path}).\n"
 
         # Workers
         if self.workers is not None and (
@@ -308,10 +311,100 @@ class DatasetInfo(ABC):
 
 
 @dataclass
+class OptimizerInfo(ABC):
+    """Default optimizer information.
+
+    Only the optimizer name and split instantiation function are mandatory; dataset name cannot be empty.
+
+    The optimizer configuration is double-checked before execution.
+
+    :param optimizer: Optimizer class
+    :type optimizer: Callable
+    :param optimizer_params: Optimizer parameters
+    :type optimizer_params: Mapping[str, Any]
+    :param lr_scheduler: Learning rate scheduler, defaults to None
+    :type lr_scheduler: Optional[Callable], optional
+    :param gradient_clipping: Value to clip the gradient to, defaults to None
+    :type gradient_clipping: Optional[float], optional
+    :param gradient_accumulation: Number of steps of gradient accumulation before running an optimization step, defaults to None
+    :type gradient_accumulation: Optional[int], optional
+    :param interleaved_optim: Interleave optimizer and backward phase, defaults to None
+    :type interleaved_optim: Optional[bool], optional
+    :raises ValueError: If some configuration values are incompatible with their expected characteristics
+    """
+
+    # Mandatory
+    optimizer: Callable
+
+    # Optional
+    optimizer_params: Optional[Mapping[str, Any]] = None
+    lr_scheduler: Optional[Callable] = None
+    lr_scheduler_params: Optional[Mapping[str, Any]] = None
+    gradient_clipping: Optional[float] = None
+    gradient_accumulation: Optional[int] = None
+    interleaved_optim: Optional[bool] = None
+
+    def __post_init__(self) -> None | ValueError:
+        """
+        Optimizer configuration validation.
+
+        :raises ValueError: If some configuration values are incompatible with their expected characteristics
+        """
+
+        err_msg: str = ""
+
+        # Optimizer
+        if not isinstance(self.optimizer, Callable):
+            err_msg += f"xFFL configuration error: the provided optimizer class is not callable ({self.optimizer}).\n"
+
+        # Optimizer parameters
+        if self.optimizer_params is not None and not isinstance(
+            self.optimizer_params, Mapping
+        ):
+            err_msg += f"xFFL configuration error: the provided optimizer parameters are not a Mapping[str, Any] ({self.optimizer_params}).\n"
+
+        # Learning rate scheduler
+        if self.lr_scheduler is not None and not isinstance(
+            self.lr_scheduler, Callable
+        ):
+            err_msg += f"Model configuration error: the specified learning rate scheduler is not callable ({self.lr_scheduler}).\n"
+
+        # lr_scheduler parameters
+        if self.lr_scheduler_params is not None and not isinstance(
+            self.lr_scheduler_params, Mapping
+        ):
+            err_msg += f"xFFL configuration error: the provided learning rate scheduler parameters are not a Mapping[str, Any] ({self.lr_scheduler_params}).\n"
+
+        # Gradient clipping
+        if self.gradient_clipping is not None and not isinstance(
+            self.gradient_clipping, float
+        ):
+            err_msg += f"xFFL configuration error: the provided gradient clipping value is not valid ({self.gradient_clipping}).\n"
+
+        # Gradient accumulation
+        if self.gradient_accumulation is not None and (
+            not isinstance(self.gradient_accumulation, int)
+            or self.gradient_accumulation < 0
+        ):
+            err_msg += f"xFFL configuration error: the provided gradient accumulation value is not valid ({self.gradient_accumulation}).\n"
+
+        # Interleave optimizer and backward
+        if self.interleaved_optim is not None and not isinstance(
+            self.interleaved_optim, bool
+        ):
+            err_msg += f"Model configuration error: the specified value of interleaved_optim is not acceptable ({self.interleaved_optim}).\n"
+
+        # Log errors, if any, and raise a ValueError exception
+        if not err_msg == "":
+            logger.critical(err_msg)
+            raise ValueError(err_msg)
+
+
+@dataclass
 class XFFLConfig(ABC):
     """Base xFFL configuration.
 
-    Only the model_info, dataset_info, and optimizer fields are mandatory.
+    Only the model_info, dataset_info, and optimizer_info fields are mandatory.
 
     If multiple process constitute the xFFL world but no parallelization strategy is specified, FSDP will be instantiated over all the available processes.
     If federated is specified, equal groups of federated processes will be instantiated; if federated is a sequence, the processes will be divided into federated groups according to such values.
@@ -327,8 +420,8 @@ class XFFLConfig(ABC):
     :type model_info: ModelInfo
     :param dataset_info: Dataset configuration
     :type dataset_info: DatasetInfo
-    :param optimizer: Optimizer creation function
-    :type optimizer: Callable[[nn.Module, XFFLConfig], Optimizer]
+    :param optimizer_info: Optimizer configuration
+    :type optimizer_info: OptimizertInfo
     :param loglevel: Logging level, expressed as an integer following the python logging package, defaults to INFO (20)
     :type loglevel: int
     :param seed: Random number generator seed, essential for reproducible execution, defaults to None
@@ -343,43 +436,23 @@ class XFFLConfig(ABC):
     :type cuda_streams: Optional[int], optional
     :param epochs: Number of epochs, defaults to None
     :type epochs: Optional[int], optional
-    :param learning_rate: Learning rate, defaults to None
-    :type learning_rate: Optional[float], optional
-    :param lr_scheduler: Learning rate scheduler, defaults to None
-    :type lr_scheduler: Optional[Callable], optional
     :param scale_learning_rate: If to scale the learning rate in the number of available processes, defaults to None
     :type scale_learning_rate: Optional[bool], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
-    :param gradient_clipping: Value to clip the gradient to, defaults to None
-    :type gradient_clipping: Optional[float], optional
-    :param gradient_accumulation: Number of steps of gradient accumulation before running an optimization step, defaults to None
-    :type gradient_accumulation: Optional[int], optional
     :param output_folder: Output folder path where to save the trained model, defaults to None
     :type output_folder: Optional[Path], optional
     :param output_model: Saving name for the trained model, defaults to None
     :type output_model: Optional[str], optional
-    :param wandb_entity: WandB entity, defaults to None
-    :type wandb_entity: Optional[str], optional
-    :param wandb_project: WandB project, defaults to None
-    :type wandb_project: Optional[str], optional
-    :param wandb_group: WandB run group, defaults to None
-    :type wandb_group: Optional[str], optional
-    :param wandb_name: WandB run name, defaults to None
-    :type wandb_name: Optional[str], optional
-    :param wandb_notes: WandB run notes, defaults to None
-    :type wandb_notes: Optional[str], optional
-    :param wandb_tags: WandB run tags, defaults to None
-    :type wandb_tags: Optional[Sequence[str]], optional
-    :param wandb_mode: WandB execution mode, defaults to None
-    :type wandb_mode: Optional[Literal["online", "offline", "disabled", "shared"]], optional
+    :param wandb_params: WandB init parameters, defaults to None
+    :type wandb_params: Optional[Mapping[str, Any]], optional
     :raises ValueError: If some configuration values are incompatible with their expected characteristics
     """
 
-    # Mandatory - Model and dataset
+    # Mandatory - Model, dataset, and optimizer
     model_info: ModelInfo
     dataset_info: DatasetInfo
-    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer]
+    optimizer_info: OptimizerInfo
 
     # General
     loglevel: int = logging.INFO
@@ -393,25 +466,15 @@ class XFFLConfig(ABC):
 
     # Learning
     epochs: Optional[int] = None
-    learning_rate: Optional[float] = None
-    lr_scheduler: Optional[Callable] = None
     scale_learning_rate: Optional[bool] = None
     criterion: Optional[nn.Module] = None
-    gradient_clipping: Optional[float] = None
-    gradient_accumulation: Optional[int] = None
 
     # Output
     output_folder: Optional[Path] = None
     output_model: Optional[str] = None
 
     # WandB
-    wandb_entity: Optional[str] = None
-    wandb_project: Optional[str] = None
-    wandb_group: Optional[str] = None
-    wandb_name: Optional[str] = None
-    wandb_notes: Optional[str] = None
-    wandb_tags: Optional[Sequence[str]] = None
-    wandb_mode: Optional[Literal["online", "offline", "disabled", "shared"]] = None
+    wandb_params: Optional[Mapping[str, Any]] = None
 
     # Manual distributed configuration
     rank: Optional[int] = None
@@ -441,10 +504,6 @@ class XFFLConfig(ABC):
         # Dataset info
         if not isinstance(self.dataset_info, DatasetInfo):
             err_msg += f"xFFL configuration error: the provided dataset configuration is not an instance of ModelInfo ({self.dataset_info}).\n"
-
-        # Optimizer
-        if not isinstance(self.optimizer, Callable):
-            err_msg += f"xFFL configuration error: the provided optimizer creation function is not callable ({self.optimizer}).\n"
 
         # Log level
         if not isinstance(self.loglevel, int) or self.loglevel < 0:
@@ -500,16 +559,6 @@ class XFFLConfig(ABC):
         ):
             err_msg += f"xFFL configuration error: the provided epochs value is not valid ({self.epochs}).\n"
 
-        # Learning rate
-        if self.learning_rate is not None and not isinstance(self.learning_rate, float):
-            err_msg += f"xFFL configuration error: the provided learning rate is not valid ({self.learning_rate}).\n"
-
-        # Learning rate scheduler
-        if self.lr_scheduler is not None and not isinstance(
-            self.lr_scheduler, Callable
-        ):
-            err_msg += f"Model configuration error: the specified learning rate scheduler is not callable ({self.lr_scheduler}).\n"
-
         # Scale learning rate
         if self.scale_learning_rate is not None and not isinstance(
             self.scale_learning_rate, bool
@@ -519,19 +568,6 @@ class XFFLConfig(ABC):
         # Criterion
         if self.criterion is not None and not isinstance(self.criterion, Callable):
             err_msg += f"Model configuration error: the specified criterion is not callable ({self.criterion}).\n"
-
-        # Gradient clipping
-        if self.gradient_clipping is not None and not isinstance(
-            self.gradient_clipping, float
-        ):
-            err_msg += f"xFFL configuration error: the provided gradient clipping value is not valid ({self.gradient_clipping}).\n"
-
-        # Gradient accumulation
-        if self.gradient_accumulation is not None and (
-            not isinstance(self.gradient_accumulation, int)
-            or self.gradient_accumulation < 0
-        ):
-            err_msg += f"xFFL configuration error: the provided gradient accumulation value is not valid ({self.gradient_accumulation}).\n"
 
         # Output folder
         if self.output_folder is not None:

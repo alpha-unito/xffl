@@ -126,7 +126,7 @@ def create_dataloaders(
         | Mapping[str, Sequence[Callable]]
     ] = None,
     subsampling: Optional[int | Mapping[str, int]] = None,
-    batch_sizes: Optional[Mapping[str, int]] = None,
+    batch_sizes: Optional[int | Mapping[str, int]] = None,
     workers: Optional[int] = None,
     config: Optional[XFFLConfig] = None,
     collate_fn: Optional[Callable | Mapping[str, Callable]] = None,
@@ -190,7 +190,7 @@ def create_dataloaders(
         _subsampling: Optional[int | Mapping[str, int]] = resolve_param(
             value=subsampling, config=dataset_info, attr="subsampling"
         )
-        _batch_sizes: Optional[Mapping[str, int]] = resolve_param(
+        _batch_sizes: Optional[int | Mapping[str, int]] = resolve_param(
             value=batch_sizes, config=dataset_info, attr="batch_sizes"
         )
         _workers: Optional[int] = resolve_param(
@@ -206,7 +206,7 @@ def create_dataloaders(
         ] = filters
         _collate_fn: Optional[Callable | Mapping[str, Callable]] = collate_fn
         _subsampling: Optional[int | Mapping[str, int]] = subsampling
-        _batch_sizes: Optional[Mapping[str, int]] = batch_sizes
+        _batch_sizes: Optional[int | Mapping[str, int]] = batch_sizes
         _workers: Optional[int] = workers
 
     if _dataset is None:
@@ -230,12 +230,15 @@ def create_dataloaders(
 
         _batch_size: int = 1
         if _batch_sizes is not None:
-            if key in _batch_sizes.keys():
-                _batch_size = _batch_sizes[key]
-            else:
-                logger.error(
-                    f"No batch size associated to the {key} split found - defaulting to 1."
-                )
+            if isinstance(_batch_sizes, dict):
+                if key in _batch_sizes.keys():
+                    _batch_size = _batch_sizes[key]
+                else:
+                    logger.error(
+                        f"No batch size associated to the {key} split found - defaulting to 1."
+                    )
+            elif isinstance(_batch_sizes, int):
+                _batch_size = _batch_sizes
         else:
             logger.error(
                 "No batch size dictionary found - defaulting all batch sizes to 1."

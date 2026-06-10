@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import wandb
 from config import xffl_config
-from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from xffl.custom.config import XFFLConfig
@@ -72,9 +71,6 @@ def pretraining(config: XFFLConfig) -> None:
             f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
-    # Optimizer and lr scheduler creation
-    optimizer: Optimizer = config.optimizer(model=model, config=config)  # type: ignore
-
     if state.rank == 0:
         logger.debug(
             f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds"
@@ -90,7 +86,6 @@ def pretraining(config: XFFLConfig) -> None:
     results: Mapping[str, float] = processing.distributed_training(
         model=model,
         state=state,
-        optimizer=optimizer,
         train_dataloader=dataloaders["train"],
         val_dataloader=dataloaders["val"],
         wandb_run=wandb_run,
@@ -106,7 +101,7 @@ def pretraining(config: XFFLConfig) -> None:
     # PyTorch's distributed backend cleanup
     wandb.finish()
     distributed.cleanup_distributed_process_group(
-        state=state, del_obj=(model, optimizer)
+        state=state, del_obj=(model, dataloaders)
     )
 
 

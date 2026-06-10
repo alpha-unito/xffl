@@ -1,24 +1,23 @@
 """Configuration file for the xFFL-LLM+tokenizer example"""
 
 import logging
-import math
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Mapping, Optional, Sequence, Type
 
 import torch
 from datasets import Dataset as HFDataset
 from datasets import DatasetDict, load_dataset
 from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
-from torch.optim import AdamW, Optimizer
-from torch.optim.lr_scheduler import LRScheduler
+from torch.optim import AdamW
 from torch.utils.data import Dataset as TorchDataset
 
-from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
+from xffl.custom.config import DatasetInfo, ModelInfo, OptimizerInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 from xffl.learning.data import load_datasets_from_disk
+from xffl.learning.optim import warmup_cosine_decay
 
 # Force HuggingFace to offline mode
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -33,73 +32,6 @@ BABYLM_DATASET_SPECIAL_TOKENS: str = "babyLM-special-tokens"
 MLSUM_ES: str = "mlsum_es"
 
 BASE_PATH: str = str(os.getcwd()) + "/xffl"
-
-
-def _get_babylm_cosine_schedule(
-    optimizer: Optimizer, total_steps: int, config: XFFLConfig
-) -> LRScheduler:
-
-    class _WarmupCosineLREpochsAccum(LRScheduler):
-        def __init__(
-            self,
-            optimizer=optimizer,
-            epochs=config.epochs,
-            accum_steps=config.gradient_accumulation,
-            peak_lr=config.learning_rate,
-            steps_per_epoch=total_steps,
-            warmup_frac=0.01,
-            final_lr_ratio=0.1,
-        ):
-            """
-            Warmup + Cosine Decay compatible with Gradient Accumulation.
-            """
-            self.optimizer = optimizer
-
-            self.peak_lr = peak_lr
-            self.final_lr = peak_lr * final_lr_ratio  # type: ignore
-
-            # Converte tutto in "optimizer steps"
-            self.effective_steps_per_epoch = steps_per_epoch // accum_steps  # type: ignore
-            self.total_steps = epochs * self.effective_steps_per_epoch  # type: ignore
-            self.warmup_steps = int(self.total_steps * warmup_frac)
-
-            self.step_num = 0  # conta gli optimizer.step()
-
-        def step(self):
-            self.step_num += 1
-            lr = self.get_lr()
-
-            for group in self.optimizer.param_groups:
-                group["lr"] = lr
-
-            return lr
-
-        def get_lr(self):
-            # Warmup lineare
-            if self.step_num < self.warmup_steps:
-                return self.peak_lr * (self.step_num / self.warmup_steps)  # type: ignore
-
-            # Cosine decay
-            progress = (self.step_num - self.warmup_steps) / (
-                self.total_steps - self.warmup_steps
-            )
-            progress = min(max(progress, 0.0), 1.0)
-
-            cosine = 0.5 * (1 + math.cos(math.pi * progress))
-            return self.final_lr + (self.peak_lr - self.final_lr) * cosine  # type: ignore
-
-    return _WarmupCosineLREpochsAccum()
-
-
-# Optimizer
-def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
-    return AdamW(
-        params=model.parameters(),
-        lr=config.learning_rate,  # type: ignore
-        weight_decay=config.weight_decay,  # type: ignore
-        betas=config.betas,  # type: ignore
-        fused=True,
-    )
 
 
 # Model information
@@ -221,6 +153,32 @@ class babylm_dataset(DatasetInfo):
     path: str = BASE_PATH + "/dataset/" + BABYLM_DATASET
 
 
+# Optimizer information
+@dataclass
+class AdamW(OptimizerInfo):
+    """Optimizer configuration for BabyLM pretraining."""
+
+    optimizer: Callable = AdamW
+
+    optimizer_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "lr": 2e-4,
+            "weight_decay": 0.1,
+            "betas": (0.9, 0.95),
+            "fused": True,
+        }
+    )
+    lr_scheduler: Callable = warmup_cosine_decay
+    lr_scheduler_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "warmup_fraction": 0.01,
+            "final_lr_ratio": 0.01,
+        }
+    )
+    gradient_clipping: float = 1.0
+    gradient_accumulation: int = 1
+
+
 # XFFL configuration
 @dataclass
 class xffl_config(XFFLConfig):
@@ -228,37 +186,28 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=babylm)
     dataset_info: DatasetInfo = field(default_factory=babylm_dataset)
-    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
+    optimizer_info: OptimizerInfo = field(default_factory=AdamW)
 
     # General
     loglevel: int = logging.DEBUG
     seed: int = 42
 
     # Learning
-    learning_rate: float = 2e-4
     epochs: int = 1
-    gradient_clipping: float = 1.0
-    gradient_accumulation: int = 1
 
     # WandB
-    wandb_entity: str = "alpha-unito"
-    wandb_project: str = "xFFL playground"
-    wandb_group: str = "02_CNN"
-    wandb_name: str = "Example"
-    wandb_notes: str = "Example run of xFFL with a CNN"
-    wandb_tags: Sequence[str] = field(
-        default_factory=lambda: ["xFFL", "example", "MLP"]
+    wandb_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "entity": "alpha-unito",
+            "project": "xFFL playground",
+            "group": "04_LLM_Tokenizer",
+            "name": "Example",
+            "notes": "Example run of xFFL with an LLM and tokenization on-the-fly",
+            "tags": ["xFFL", "example", "LLM", "tokenizer"],
+            "mode": "disabled",
+        }
     )
-    wandb_mode: str = "disabled"
-
-    # Advanced configuration
-    lr_scheduler: Callable = _get_babylm_cosine_schedule
 
     # Output
     output_folder: Optional[Path] = None
     output_model: Optional[str] = None
-
-    # Custom
-    final_lr_ratio: float = 0.01
-    weight_decay: float = 0.1
-    betas: Tuple[float, float] = (0.9, 0.95)

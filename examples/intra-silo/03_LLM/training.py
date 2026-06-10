@@ -6,13 +6,12 @@ https://github.com/meta-llama/llama-cookbook/blob/main/src/llama_recipes/finetun
 
 import time
 from logging import Logger, getLogger
-from typing import Any, MutableMapping, Optional
+from typing import Any, MutableMapping, Optional, Sequence
 
 import torch
 import torch.nn as nn
 import wandb
 from config import xffl_config
-from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from xffl.custom.config import XFFLConfig
@@ -53,9 +52,14 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # Large data preloading in background
-    start_time: float = time.perf_counter()
     if state.node_local_rank == 0:
-        utils.preload(files=[config.model_info.path, config.dataset_info.path])
+        if isinstance(config.dataset_info.path, Sequence):
+            utils.preload(
+                files=[config.model_info.path]
+                + [path for path in config.dataset_info.path]
+            )
+        else:
+            utils.preload(files=[config.model_info.path, config.dataset_info.path])
 
     # Model setup
     start_time: float = time.perf_counter()
@@ -81,9 +85,6 @@ def pretraining(config: XFFLConfig) -> None:
             f"Dataset loading time: {(time.perf_counter() - start_time):.2f} seconds"
         )
 
-    # Optimizer and lr scheduler creation
-    optimizer: Optimizer = config.optimizer(model=model, config=config)  # type: ignore
-
     if state.rank == 0:
         logger.debug(
             f"Total setup time: {(time.perf_counter() - setup_time):.2f} seconds"
@@ -99,7 +100,6 @@ def pretraining(config: XFFLConfig) -> None:
     results = processing.distributed_training(
         model=model,
         state=state,
-        optimizer=optimizer,
         train_dataloader=dataloaders["train"],
         val_dataloader=dataloaders["val"],
         config=config,
@@ -115,7 +115,7 @@ def pretraining(config: XFFLConfig) -> None:
     # PyTorch's distributed backend cleanup
     wandb.finish()
     distributed.cleanup_distributed_process_group(
-        state=state, del_obj=(model, optimizer)
+        state=state, del_obj=(model, dataloaders)
     )
 
 

@@ -1,33 +1,36 @@
 """Configuration file for the xFFL-LLM example"""
 
 import logging
-import math
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from typing import Callable, Mapping, Sequence, Type
+from typing import Any, Callable, Mapping, Type
 
 import torch
 from torch import nn
 from torch.distributed.fsdp import MixedPrecision
 from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
-from torch.optim import AdamW, Optimizer
-from torch.optim.lr_scheduler import LambdaLR, LRScheduler
+from torch.optim import AdamW
 from transformers import default_data_collator
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer, LlamaForCausalLM
+from transformers.models.mixtral.modeling_mixtral import (
+    MixtralDecoderLayer,
+    MixtralForCausalLM,
+)
 
-from xffl.custom.config import DatasetInfo, ModelInfo, XFFLConfig
+from xffl.custom.config import DatasetInfo, ModelInfo, OptimizerInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
 from xffl.learning.data import load_datasets_from_disk
+from xffl.learning.optim import warmup_cosine_decay
 
 # Constants
 TINY_RANDOM_LLAMA_3: str = "tiny-random-llama-3"
-LLAMA3_1_8B: str = "llama3.1-8b-init"
+LLAMA3_1_8B: str = "llama3.1-8b"
 LLAMA3_1_70B: str = "llama3.1-70b"
 MIXTRAL_8x7b_v0_1: str = "mixtral-8x7b-v0.1"
 CLEAN_MC4_IT: str = "clean_mc4_it"
 
-BASE_PATH: str = "/leonardo_scratch/fast/uToID_bench/xffl"
+BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl/")
 
 
 @dataclass
@@ -52,7 +55,7 @@ class llama(ModelInfo):
 
     # Auto wrap policy
     @staticmethod
-    def llama_fsdp_wrap_policy():
+    def _fsdp_wrap_policy():
         return partial(
             transformer_auto_wrap_policy,
             transformer_layer_cls={
@@ -64,7 +67,7 @@ class llama(ModelInfo):
     attention: str = "sdpa"  # "flash_attention_2"
     model: Callable = _load_llm_from_checkpoint
     decoder_layer: Type = LlamaDecoderLayer
-    wrapping_policy: Callable = llama_fsdp_wrap_policy
+    wrapping_policy: Callable = _fsdp_wrap_policy
     activation_checkpointing: bool = False  # True
     mixed_precision: MixedPrecision = field(
         default_factory=lambda: MixedPrecision(
@@ -74,24 +77,54 @@ class llama(ModelInfo):
             # cast_forward_inputs=True,
         )
     )
-    path: str = BASE_PATH + "/models/" + name
+    path: Path = BASE_PATH / "model" / name
 
 
-# @dataclass
-# class mixtral(ModelInfo):
-#     name: str = MIXTRAL_8x7b_v0_1
-#     attention: str = "sdpa"
-#     model: Callable = _load_llm_from_checkpoint
-#     decoder_layer: Type = MixtralDecoderLayer
-#     mixed_precision: MixedPrecision = field(
-#         default_factory=lambda: MixedPrecision(
-#             param_dtype=torch.bfloat16,
-#             reduce_dtype=torch.bfloat16,
-#             buffer_dtype=torch.bfloat16,
-#             # cast_forward_inputs=True,
-#         )
-#     )
-#     path: str = BASE_PATH + "/model/" + name
+@dataclass
+class mixtral(ModelInfo):
+
+    # LLM loading from saved model
+    @staticmethod
+    def _load_llm_from_checkpoint(
+        config: XFFLConfig, state: DistributedState
+    ) -> nn.Module:
+        return MixtralForCausalLM.from_pretrained(
+            pretrained_model_name_or_path=str(config.model_info.path),
+            use_cache=True,
+            local_files_only=True,  # Most HPCs do not have internet access from the nodes
+            attn_implementation=config.model_info.attention,
+            dtype=torch.bfloat16,  # Model is loaded in torch.bfloat16 (from the JSON file) - also "auto" # This slows down model loading
+            device_map=state.init_device,
+            use_safetensors=True,
+            low_cpu_mem_usage=True,
+            tie_word_embeddings=True,
+        )
+
+    # Auto wrap policy
+    @staticmethod
+    def _fsdp_wrap_policy():
+        return partial(
+            transformer_auto_wrap_policy,
+            transformer_layer_cls={
+                MixtralDecoderLayer,
+            },
+        )
+
+    name: str = MIXTRAL_8x7b_v0_1
+    attention: str = "sdpa"  # "flash_attention_2"
+    model: Callable = _load_llm_from_checkpoint
+    decoder_layer: Type = MixtralDecoderLayer
+    wrapping_policy: Callable = _fsdp_wrap_policy
+    activation_checkpointing: bool = False  # True
+    mixed_precision: MixedPrecision = field(
+        default_factory=lambda: MixedPrecision(
+            param_dtype=torch.bfloat16,
+            reduce_dtype=torch.bfloat16,
+            buffer_dtype=torch.bfloat16,
+            # cast_forward_inputs=True,
+        )
+    )
+    path: Path = BASE_PATH / "model" / name
 
 
 @dataclass
@@ -112,29 +145,42 @@ class cleanmc4it(DatasetInfo):
     subsampling: int = 1024
     workers: int = 2
     collate_fn: Callable = default_data_collator
-    path: str = BASE_PATH + "/data/" + CLEAN_MC4_IT
+    path: Path = BASE_PATH / "dataset" / CLEAN_MC4_IT
+
+
+# Optimizer information
+@dataclass
+class AdamW(OptimizerInfo):
+    """Optimizer configuration for BabyLM pretraining."""
+
+    optimizer: Callable = AdamW
+
+    optimizer_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "lr": 3e-4,
+            "weight_decay": 0.1,
+            "betas": (0.9, 0.95),
+            "fused": True,
+        }
+    )
+    lr_scheduler: Callable = warmup_cosine_decay
+    lr_scheduler_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "warmup_fraction": 0.01,
+            "final_lr_ratio": 0.01,
+        }
+    )
+    interleaved_optim: bool = True
 
 
 # XFFL configuration
 @dataclass
 class xffl_config(XFFLConfig):
 
-    # Optimizer
-    @staticmethod
-    def _get_optimizer(model: nn.Module, config: XFFLConfig) -> Optimizer:
-        return AdamW(
-            params=model.parameters(),
-            lr=config.learning_rate,  # type: ignore
-            weight_decay=config.weight_decay,  # type: ignore
-            betas=config.betas,  # type: ignore
-            # foreach=True,  # Optimizes performances but uses more memory
-            fused=True,  # Supported only on torch.float64, torch.float32, torch.float16, and torch.bfloat16
-        )
-
     # Default
     model_info: ModelInfo = field(default_factory=llama)
     dataset_info: DatasetInfo = field(default_factory=cleanmc4it)
-    optimizer: Callable[[nn.Module, XFFLConfig], Optimizer] = _get_optimizer
+    optimizer_info: OptimizerInfo = field(default_factory=AdamW)
 
     # General
     loglevel: int = logging.DEBUG
@@ -144,52 +190,17 @@ class xffl_config(XFFLConfig):
     federated_batches: int = 8
 
     # Learning
-    learning_rate: float = 3e-4
     epochs: int = 1
 
     # WandB
-    wandb_entity: str = "alpha-unito"
-    wandb_project: str = "FL+DP"
-    wandb_group: str = "FL+HSDP"
-    wandb_name: str = "Prova"
-    wandb_notes: str = "Example run of xFFL with a LLM"
-    wandb_tags: Sequence[str] = field(
-        default_factory=lambda: ["xFFL", "example", "LLM"]
+    wandb_params: Mapping[str, Any] = field(
+        default_factory=lambda: {
+            "entity": "alpha-unito",
+            "project": "xFFL playground",
+            "group": "03_LLM",
+            "name": "Prova",
+            "notes": "Example run of xFFL with a LLM",
+            "tags": ["xFFL", "example", "LLM"],
+            "mode": "disabled",
+        }
     )
-    wandb_mode: str = "offline"
-
-    # Learning rate scheduler
-    @staticmethod
-    def _get_llama31_cosine_schedule(
-        optimizer: Optimizer, total_steps: int, config: XFFLConfig
-    ) -> LRScheduler:
-        """
-        Scheduler stile LLaMA3.1 semplificato: warmup -> cosine decay.
-
-        Args:
-            optimizer: torch.optim.Optimizer
-            total_steps (int): passi totali (es. 128)
-            lr_max (float): learning rate massimo
-            warmup_frac (float): frazione di warmup (default 5%)
-        """
-        warmup_steps = int(total_steps * config.warmup_frac)  # type: ignore
-        decay_steps = total_steps - warmup_steps
-
-        def lr_lambda(step):
-            if step < warmup_steps:
-                # warmup lineare
-                return step / max(1, warmup_steps)
-            else:
-                # decadimento coseno
-                progress = (step - warmup_steps) / max(1, decay_steps)
-                return 0.5 * (1 + math.cos(math.pi * progress))
-
-        return LambdaLR(optimizer, lr_lambda=lambda step: lr_lambda(step))
-
-    # Advanced configuration
-    lr_scheduler: Callable = _get_llama31_cosine_schedule
-
-    # Custom - optimizer
-    weight_decay: float = 0.1
-    betas: Sequence[float] = (0.9, 0.95)
-    warmup_frac: float = 0.1
