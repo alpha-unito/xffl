@@ -5,7 +5,7 @@ import os
 import time
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type
 
 import torch
 import torch.cuda.nvtx as nvtx
@@ -61,23 +61,30 @@ def _move_opt_to(
 
 
 def _get_processing_function(
-    batch: Any,
+    batch: Any, pre_process_hook: Optional[Callable]
 ) -> Callable[[nn.Module, Any, DistributedState], Tuple[Tensor, Tensor]]:
     """Returns the appropriate processing function for the provided batch data type.
 
     :param batch: An exemplary data batch from a dataloader
     :type batch: Mapping[Any, Any] | Tuple[Any, Any]
+    :param pre_process_hook: Data pre-process hook before forward pass, defaults to None
+    :type pre_process_hook: Optional[Callable], optional
     :return: A function with parameters model, batch, state, returning the processing output and eventual target
     :rtype: Callable[[nn.Module, Any, DistributedState], Tuple[Tensor, Tensor]]
     """
 
     train_function: Callable
+    _pre_process_hook: Callable = (
+        pre_process_hook if pre_process_hook else lambda _: None
+    )
 
     def dict_processing_no_labels(
         model: nn.Module,
         batch: Any,
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
+
+        batch = _pre_process_hook(model=model, batch=batch, state=state)
 
         for key in batch.keys():
             batch[key] = batch[key].to(
@@ -96,6 +103,9 @@ def _get_processing_function(
         batch: Dict[str, Any],
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
+
+        batch = _pre_process_hook(model=model, batch=batch, state=state)
+
         for key in batch.keys():
             batch[key] = batch[key].to(
                 device=state.current_device,
@@ -111,6 +121,9 @@ def _get_processing_function(
     ) -> Tuple[Any, Optional[Tensor]]:
         data: Tensor
         target: Tensor
+
+        batch = _pre_process_hook(model=model, batch=batch, state=state)
+
         data, target = batch
         data, target = data.to(
             device=state.current_device,
@@ -340,6 +353,8 @@ def distributed_training(
     criterion: Optional[nn.Module] = None,
     gradient_clipping: Optional[float] = None,
     gradient_accumulation: Optional[int] = None,
+    pre_process_hook: Optional[Callable] = None,
+    federated_layer: Optional[Tuple[Type, ...]] = None,
     config: Optional[XFFLConfig] = None,
 ) -> Mapping[str, float]:
     """Generic training cycle for FSDP models.
@@ -381,6 +396,10 @@ def distributed_training(
     :type gradient_clipping: Optional[float], optional
     :param gradient_accumulation: Gradient accumulation steps, defaults to None
     :type gradient_accumulation: Optional[int], optional
+    :param pre_process_hook: Data pre-process hook before forward pass, defaults to None
+    :type pre_process_hook: Optional[Callable], optional
+    :param federated_layer: Model's layer that will be updated through federated learning, defatuls to None
+    :type federated_layer: Optional[Tuple[Type, ...]], optional
     :param config: XFFL configuration
     :type config: Optional[XFFLConfig], defaults to None
     :return: Dictionary of metrics names and achieved values
@@ -448,12 +467,16 @@ def distributed_training(
             "A FedOpt learning rate scheduler is specified, but FedOpt and/or the FedOpt optimizer are not setup; it will be ignored."
         )
         _fedopt_lr_scheduler = None
-    _criterion: Optional[nn.Module] = resolve_param(
+    __criterion: Optional[Callable] = resolve_param(
         value=criterion, config=config, attr="criterion"
     )
-    if _criterion is not None:
-        if isinstance(_criterion, nn.Module):
-            _criterion.to(device=state.current_device, non_blocking=True)
+    if __criterion is not None:
+        if isinstance(__criterion, nn.Module):
+            _criterion: Callable = __criterion.to(
+                device=state.current_device, non_blocking=True
+            )
+        elif isinstance(__criterion, Callable):
+            _criterion: Callable = __criterion(state=state)
     _gradient_clipping: Optional[float] = resolve_param(
         value=gradient_clipping, config=config, attr="gradient_clipping"
     )
@@ -470,6 +493,32 @@ def distributed_training(
             f"Gradient accumulation steps is set to {_gradient_accumulation}, which is not acceptable. Defaulting to 1."
         )
         _gradient_accumulation = 1
+    _pre_process_hook: Optional[Callable] = resolve_param(
+        value=pre_process_hook, config=config, attr="pre_process_hook"
+    )
+    if _pre_process_hook and not isinstance(_pre_process_hook, Callable):
+        logger.warning(
+            f"A pre-process hook is specified, but is not callable ({_pre_process_hook})"
+        )
+    _federated_layer: Optional[Tuple[Type, ...]] = resolve_param(
+        value=federated_layer, config=config, attr="federated_layer"
+    )
+    if _federated_layer is not None:
+        if not state.is_federated_scaling_setup():
+            logger.warning(
+                "A federated layer is specified, but federated scaling is not setup. Ignoring the federated layer specification."
+            )
+        elif not (
+            isinstance(_federated_layer, Tuple) or isinstance(_federated_layer, Type)
+        ):
+            logger.error(
+                f"Model configuration error: the specified federated layer is not a type ({_federated_layer}).\n"
+            )
+        else:
+            if state.rank == 0:
+                logger.info(
+                    f"Applying FederatedScaling only to the following layer(s): {_federated_layer}"
+                )
 
     # Clear GPU cache and reset peak memory stats
     cuda_reset_memory_stats_and_empty_cache()
@@ -517,7 +566,9 @@ def distributed_training(
 
     # Epoch training cycle
     epoch: int
-    train_function: Callable = _get_processing_function(next(iter(train_dataloader)))
+    train_function: Callable = _get_processing_function(
+        next(iter(train_dataloader)), pre_process_hook=_pre_process_hook
+    )
     for epoch in range(_epochs):
         epoch_start_time: float = time.perf_counter()
         if state.rank == 0:
@@ -566,6 +617,8 @@ def distributed_training(
                     )
 
                 loss: Tensor = _criterion(output, target) if _criterion else output.loss
+                if scaler is not None:
+                    loss = scaler.scale(loss)
 
             with nvtx.range("Backward"):
                 if logging.root.level == logging.DEBUG:
@@ -577,10 +630,7 @@ def distributed_training(
                 if _gradient_accumulation is not None:
                     loss /= _gradient_accumulation
 
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                else:
-                    loss.backward()
+                loss.backward()
 
             with nvtx.range("Optimizer"):
                 if logging.root.level == logging.DEBUG:
@@ -615,6 +665,7 @@ def distributed_training(
                                 state=state,
                                 use_multiple_cuda_streams=False,
                                 use_contiguous_memory=False,
+                                federated_layer=_federated_layer,
                             )
                             if _fedopt:
                                 assert _fedopt_optimizer is not None
@@ -748,6 +799,9 @@ def distributed_training(
                 epochs=_epochs,
                 wandb_run=wandb_run,
                 criterion=_criterion,
+                default_precision=default_precision,
+                scaler=scaler,
+                pre_process_hook=_pre_process_hook,
             )
             val_step_loss.extend(_val_step_loss)
             val_step_perplexity.extend(_val_step_perplexity)
@@ -816,7 +870,10 @@ def validation(
     epoch: int,
     epochs: int,
     wandb_run: Optional[Run] = None,
-    criterion: Optional[nn.Module] = None,
+    criterion: Optional[Callable] = None,
+    default_precision: Optional[torch.dtype] = None,
+    scaler: Optional[GradScaler] = None,
+    pre_process_hook: Optional[Callable] = None,
 ) -> Tuple[Tensor, Tensor, List[float], List[float], float, Optional[float]]:
     """Generic evaluation cycle for FSDP models
 
@@ -830,6 +887,12 @@ def validation(
     :type wandb_run: Optional[wandb.Run], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
+    :param default_precision: Data precision used, defaults to None
+    :type default_precision: Optional[torch.dtype], optional
+    :param scaler: Precision scaler for AMP, defaults to None
+    :type scaler: Optional[GradScaler], optional
+    :param pre_process_hook: Data pre-process hook before forward pass, defaults to None
+    :type pre_process_hook: Optional[Callable], optional
     :return: Total epoch loss, total epoch perplexity, per-step loss, per-step perplexity, overall accuracy
     :rtype: Tuple[Tensor, Tensor, List[float], List[float], Optional[float]]
     """
@@ -841,7 +904,9 @@ def validation(
     val_epoch_loss: Tensor = tensor(0.0)
     correct: Optional[int] = None
 
-    val_function: Callable = _get_processing_function(next(iter(val_dataloader)))
+    val_function: Callable = _get_processing_function(
+        next(iter(val_dataloader)), pre_process_hook=pre_process_hook
+    )
     total_length: int = len(val_dataloader)
 
     pbar: tqdm = tqdm(
@@ -860,13 +925,25 @@ def validation(
         step: int
         batch: Dict[str, Any]
         for step, batch in enumerate(val_dataloader):
+
             output: Any
             target: Tensor
-            output, target = val_function(model=model, batch=batch, state=state)
+            target: Tensor
+            if default_precision is not None:
+                with torch.autocast(
+                    device_type=str(state.device_type), dtype=default_precision
+                ):
+                    output, target = val_function(model=model, batch=batch, state=state)
+            else:
+                output, target = val_function(model=model, batch=batch, state=state)
+
             if criterion:
                 loss: Tensor = criterion(output, target)
             else:
                 loss: Tensor = output.loss
+
+            if scaler is not None:
+                loss = scaler.scale(loss)
 
             # Metrics
             val_epoch_loss += loss.detach().float().cpu()

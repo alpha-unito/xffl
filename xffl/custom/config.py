@@ -44,7 +44,7 @@ class ModelInfo(ABC):
     :param attention: Attention layer implementation, defaults to None
     :type attention: Optional[str], optional
     :param decoder_layer: Model's decoder layer class, defatuls to None
-    :type decoder_layer: Optional[Type], optional
+    :type decoder_layer: Optional[Tuple[Type, ...]], optional
     :param wrapping_policy: Wrapping policy for FSDP/HSDP, defaults to None
     :type wrapping_policy: Optional[Callable], optional
     :param activation_checkpointing: Activate activation checkpointing, defaults to False
@@ -63,7 +63,7 @@ class ModelInfo(ABC):
     # Optional
     path: Optional[Path | str] = None
     attention: Optional[str] = None
-    decoder_layer: Optional[Tuple[Type]] = None
+    decoder_layer: Optional[Tuple[Type, ...]] = None
     wrapping_policy: Optional[Callable] = None
     activation_checkpointing: Optional[bool] = None
     tokenizer: Optional[Callable[[XFFLConfig, DistributedState], AutoTokenizer]] = None  # type: ignore
@@ -136,7 +136,7 @@ class ModelInfo(ABC):
             else:
                 self.wrapping_policy = functools.partial(
                     wrap.transformer_auto_wrap_policy,
-                    transformer_layer_cls={_cls for _cls in self.decoder_layer},  # type: ignore
+                    transformer_layer_cls={_cls for _cls in self.decoder_layer},
                 )
 
         # Activation Checkpointing
@@ -441,6 +441,8 @@ class XFFLConfig(ABC):
     :type federated: Optional[int | Sequence[int]], optional
     :param federated_batches: Specified after how many local batches the aggregation between the federated groups should be run, defaults to None
     :type federated_batches: Optional[int], optional
+    :param federated_layer: Model's layer that will be updated through federated learning, defatuls to None
+    :type federated_layer: Optional[Tuple[Type, ...]], optional
     :param cuda_streams: Number of CUDA streams to instantiate in case FederatedScaling is setup, defaults to None
     :type cuda_streams: Optional[int], optional
     :param epochs: Number of epochs, defaults to None
@@ -471,6 +473,7 @@ class XFFLConfig(ABC):
     hsdp: Optional[int] = None
     federated: Optional[int | Sequence[int]] = None
     federated_batches: Optional[int] = None
+    federated_layer: Optional[Tuple[Type, ...]] = None
     cuda_streams: Optional[int] = None
 
     # Learning
@@ -551,6 +554,13 @@ class XFFLConfig(ABC):
                 or self.federated_batches < 0
             ):
                 err_msg += f"xFFL configuration error: the provided federated batches value is not valid ({self.federated_batches}).\n"
+
+        # Federated layer
+        if self.federated_layer is not None and not (
+            isinstance(self.federated_layer, Tuple)
+            or isinstance(self.federated_layer, Type)
+        ):
+            err_msg += f"Model configuration error: the specified federated layer is not a type ({self.federated_layer}).\n"
 
         # CUDA streams
         if self.cuda_streams is not None:

@@ -106,7 +106,7 @@ def create_fsdp_model(
                 module=_module,
                 sharding_strategy=get_appropriate_sharding_strategy(state=state),
                 auto_wrap_policy=(
-                    _wrapping_policy() if _wrapping_policy is not None else None
+                    _wrapping_policy if _wrapping_policy is not None else None
                 ),
                 device_id=state.current_device,
                 backward_prefetch=None,  # True
