@@ -114,9 +114,9 @@ def load_data(config):
     print("Caricamento del dataset...")
     # il dataset vero e proprio
     ds = open_dataset(config.files.dataset)
-    # dizionario di tutte le variabili: key=nome variabile, value=indice {"10u": 0, "10v": 1, "2d": 2, "2t": 3, ...}
+    # dizionario di tutte le variabili: key=variable name, value=index {"10u": 0, "10v": 1, "2d": 2, "2t": 3, ...}
     name_to_index = ds.name_to_index
-    # Se il dataset è una combinazione grids: (es. centralizzato EU+USA), ricalcoliamo le statistiche combinate
+    # Se il dataset è una combinazione grids: (es. centralizzato EU+USA), ricalcoliamo le statistiche globali
     if "grids" in config.files.dataset:
         statistics = combined_statistics(config)
     else:
@@ -179,7 +179,7 @@ def build_model(
     return model
 
 
-# ----- Classe dataset ----- #
+# ----- Dataset class ----- #
 class AnemoiNativeDataset(Dataset):
 
     def __init__(self, ds, multistep=2, rollout=1, start_idx=0, end_idx=None):
@@ -653,7 +653,7 @@ def compute_climatology_basic(
     # inizio e fine del train set, 24837 timestep
     n_steps = end_idx - start_idx
 
-    for cs in range(0, n_steps, chunk_size):  # vai avanti a salti di 100 timestep
+    for cs in range(0, n_steps, chunk_size):  # avanti a salti di 100 timestep
 
         ce = min(cs + chunk_size, n_steps)
         # Zarr shape: (chunk, n_vars, ensemble, gridpoints)
@@ -698,7 +698,7 @@ def compute_climatology_basic(
 
 # ----- Costruzione del dataset ----- #
 def _compute_combined_statistics_deprecated(grids_config):
-    """Calcola le statistiche combinate su più dataset (Proposta 1: media pesata).
+    """Calcola le statistiche combined su più dataset (Proposta 1: media pesata).
 
     Usa la formula della varianza pooled per stdev, media pesata per mean,
     e min/max elementwise. Serve quando config.files.dataset è un dict grids:
@@ -713,7 +713,7 @@ def _compute_combined_statistics_deprecated(grids_config):
     Returns
     -------
     dict
-        Statistiche combinate: mean, stdev, minimum, maximum per variabile.
+        Statistiche combined: mean, stdev, minimum, maximum per variabile.
     """
     import numpy as np
 
@@ -748,7 +748,7 @@ def _compute_combined_statistics_deprecated(grids_config):
     maximum_combined = np.maximum.reduce([s["maximum"] for s in stats_list])
 
     print(
-        f"   Statistiche combinate: {len(sub_datasets)} dataset, "
+        f"   Statistiche combined: {len(sub_datasets)} dataset, "
         f"nodi: {' + '.join(str(n) for n in n_points)} = {n_total}"
     )
 

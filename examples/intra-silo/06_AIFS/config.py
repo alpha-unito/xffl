@@ -3,8 +3,6 @@
 import logging
 import os
 from dataclasses import dataclass, field
-
-# from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
 
@@ -18,8 +16,6 @@ from setup import (
 )
 from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
-
-# from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.optim import AdamW
 from utils import (
     AnemoiContext,
@@ -57,9 +53,6 @@ ctx_dict: Sequence[AnemoiContext] = get_context(
 )
 
 
-# XFFL CONFIGURATION #
-
-
 # Model information
 @dataclass
 class AIFS(ModelInfo):
@@ -72,25 +65,9 @@ class AIFS(ModelInfo):
     ) -> nn.Module:
         return get_aifs_model(ctx_dict[state.rank], state)  # type: ignore
 
-    # # Auto wrap policy
-    # @staticmethod
-    # def _fsdp_wrap_policy():
-    #     return partial(
-    #         transformer_auto_wrap_policy,
-    #         transformer_layer_cls={
-    #             TransformerProcessorBlock,
-    #             GraphTransformerMapperBlock,
-    #         },
-    #     )
-
     name: str = "AIFS"
     attention: str = "flash_attention_2"
     model: Callable = _load_aifs_from_checkpoint
-    # wrapping_policy: Callable = _fsdp_wrap_policy
-    # decoder_layer: Tuple[Type, ...] = (
-    #     TransformerProcessorBlock,
-    #     # GraphTransformerMapperBlock,
-    # )
     mixed_precision: MixedPrecision = field(
         default_factory=lambda: MixedPrecision(
             param_dtype=torch.bfloat16,
@@ -194,8 +171,8 @@ class xffl_config(XFFLConfig):
         default_factory=lambda: {
             "entity": "alpha-unito",
             "project": "xFFL playground",
-            "group": "06_AIFS",
-            "name": "Example",
+            "group": "Partial model federation",
+            "name": "Rank",
             "notes": "Example run of xFFL with AIFS for climate",
             "tags": ["xFFL", "example", "AIFS"],
             "mode": "online",
