@@ -346,8 +346,8 @@ def distributed_training(
     fedopt: Optional[bool] = None,
     epochs: Optional[int] = None,
     federated_batches: Optional[int] = None,
-    save_path: Optional[Path] = None,
-    output_model_name: Optional[str] = None,
+    output_folder: Optional[Path] = None,
+    output_model: Optional[str] = None,
     fedopt_lr_scheduler: Optional[LRScheduler] = None,
     fedopt_optimizer: Optional[Optimizer] = None,
     criterion: Optional[nn.Module] = None,
@@ -380,10 +380,10 @@ def distributed_training(
     :type epochs: int, optional
     :param federated_batches: Number of training batched to process between two federated averaging, defaults to None
     :type federated_batches: Optional[int]
-    :param save_path: Path where to save the trained model, defaults to None
-    :type save_path: Optional[Path], optional
-    :param output_model_name: Name to use for the saved trained model, defaults to None
-    :type output_model_name: Optional[str], optional
+    :param output_folder: Path where to save the trained model, defaults to None
+    :type output_folder: Optional[Path], optional
+    :param output_model: Name to use for the saved trained model, defaults to None
+    :type output_model: Optional[str], optional
     :param fedopt_lr_scheduler: Learning rate scheduler for the FedOpt optimizer, defaults to None
     :type fedopt_lr_scheduler: Optional[LRScheduler], optional
     :param fedopt_optimizer: FedOpt optimizer, defaults to None
@@ -425,27 +425,27 @@ def distributed_training(
         logger.warning(
             "Federated batches is setup, but FederatedScaling is not: running FederatedScaling with a single model replica."
         )
-    _save_path: Optional[Path] = resolve_param(
-        value=save_path, config=config, attr="save_path"
+    _output_folder: Optional[Path] = resolve_param(
+        value=output_folder, config=config, attr="output_folder"
     )
-    if _save_path is not None and (
-        not os.path.exists(_save_path) or not os.path.isdir(_save_path)
+    if _output_folder is not None and (
+        not os.path.exists(_output_folder) or not os.path.isdir(_output_folder)
     ):
         logger.warning(
-            f"Impossible saving the trained model with save dir {_save_path}: saving disabled."
+            f"Impossible saving the trained model with save dir {_output_folder}: saving disabled."
         )
-        _save_path = None
-    _output_model_name: Optional[str] = resolve_param(
-        value=output_model_name, config=config, attr="output_model_name"
+        _output_folder = None
+    _output_model: Optional[str] = resolve_param(
+        value=output_model, config=config, attr="output_model"
     )
-    if _save_path is not None and _output_model_name is None:
+    if _output_folder is not None and _output_model is None:
         logger.warning("No output model name specified - defaulting to 'output'.")
-        _output_model_name = "output"
-    elif _save_path is None and _output_model_name is not None:
+        _output_model = "output"
+    elif _output_folder is None and _output_model is not None:
         logger.error(
             "Output model name is provided, but save path is not - disabling model saving."
         )
-        _output_model_name = None
+        _output_model = None
     _fedopt_optimizer: Optional[Optimizer] = resolve_param(
         value=fedopt_optimizer, config=config, attr="fedopt_optimizer"
     )
@@ -813,15 +813,15 @@ def distributed_training(
                 val_acc.append(_val_acc)
 
         # Model saving
-        if _output_model_name is not None and _save_path is not None:
+        if _output_model is not None and _output_folder is not None:
             assert state.rank is not None
 
             checkpoint_start_time = time.perf_counter()
             save_model(
                 model=model,
                 optimizer=_optimizer,
-                path=_save_path,
-                name=_output_model_name,
+                path=_output_folder,
+                name=_output_model,
                 rank=state.rank,
                 epoch=epoch,
             )

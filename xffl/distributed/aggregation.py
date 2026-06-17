@@ -228,19 +228,33 @@ def get_average_distributed_loss(
     :rtype: Tensor
     """
 
-    _loss: Tensor = loss
-    if dist.is_initialized():
-        if state.backend == "nccl":
-            _loss: Tensor = loss.to(device=state.current_device, non_blocking=True)
+    _loss: Tensor = loss.clone()
+    if state.backend == "nccl":
+        _loss = _loss.to(device=state.current_device, non_blocking=True)
 
+    if dist.is_initialized():
         assert state.world_size is not None
 
-        scale_factor: int = state.world_size
-        group: Optional[ProcessGroup] = dist.group.WORLD
+        group: ProcessGroup
+        if state.is_federated_scaling_setup():
+            assert state.federated_group is not None
+            assert state.federated_rank is not None
 
-        _loss /= tensor(total_length)
+            group = state.federated_group[state.federated_rank]
+        else:
+            assert dist.group.WORLD is not None
+
+            group = dist.group.WORLD
+
+        length_sum: Tensor = tensor(
+            total_length, device=state.current_device, dtype=torch.long
+        )
+
         dist.all_reduce(tensor=_loss, op=dist.ReduceOp.SUM, group=group)
-        _loss /= scale_factor
+        dist.all_reduce(tensor=length_sum, op=dist.ReduceOp.SUM, group=group)
+        _loss /= length_sum
+    else:
+        _loss /= tensor(total_length, device=state.current_device, dtype=torch.long)
 
     return _loss
 

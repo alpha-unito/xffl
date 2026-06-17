@@ -48,7 +48,11 @@ MODEL_YAML_PATH: Path = Path(
 
 
 ctx_dict: Sequence[AnemoiContext] = get_context(
-    pretraining_yaml=(PRETRAINING_YAML_PATH_EU, PRETRAINING_YAML_PATH_US),
+    pretraining_yaml=(
+        PRETRAINING_YAML_PATH_EU,
+        PRETRAINING_YAML_PATH_US,
+        PRETRAINING_YAML_PATH_US,
+    ),
     model_yaml=MODEL_YAML_PATH,
 )
 
