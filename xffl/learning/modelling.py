@@ -11,6 +11,7 @@ from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
+from transformers.models import PreTrainedModel
 
 from xffl.custom.config import ModelInfo, XFFLConfig
 from xffl.distributed.distributed import (
@@ -196,7 +197,7 @@ def save_model(
     )
 
     # Only rank 0 saves the model
-    save_path = Path(path, name)
+    save_path: Path = Path(path, name)
     save_path.mkdir(parents=True, exist_ok=True)
     if rank == 0:
         # Saving path creation
@@ -212,22 +213,33 @@ def save_model(
             save_path.mkdir(parents=True, exist_ok=True)
 
         # Saving state_dict changing precision
-        if precision:
-            for param_tensor in state_dict:
-                state_dict[param_tensor] = state_dict[param_tensor].to(  # type: ignore
+        if precision is not None:
+            for key, tensor in state_dict.items():
+                assert isinstance(tensor, torch.Tensor)
+
+                state_dict[key] = tensor.to(
                     device="cpu",
                     dtype=precision,
                     non_blocking=True,
-                    # Possible to specify the memory format
                 )
 
-        # This is HF specific (modelling_utils.py)
-        # Saves the model (torch.save) together with its configuration files
-        # so that it can be reloaded with PreTrainedModel.from_pretrained
-        model.save_pretrained(
-            save_directory=save_path,
-            state_dict=state_dict,
-            safe_serialization=True,  # Safetensor or Pickle
-        )  # type: ignore # Shard size can be controlled (can improve transfer performance)
+        # Unwrap FSDP if needed
+        base_model: nn.Module = (
+            model.module if isinstance(model, FullyShardedDataParallel) else model
+        )
+
+        if callable(getattr(base_model, "save_pretrained", None)):
+            # This is HF specific (modelling_utils.py)
+            # Saves the model (torch.save) together with its configuration files
+            # so that it can be reloaded with PreTrainedModel.from_pretrained
+            assert isinstance(base_model, PreTrainedModel)
+
+            base_model.save_pretrained(
+                save_directory=save_path,
+                state_dict=state_dict,
+                safe_serialization=True,  # Safetensor or Pickle
+            )  # Shard size can be controlled (can improve transfer performance)
+        else:
+            torch.save(obj=state_dict, f=save_path)
 
         logger.info(f"Model saved to {save_path}")
