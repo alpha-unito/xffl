@@ -354,6 +354,7 @@ def distributed_training(
     fedopt_lr_scheduler: Optional[LRScheduler] = None,
     fedopt_optimizer: Optional[Optimizer] = None,
     criterion: Optional[nn.Module] = None,
+    classification: Optional[bool] = False,
     gradient_clipping: Optional[float] = None,
     gradient_accumulation: Optional[int] = None,
     pre_process_hook: Optional[Callable] = None,
@@ -395,6 +396,8 @@ def distributed_training(
     :type wandb_run: Optional[wandb.Run], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
+    :param classification: If the learning task is a classification, defaults to False
+    :type classification: Optional[bool], optional
     :param gradient_clipping: Gradient clipping value, defaults to None
     :type gradient_clipping: Optional[float], optional
     :param gradient_accumulation: Gradient accumulation steps, defaults to None
@@ -480,6 +483,9 @@ def distributed_training(
             )
         elif isinstance(__criterion, Callable):
             _criterion: Callable = __criterion(state=state)
+    _classification: Optional[bool] = resolve_param(
+        value=classification, config=config, attr="classification"
+    )
     _gradient_clipping: Optional[float] = resolve_param(
         value=gradient_clipping, config=config, attr="gradient_clipping"
     )
@@ -802,6 +808,7 @@ def distributed_training(
                 epochs=_epochs,
                 wandb_run=wandb_run,
                 criterion=_criterion,
+                classification=_classification,
                 default_precision=default_precision,
                 scaler=scaler,
                 pre_process_hook=_pre_process_hook,
@@ -874,6 +881,7 @@ def validation(
     epochs: int,
     wandb_run: Optional[Run] = None,
     criterion: Optional[Callable] = None,
+    classification: bool = False,
     default_precision: Optional[torch.dtype] = None,
     scaler: Optional[GradScaler] = None,
     pre_process_hook: Optional[Callable] = None,
@@ -931,7 +939,6 @@ def validation(
 
             output: Any
             target: Tensor
-            target: Tensor
             if default_precision is not None:
                 with torch.autocast(
                     device_type=str(state.device_type), dtype=default_precision
@@ -952,7 +959,7 @@ def validation(
             val_epoch_loss += loss.detach().float().cpu()
             val_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))
             val_step_loss.append(loss.detach().float().cpu().item())
-            if target is not None:
+            if target is not None and classification:
                 pred: Tensor = output.argmax(
                     dim=1, keepdim=True
                 )  # get the index of the max log-probability

@@ -451,6 +451,8 @@ class XFFLConfig(ABC):
     :type scale_learning_rate: Optional[bool], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
+    :param classification: If the learning task is a classification, defaults to False
+    :type classification: Optional[bool], optional
     :param output_folder: Output folder path where to save the trained model, defaults to None
     :type output_folder: Optional[Path], optional
     :param output_model: Saving name for the trained model, defaults to None
@@ -480,6 +482,7 @@ class XFFLConfig(ABC):
     epochs: Optional[int] = None
     scale_learning_rate: Optional[bool] = None
     criterion: Optional[nn.Module] = None
+    classification: Optional[bool] = False
 
     # Output
     output_folder: Optional[Path] = None
@@ -582,11 +585,17 @@ class XFFLConfig(ABC):
         if self.scale_learning_rate is not None and not isinstance(
             self.scale_learning_rate, bool
         ):
-            err_msg += f"Model configuration error: the specified value of scale_learning_rate is not acceptable ({self.scale_learning_rate}).\n"
+            err_msg += f"xFFL configuration error: the specified value of scale_learning_rate is not acceptable ({self.scale_learning_rate}).\n"
 
         # Criterion
         if self.criterion is not None and not isinstance(self.criterion, Callable):
-            err_msg += f"Model configuration error: the specified criterion is not callable ({self.criterion}).\n"
+            err_msg += f"xFFL configuration error: the specified criterion is not callable ({self.criterion}).\n"
+
+        # Classification
+        if self.classification is not None and not isinstance(
+            self.classification, bool
+        ):
+            err_msg += f"xFFL configuration error: classification is not a bool ({self.classification}).\n"
 
         # Output folder
         if self.output_folder is not None:

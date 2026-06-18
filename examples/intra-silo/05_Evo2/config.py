@@ -4,12 +4,12 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 import torch
 import torch.nn.functional as F
 from datasets import Dataset as HFDataset
-from datasets import load_dataset
+from datasets import DatasetDict
 from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
 from torch.optim import AdamW
@@ -22,7 +22,50 @@ from xffl.learning.optim import warmup_cosine_decay
 os.environ["HF_HUB_OFFLINE"] = "1"
 
 # Constants
-BASE_PATH: Path = Path("/home/gmittone/xffl")
+BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl")
+
+
+def _load_fasta_dataset(
+    path: Path, test_split: float = 0.2, seq_len: int = 8192, seed: int = 42
+) -> DatasetDict:
+    sequences: list[str] = []
+    current_sequence: list[str] = []
+
+    with open(path) as f:
+        for line in f:
+            line: str = line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith(">"):
+                if current_sequence:
+                    sequences.append("".join(current_sequence))
+                    current_sequence = []
+            else:
+                current_sequence.append(line)
+
+        if current_sequence:
+            sequences.append("".join(current_sequence))
+
+    chunks: list[str] = []
+
+    # +1 per avere seq_len token dopo lo shift
+    chunk_len = seq_len + 1
+
+    for sequence in sequences:
+        for start in range(0, len(sequence) - chunk_len + 1, seq_len):
+            chunks.append(sequence[start : start + chunk_len])
+
+    dataset = HFDataset.from_dict({"sequence": chunks})
+
+    split: DatasetDict = dataset.train_test_split(
+        test_size=test_split,
+        seed=seed,
+        shuffle=True,
+    )
+
+    return split
 
 
 # Model information
@@ -62,8 +105,6 @@ class evo_2(ModelInfo):
     name: str = "evo2_1b_base"
     attention: str = "flash_attention_2"
     model: Callable = _load_evo2_from_checkpoint
-    decoder_layer: Tuple[Type, ...] = (AttentionBlock, ParallelGatedConvBlock)
-    activation_checkpointing: bool = True
     mixed_precision: MixedPrecision = field(
         default_factory=lambda: MixedPrecision(
             param_dtype=torch.bfloat16,
@@ -82,28 +123,35 @@ class opengenome(DatasetInfo):
     def _get_dataset_splits(
         config: XFFLConfig, state: DistributedState
     ) -> Mapping[str, HFDataset]:
+        assert state.rank is not None
+        assert config.seed is not None
+
+        dataset_dict: Mapping[int, str] = {
+            0: "flye_canu.fasta",
+            1: "klebsiella.fasta",
+        }
+
+        fasta_path: Path = Path(config.dataset_info.path) / dataset_dict[state.rank]  # type: ignore
+        split: DatasetDict = _load_fasta_dataset(
+            path=fasta_path, test_split=0.2, seq_len=2048, seed=config.seed
+        )
+
         return {
-            "train": load_dataset(
-                "parquet",
-                data_dir=str(config.dataset_info.path) + "/data",
-                split="train",
-            ),
-            "val": load_dataset(
-                "parquet",
-                data_dir=str(config.dataset_info.path) + "/data",
-                split="validation",
-            ),
-        }  # type: ignore
+            "train": split["train"],
+            "val": split["test"],
+        }
 
     @staticmethod
     def _get_collate_fn() -> Callable:
         from vortex.model.tokenizer import CharLevelTokenizer
 
-        tokenizer: CharLevelTokenizer = CharLevelTokenizer(512)
+        vocab_size: int = 512
+        tokenizer: CharLevelTokenizer = CharLevelTokenizer(vocab_size)
 
-        def _collate_fn(batch: Sequence[Mapping[str, Any]]) -> Tuple[Tensor, Tensor]:
-            enc: Tensor = torch.tensor(
-                tokenizer.tokenize_batch([sample["text"] for sample in batch]),
+        def _collate_fn(batch: Sequence[dict[str, Any]]) -> tuple[Tensor, Tensor]:
+
+            enc = torch.tensor(
+                tokenizer.tokenize_batch([sample["sequence"] for sample in batch]),
                 dtype=torch.long,
             )
 
@@ -114,14 +162,12 @@ class opengenome(DatasetInfo):
 
         return _collate_fn
 
-    name: str = "opengenome2-metagenomes-plantcad2-c4096"
+    name: str = "genome"
     splits: Callable = _get_dataset_splits
     batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 8, "val": 1}
+        default_factory=lambda: {"train": 4, "val": 1}
     )
-    subsampling: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 1000, "val": 20}
-    )
+    subsampling: int = 128
     collate_fn: Callable = field(default_factory=_get_collate_fn)
     workers: int = 2
     path: Path = BASE_PATH / "dataset" / name
@@ -167,16 +213,23 @@ class xffl_config(XFFLConfig):
     seed: int = 42
 
     # Learning
+    federated: int = 1
+    federated_batches: int = 8
     epochs: int = 1
 
     # Custom criterion
     @staticmethod
-    def _evo2_CrossEntropy(output: Tensor, target: Tensor) -> Tensor:
-        return F.cross_entropy(
-            output.reshape(-1, output.size(-1)), target.reshape(-1), ignore_index=0
-        )
+    def _get_weighted_mse_loss(
+        state: DistributedState,
+    ) -> Callable[[Tensor, Tensor], Tensor]:
+        def _evo2_CrossEntropy(output: Tensor, target: Tensor) -> Tensor:
+            return F.cross_entropy(
+                output.reshape(-1, output.size(-1)), target.reshape(-1), ignore_index=0
+            )
 
-    criterion: Callable = _evo2_CrossEntropy
+        return _evo2_CrossEntropy
+
+    criterion: Callable = _get_weighted_mse_loss
 
     # WandB
     wandb_params: Mapping[str, Any] = field(
@@ -192,5 +245,5 @@ class xffl_config(XFFLConfig):
     )
 
     # Output
-    output_folder: Optional[Path] = None
-    output_model: Optional[str] = None
+    output_folder: Optional[Path] = Path("/beegfs/home/gmittone/xffl/output")
+    output_model: Optional[str] = "Test"

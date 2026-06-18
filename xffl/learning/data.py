@@ -86,7 +86,6 @@ def _apply_subsampling(
         _subsampling = subsampling[key]
     else:
         _subsampling = subsampling
-
     return Subset(split, range(_subsampling))
 
 

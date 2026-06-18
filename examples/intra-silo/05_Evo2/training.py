@@ -94,7 +94,7 @@ def pretraining(config: XFFLConfig) -> None:
         )
 
     # WandB setup
-    wandb_run: Any = wandb_setup(config=config)
+    wandb_run: Any = wandb_setup(config=config, state=state)
 
     # Main training function
     results = processing.distributed_training(

@@ -43,7 +43,7 @@ PRETRAINING_YAML_PATH_US: Path = Path(
     "/beegfs/home/matteo.colombini114/Anemoi/LAM/LUCA_GIAN_pretraining_LAM_USA.yaml"
 )
 MODEL_YAML_PATH: Path = Path(
-    "/beegfs/home/matteo.colombini114/Anemoi/LAM/model_LAM.yaml"
+    "/beegfs/home/matteo.colombini114/Anemoi/LAM/model_personalized_LAM.yaml"
 )
 
 
@@ -67,7 +67,7 @@ class AIFS(ModelInfo):
         config: XFFLConfig,
         state: DistributedState,
     ) -> nn.Module:
-        return get_aifs_model(ctx_dict[state.rank], state)  # type: ignore
+        return get_aifs_model(ctx=ctx_dict[state.rank], state=state)  # type: ignore
 
     name: str = "AIFS"
     attention: str = "flash_attention_2"
@@ -90,7 +90,7 @@ class ERA5(DatasetInfo):
         config: XFFLConfig,
         state: DistributedState,
     ) -> Mapping[str, HFDataset]:
-        return get_dataset_splits(ctx_dict[state.rank])  # type: ignore
+        return get_dataset_splits(ctx=ctx_dict[state.rank])  # type: ignore
 
     name: str = "ERA5"
     splits: Callable = _get_dataset_splits
@@ -98,9 +98,6 @@ class ERA5(DatasetInfo):
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 16, "val": 16}
     )
-    # subsampling: Mapping[str, int] = field(
-    #     default_factory=lambda: {"train": 1000, "val": 20}
-    # )
 
 
 # Optimizer information
@@ -179,7 +176,7 @@ class xffl_config(XFFLConfig):
             "name": "Rank",
             "notes": "Example run of xFFL with AIFS for climate",
             "tags": ["xFFL", "example", "AIFS"],
-            "mode": "online",
+            "mode": "disabled",  # "online" to active WandB
         }
     )
 
