@@ -1,4 +1,5 @@
 import math
+from logging import Logger, getLogger
 
 import numpy as np
 import torch
@@ -9,12 +10,15 @@ from anemoi.utils.config import DotDict
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader, Dataset
 
+logger: Logger = getLogger(__name__)
+"""Default xFFL logger"""
+
 
 # ----- Imposta GPU se presente, altrimenti CPU ----- #
 def set_device():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Device: {device}")
+    logger.debug(f"Device: {device}")
 
     return device
 
@@ -39,10 +43,10 @@ def load_config(training_yaml, model_yaml):
 # ----- Costruzione del grafo ----- #
 def load_graph(config):
 
-    print("Caricamento del grafo...")
+    logger.debug("Caricamento del grafo...")
     graph_data = torch.load(config.files.graph, weights_only=False)
-    print(f"   Nodi 'data': {graph_data['data'].num_nodes}")
-    print(f"   Nodi 'hidden': {graph_data['hidden'].num_nodes}")
+    logger.debug(f"   Nodi 'data': {graph_data['data'].num_nodes}")
+    logger.debug(f"   Nodi 'hidden': {graph_data['hidden'].num_nodes}")
 
     return graph_data
 
@@ -72,7 +76,7 @@ def combined_statistics(config):
     n_variabili_ds2 = len(ds2.name_to_index)
 
     if n_variabili_ds1 != n_variabili_ds2:
-        print("Errore: i due dataset non hanno lo stesso numero di variabili")
+        logger.debug("Errore: i due dataset non hanno lo stesso numero di variabili")
 
     n_var = n_variabili_ds1
 
@@ -111,7 +115,7 @@ def combined_statistics(config):
 
 def load_data(config):
 
-    print("Caricamento del dataset...")
+    logger.debug("Caricamento del dataset...")
     # il dataset vero e proprio
     ds = open_dataset(config.files.dataset)
     # dizionario di tutte le variabili: key=variable name, value=index {"10u": 0, "10v": 1, "2d": 2, "2t": 3, ...}
@@ -122,7 +126,7 @@ def load_data(config):
     else:
         statistics = ds.statistics
 
-    print(
+    logger.debug(
         f"   Timesteps: {len(ds)}, Variabili: {len(name_to_index)}, Gridpoints: {ds.shape[-1]}"
     )
 
@@ -134,13 +138,13 @@ def load_data(config):
 # IndexCollection richiede OmegaConf (non DotDict) come primo argomento.
 def build_indices(config_omegaconf, name_to_index):
 
-    print("Costruzione indici dati...")
+    logger.debug("Costruzione indici dati...")
     data_indices = IndexCollection(config_omegaconf, name_to_index)
 
     num_input = len(data_indices.internal_model.input)
     num_output = len(data_indices.internal_model.output)
-    print(f"   Variabili input modello: {num_input} (prognostic + forcing)")
-    print(f"   Variabili output modello: {num_output} (prognostic + diagnostic)")
+    logger.debug(f"   Variabili input modello: {num_input} (prognostic + forcing)")
+    logger.debug(f"   Variabili output modello: {num_output} (prognostic + diagnostic)")
 
     # data_indices è un oggetto i cui attributi sono liste di indici delle variabili
     # è un oggetto più ricco di name_to_index, che è invece "rigido"
@@ -152,7 +156,7 @@ def build_model(
     config, graph_data, statistics, data_indices, device, checkpoint_path=None
 ):
 
-    print("Costruzione modello con AnemoiModelInterface...")
+    logger.debug("Costruzione modello con AnemoiModelInterface...")
     model = AnemoiModelInterface(
         config=config,
         graph_data=graph_data,
@@ -165,16 +169,16 @@ def build_model(
 
     # se il checkpoint_path non è nullo,carica i pesi pre-addestrati (nel finetuning dovrai specificare)
     if checkpoint_path is not None:
-        print(f"   Caricamento checkpoint: {checkpoint_path}")
+        logger.debug(f"   Caricamento checkpoint: {checkpoint_path}")
         state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
         model.load_state_dict(state_dict)
-        print("   Checkpoint caricato!")
+        logger.debug("   Checkpoint caricato!")
 
     # in ogni caso mettiamo il modello su GPU se presente
     model = model.to(device)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"   Parametri addestrabili: {total_params:,}")
+    logger.debug(f"   Parametri addestrabili: {total_params:,}")
 
     return model
 
@@ -227,9 +231,9 @@ def split_dataset(ds, val_years=2, test_years=1, timesteps_per_year=1461):
         "test": (n_train, n_train + n_test),  # 2022 = 1 anno
     }
 
-    print("   Dataset split:")
+    logger.debug("   Dataset split:")
     for name, (start, end) in splits.items():
-        print(
+        logger.debug(
             f"      {name:>5s}: indici [{start}, {end}) → {end - start} timestep (~{(end - start) / timesteps_per_year:.1f} anni)"
         )
 
@@ -250,9 +254,9 @@ def split_dataset_finetuning(ds, val_years=2, test_years=1, timesteps_per_year=1
         "test": (n_train, n_train + n_test),  # 2022 = 1 anno
     }
 
-    print("   Dataset split:")
+    logger.debug("   Dataset split:")
     for name, (start, end) in splits.items():
-        print(
+        logger.debug(
             f"      {name:>5s}: indici [{start}, {end}) → {end - start} timestep (~{(end - start) / timesteps_per_year:.1f} anni)"
         )
 
@@ -283,7 +287,7 @@ def build_dataloader(
         num_workers=8,
         pin_memory=(device_type == "cuda"),
     )
-    print(f"   Campioni: {len(dataset)}, Batch: {len(loader)}")
+    logger.debug(f"   Campioni: {len(dataset)}, Batch: {len(loader)}")
     return loader
 
 
@@ -315,14 +319,14 @@ def build_loss_weights(config, data_indices, graph_data, device):
 
     var_weights = var_weights.to(device)
 
-    print("   Variable loss weights:")
+    logger.debug("   Variable loss weights:")
     for name, idx in sorted(output_name_to_idx.items(), key=lambda x: x[1]):
-        print(f"      {name:>8s}: {var_weights[idx].item():.4f}")
+        logger.debug(f"      {name:>8s}: {var_weights[idx].item():.4f}")
 
     # node area weights
     node_attr = config.training.node_loss_weights
     node_weights = graph_data[config.graph.data][node_attr].squeeze().to(device)
-    print(
+    logger.debug(
         f"   Node area weights: shape={node_weights.shape}, "
         f"min={node_weights.min():.4f}, max={node_weights.max():.4f}"
     )
@@ -524,7 +528,7 @@ def compute_climatology(
     ), f"window_size deve essere dispari, ricevuto {window_size}"
     half_window = window_size // 2  # 30
 
-    print(f"   Calcolo climatologia WB2 (window={window_size} giorni)...")
+    logger.debug(f"   Calcolo climatologia WB2 (window={window_size} giorni)...")
 
     # ------------------------------------------------------------------
     # Step 1: Medie grezze per (doy, hour) su tutti gli anni di training
@@ -559,14 +563,14 @@ def compute_climatology(
             clim_count[key] += 1
 
         if (cs + chunk_size) % 5000 < chunk_size:
-            print(f"      {min(cs + chunk_size, n_steps)}/{n_steps} timestep...")
+            logger.debug(f"      {min(cs + chunk_size, n_steps)}/{n_steps} timestep...")
 
     # Medie grezze
     raw_clim = {}
     for key in clim_sum:
         raw_clim[key] = clim_sum[key] / clim_count[key]
 
-    print(f"      Medie grezze: {len(raw_clim)} combinazioni (doy, ora)")
+    logger.debug(f"      Medie grezze: {len(raw_clim)} combinazioni (doy, ora)")
 
     # ------------------------------------------------------------------
     # Step 2: Smoothing triangolare (identico a WB2 create_window_weights)
@@ -605,17 +609,19 @@ def compute_climatology(
                     np.float32
                 )
 
-    print(f"   Climatologia smoothed: {len(climatology)} combinazioni (doy, ora)")
+    logger.debug(
+        f"   Climatologia smoothed: {len(climatology)} combinazioni (doy, ora)"
+    )
 
     torch.save(climatology, save_path)
-    print(f"   Climatologia salvata in '{save_path}'")
+    logger.debug(f"   Climatologia salvata in '{save_path}'")
 
     return climatology
 
 
 def save_global_step(x):
     with open("last_global_step.txt", "w") as f:
-        print(x, file=f)
+        logger.debug(x, file=f)
 
 
 def load_global_step():
@@ -691,7 +697,7 @@ def compute_climatology_basic(
         climatology[key] = (clim_sum[key] / clim_count[key]).astype(np.float32)
 
     torch.save(climatology, save_path)
-    print(f"   Climatologia salvata in '{save_path}'")
+    logger.debug(f"   Climatologia salvata in '{save_path}'")
 
     return climatology
 
@@ -747,7 +753,7 @@ def _compute_combined_statistics_deprecated(grids_config):
     minimum_combined = np.minimum.reduce([s["minimum"] for s in stats_list])
     maximum_combined = np.maximum.reduce([s["maximum"] for s in stats_list])
 
-    print(
+    logger.debug(
         f"   Statistiche combined: {len(sub_datasets)} dataset, "
         f"nodi: {' + '.join(str(n) for n in n_points)} = {n_total}"
     )

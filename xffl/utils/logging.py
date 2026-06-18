@@ -15,6 +15,7 @@ EXCLUDED_LOGGERS = [
     "httpcore",
     "filelock",
     "fsspec",
+    "anemoi",
 ]
 
 
