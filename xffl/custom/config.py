@@ -599,7 +599,9 @@ class XFFLConfig(ABC):
                 self.output_folder = Path(self.output_folder)
 
             if not self.output_folder.exists():
-                err_msg += f"xFFL configuration error: the output folder path does not exists ({self.output_folder}).\n"
+                logger.debug(
+                    f"xFFL configuration error: the output folder path does not exists ({self.output_folder}) - it will be created."
+                )
 
         # Output model
         if (

@@ -11,7 +11,7 @@ from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
-from transformers.models import PreTrainedModel
+from transformers import PreTrainedModel
 
 from xffl.custom.config import ModelInfo, XFFLConfig
 from xffl.distributed.distributed import (
@@ -197,8 +197,6 @@ def save_model(
     )
 
     # Only rank 0 saves the model
-    save_path: Path = Path(path, name)
-    save_path.mkdir(parents=True, exist_ok=True)
     if rank == 0:
         # Saving path creation
         if not os.path.exists(path):
@@ -206,11 +204,11 @@ def save_model(
         if not os.path.isdir(path):
             raise Exception(f"Save model path {path} must be a directory")
         if epoch is not None:
-            save_path = Path(path, name, f"epoch_{epoch}")
-            save_path.mkdir(parents=True, exist_ok=True)
+            path = Path(path, f"epoch_{epoch}")
+            path.mkdir(parents=True, exist_ok=True)
         elif checkpoint is not None:
-            save_path = Path(path, name, f"checkpoint_{checkpoint}")
-            save_path.mkdir(parents=True, exist_ok=True)
+            path = Path(path, f"checkpoint_{checkpoint}")
+            path.mkdir(parents=True, exist_ok=True)
 
         # Saving state_dict changing precision
         if precision is not None:
@@ -235,11 +233,11 @@ def save_model(
             assert isinstance(base_model, PreTrainedModel)
 
             base_model.save_pretrained(
-                save_directory=save_path,
+                save_directory=path,
                 state_dict=state_dict,
                 safe_serialization=True,  # Safetensor or Pickle
             )  # Shard size can be controlled (can improve transfer performance)
         else:
-            torch.save(obj=state_dict, f=save_path)
+            torch.save(obj=state_dict, f=path / f"{name}.pt")
 
-        logger.info(f"Model saved to {save_path}")
+        logger.info(f"Model saved to {path}")

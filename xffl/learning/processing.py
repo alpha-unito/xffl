@@ -74,8 +74,8 @@ def _get_processing_function(
     """
 
     train_function: Callable
-    _pre_process_hook: Callable = (
-        pre_process_hook if pre_process_hook else lambda _: None
+    _pre_process_hook: Optional[Callable] = (
+        pre_process_hook if pre_process_hook else None
     )
 
     def dict_processing_no_labels(
@@ -84,7 +84,8 @@ def _get_processing_function(
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
 
-        batch = _pre_process_hook(model=model, batch=batch, state=state)
+        if _pre_process_hook is not None:
+            batch = _pre_process_hook(model=model, batch=batch, state=state)
 
         for key in batch.keys():
             batch[key] = batch[key].to(
@@ -104,7 +105,8 @@ def _get_processing_function(
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
 
-        batch = _pre_process_hook(model=model, batch=batch, state=state)
+        if _pre_process_hook is not None:
+            batch = _pre_process_hook(model=model, batch=batch, state=state)
 
         for key in batch.keys():
             batch[key] = batch[key].to(
@@ -122,7 +124,8 @@ def _get_processing_function(
         data: Tensor
         target: Tensor
 
-        batch = _pre_process_hook(model=model, batch=batch, state=state)
+        if _pre_process_hook is not None:
+            batch = _pre_process_hook(model=model, batch=batch, state=state)
 
         data, target = batch
         data, target = data.to(
@@ -428,13 +431,13 @@ def distributed_training(
     _output_folder: Optional[Path] = resolve_param(
         value=output_folder, config=config, attr="output_folder"
     )
-    if _output_folder is not None and (
-        not os.path.exists(_output_folder) or not os.path.isdir(_output_folder)
-    ):
-        logger.warning(
-            f"Impossible saving the trained model with save dir {_output_folder}: saving disabled."
-        )
-        _output_folder = None
+    if _output_folder is not None:
+        _output_folder.mkdir(parents=True, exist_ok=True)
+        if not os.path.exists(_output_folder) or not os.path.isdir(_output_folder):
+            logger.warning(
+                f"Impossible saving the trained model with save dir {_output_folder}: saving disabled."
+            )
+            _output_folder = None
     _output_model: Optional[str] = resolve_param(
         value=output_model, config=config, attr="output_model"
     )
