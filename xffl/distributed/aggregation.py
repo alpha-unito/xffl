@@ -237,10 +237,9 @@ def get_average_distributed_loss(
 
         group: ProcessGroup
         if state.is_federated_scaling_setup():
-            assert state.federated_group is not None
-            assert state.federated_rank is not None
+            assert state.federation is not None
 
-            group = state.federated_group[state.federated_rank]
+            group = state.federation
         else:
             assert dist.group.WORLD is not None
 

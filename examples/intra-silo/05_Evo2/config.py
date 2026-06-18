@@ -167,7 +167,7 @@ class opengenome(DatasetInfo):
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 4, "val": 1}
     )
-    subsampling: int = 128
+    # subsampling: int = 64
     collate_fn: Callable = field(default_factory=_get_collate_fn)
     workers: int = 2
     path: Path = BASE_PATH / "dataset" / name
@@ -245,5 +245,5 @@ class xffl_config(XFFLConfig):
     )
 
     # Output
-    output_folder: Optional[Path] = Path("/beegfs/home/gmittone/xffl/output")
-    output_model: Optional[str] = "Test"
+    output_folder: Optional[Path] = None
+    output_model: Optional[str] = None
