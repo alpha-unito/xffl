@@ -51,7 +51,7 @@ ctx_dict: Sequence[AnemoiContext] = get_context(
     pretraining_yaml=(
         PRETRAINING_YAML_PATH_EU,
         PRETRAINING_YAML_PATH_US,
-        PRETRAINING_YAML_PATH_US,
+        PRETRAINING_YAML_PATH_EU,  # TODO: replace with new dataset
     ),
     model_yaml=MODEL_YAML_PATH,
 )
@@ -173,11 +173,11 @@ class xffl_config(XFFLConfig):
         default_factory=lambda: {
             "entity": "alpha-unito",
             "project": "xFFL playground",
-            "group": "Partial model federation",
+            "group": "Full model federation",
             "name": "Rank",
             "notes": "Example run of xFFL with AIFS for climate",
             "tags": ["xFFL", "example", "AIFS"],
-            "mode": "disabled",  # "online" to active WandB
+            "mode": "online",  # "online" to active WandB
         }
     )
 
