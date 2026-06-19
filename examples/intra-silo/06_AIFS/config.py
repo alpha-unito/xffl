@@ -98,7 +98,7 @@ class ERA5(DatasetInfo):
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 16, "val": 16}
     )
-    subsampling: int = 64
+    # subsampling: int = 64
 
 
 # Optimizer information
