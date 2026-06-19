@@ -51,8 +51,8 @@ def create_fsdp_model(
     :type mixed_precision: Optional[MixedPrecision], optional
     :param decoder_layers: Layer type to set activation checkpointing, defaults to None
     :type decoder_layers: Optional[Type], optional
-    :param use_orig_params: If to use the original parameter format, defaults to False
-    :type use_orig_params: Bool, defaults to False
+    :param use_orig_params: If to use the original parameter format, defaults to True
+    :type use_orig_params: Bool, defaults to True
     :param activation_checkpointing: If to use activation checkpointing, defaults to None
     :type activation_checkpointing: Bool, defaults to None
     :param config: XFFL configuration
@@ -84,12 +84,19 @@ def create_fsdp_model(
             config=model_info,
             attr="activation_checkpointing",
         )
+        _use_orig_params: bool = use_orig_params
+        if not _use_orig_params and config.federated_layer is not None:
+            logger.info(
+                "Setting FSDP to use original parameter format since partial FL is requested."
+            )
+            _use_orig_params: bool = True
     else:
         _module: Optional[nn.Module] = module
         _wrapping_policy: Optional[Callable] = wrapping_policy
         _mixed_precision: Optional[MixedPrecision] = mixed_precision
         _decoder_layer: Optional[Type] = decoder_layer
         _activation_checkpointing: Optional[bool] = activation_checkpointing
+        _use_orig_params: bool = use_orig_params
 
     # Model and device mashes creation
     if _module is not None:
@@ -121,7 +128,7 @@ def create_fsdp_model(
                     else None
                 ),  # type: ignore
                 device_mesh=device_mesh,
-                use_orig_params=use_orig_params,
+                use_orig_params=use_orig_params or config.federated_layer is not None,
             )
         else:
             model = _module.to(device=state.current_device, non_blocking=True)

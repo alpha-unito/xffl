@@ -879,7 +879,7 @@ def bucket_optimized_coalesced_(
     state: DistributedState,
     use_multiple_cuda_streams: bool = False,
     use_contiguous_memory: bool = False,
-    federated_layer: Optional[Tuple[Type, ...]] = None,
+    federated_layer: Optional[Type | Tuple[Type, ...]] = None,
 ) -> None:
     """Weights averaging through a stacking-based approach
 
@@ -895,7 +895,8 @@ def bucket_optimized_coalesced_(
     :type use_multiple_cuda_streams: bool
     :param use_contiguous_memory: convert tensors to a contiguous memory representation, defaults to False
     :type use_contiguous_memory: bool
-    :param federated_layer: Model's layer that will be updated through federated learning, defatuls to None :type federated_layer: Optional[Tuple[Type, ...]], optional
+    :param federated_layer: Model layer type(s) that will be updated through federated learning. If ``None``, all parameters are aggregated, defaults to None
+    :type federated_layer: Optional[Type | Tuple[Type, ...]], optional
     :returns: The Aggregation strategy configuration
     :rtype: Strategy
     """
@@ -912,19 +913,24 @@ def bucket_optimized_coalesced_(
     if federated_layer is None:
         param_list = list(model.parameters())
     else:
+        layer_types: Tuple[Type, ...] = (
+            federated_layer
+            if isinstance(federated_layer, tuple)
+            else (federated_layer,)
+        )
         param_list = []
 
         for module in model.modules():
-            if isinstance(module, federated_layer):
-                param_list.extend(
-                    parameter for parameter in module.parameters(recurse=False)
-                )
+            if isinstance(module, layer_types):
+                param_list.extend(module.parameters())
 
     if not param_list:
         return
 
     total_numel: int = sum(parameter.numel() for parameter in param_list)
     bucket_size: int = max(1, total_numel // stream_number)
+
+    print(f"Aggregating {(total_numel / 1e6):.2f} million trainable parameters")
 
     parameter_counter: int = 0
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
