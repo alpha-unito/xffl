@@ -141,7 +141,7 @@ dmypy.json
 logs
 data/*
 model/*
-dataset/*
+dataset
 images/*
 *.csv
 *.pstats
