@@ -11,6 +11,7 @@ from torch import nn
 from torch.distributed.checkpoint.state_dict import StateDictOptions, get_state_dict
 from torch.distributed.device_mesh import DeviceMesh
 from torch.distributed.fsdp import FullyShardedDataParallel, MixedPrecision
+from transformers import PreTrainedModel
 
 from xffl.custom.config import ModelInfo, XFFLConfig
 from xffl.distributed.distributed import (
@@ -50,8 +51,8 @@ def create_fsdp_model(
     :type mixed_precision: Optional[MixedPrecision], optional
     :param decoder_layers: Layer type to set activation checkpointing, defaults to None
     :type decoder_layers: Optional[Type], optional
-    :param use_orig_params: If to use the original parameter format, defaults to False
-    :type use_orig_params: Bool, defaults to False
+    :param use_orig_params: If to use the original parameter format, defaults to True
+    :type use_orig_params: Bool, defaults to True
     :param activation_checkpointing: If to use activation checkpointing, defaults to None
     :type activation_checkpointing: Bool, defaults to None
     :param config: XFFL configuration
@@ -83,12 +84,19 @@ def create_fsdp_model(
             config=model_info,
             attr="activation_checkpointing",
         )
+        _use_orig_params: bool = use_orig_params
+        if not _use_orig_params and config.federated_layer is not None:
+            logger.info(
+                "Setting FSDP to use original parameter format since partial FL is requested."
+            )
+            _use_orig_params: bool = True
     else:
         _module: Optional[nn.Module] = module
         _wrapping_policy: Optional[Callable] = wrapping_policy
         _mixed_precision: Optional[MixedPrecision] = mixed_precision
         _decoder_layer: Optional[Type] = decoder_layer
         _activation_checkpointing: Optional[bool] = activation_checkpointing
+        _use_orig_params: bool = use_orig_params
 
     # Model and device mashes creation
     if _module is not None:
@@ -106,7 +114,7 @@ def create_fsdp_model(
                 module=_module,
                 sharding_strategy=get_appropriate_sharding_strategy(state=state),
                 auto_wrap_policy=(
-                    _wrapping_policy() if _wrapping_policy is not None else None
+                    _wrapping_policy if _wrapping_policy is not None else None
                 ),
                 device_id=state.current_device,
                 backward_prefetch=None,  # True
@@ -120,7 +128,7 @@ def create_fsdp_model(
                     else None
                 ),  # type: ignore
                 device_mesh=device_mesh,
-                use_orig_params=use_orig_params,
+                use_orig_params=use_orig_params or config.federated_layer is not None,
             )
         else:
             model = _module.to(device=state.current_device, non_blocking=True)
@@ -197,8 +205,6 @@ def save_model(
     )
 
     # Only rank 0 saves the model
-    save_path = Path(path, name)
-    save_path.mkdir(parents=True, exist_ok=True)
     if rank == 0:
         # Saving path creation
         if not os.path.exists(path):
@@ -206,31 +212,43 @@ def save_model(
         if not os.path.isdir(path):
             raise Exception(f"Save model path {path} must be a directory")
         if epoch is not None:
-            save_path = Path(path, name, f"epoch_{epoch}")
-            save_path.mkdir(parents=True, exist_ok=True)
+            path = Path(path, f"epoch_{epoch}")
+            path.mkdir(parents=True, exist_ok=True)
         elif checkpoint is not None:
-            save_path = Path(path, name, f"checkpoint_{checkpoint}")
-            save_path.mkdir(parents=True, exist_ok=True)
+            path = Path(path, f"checkpoint_{checkpoint}")
+            path.mkdir(parents=True, exist_ok=True)
 
         # Saving state_dict changing precision
-        if precision:
-            for param_tensor in state_dict:
-                state_dict[param_tensor] = state_dict[param_tensor].to(  # type: ignore
+        if precision is not None:
+            for key, tensor in state_dict.items():
+                assert isinstance(tensor, torch.Tensor)
+
+                state_dict[key] = tensor.to(
                     device="cpu",
                     dtype=precision,
                     non_blocking=True,
-                    # Possible to specify the memory format
                 )
 
-        # This is HF specific (modelling_utils.py)
-        # Saves the model (torch.save) together with its configuration files
-        # so that it can be reloaded with PreTrainedModel.from_pretrained
-        model.save_pretrained(
-            save_directory=save_path,
-            state_dict=state_dict,
-            safe_serialization=True,  # Safetensor or Pickle
-        )  # type: ignore # Shard size can be controlled (can improve transfer performance)
+        # Unwrap FSDP if needed
+        base_model: nn.Module = (
+            model.module if isinstance(model, FullyShardedDataParallel) else model
+        )
+
+        if callable(getattr(base_model, "save_pretrained", None)):
+            # This is HF specific (modelling_utils.py)
+            # Saves the model (torch.save) together with its configuration files
+            # so that it can be reloaded with PreTrainedModel.from_pretrained
+            assert isinstance(base_model, PreTrainedModel)
+
+            base_model.save_pretrained(
+                save_directory=path,
+                state_dict=state_dict,
+                safe_serialization=True,  # Safetensor or Pickle
+            )  # Shard size can be controlled (can improve transfer performance)
+        else:
+            torch.save(obj=state_dict, f=path / f"{name}.pt")
+
         if tokenizer is not None:
             tokenizer.save_pretrained(save_directory=save_path)
 
-        logger.info(f"Model saved to {save_path}")
+        logger.info(f"Model saved to {path}")

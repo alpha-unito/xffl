@@ -9,7 +9,7 @@ from abc import ABC
 from dataclasses import dataclass
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence, Type
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import torch
 from torch import nn
@@ -44,7 +44,7 @@ class ModelInfo(ABC):
     :param attention: Attention layer implementation, defaults to None
     :type attention: Optional[str], optional
     :param decoder_layer: Model's decoder layer class, defatuls to None
-    :type decoder_layer: Optional[Type], optional
+    :type decoder_layer: Optional[Tuple[Type, ...]], optional
     :param wrapping_policy: Wrapping policy for FSDP/HSDP, defaults to None
     :type wrapping_policy: Optional[Callable], optional
     :param activation_checkpointing: Activate activation checkpointing, defaults to False
@@ -63,7 +63,7 @@ class ModelInfo(ABC):
     # Optional
     path: Optional[Path | str] = None
     attention: Optional[str] = None
-    decoder_layer: Optional[Type] = None
+    decoder_layer: Optional[Tuple[Type, ...]] = None
     wrapping_policy: Optional[Callable] = None
     activation_checkpointing: Optional[bool] = None
     tokenizer: Optional[Callable[[XFFLConfig, DistributedState], AutoTokenizer]] = None  # type: ignore
@@ -113,7 +113,10 @@ class ModelInfo(ABC):
             err_msg += f"Model configuration error: the specified attention implementation is not supported ({self.attention}).\n"
 
         # Decoder layer
-        if self.decoder_layer is not None and not isinstance(self.decoder_layer, Type):
+        if self.decoder_layer is not None and not (
+            isinstance(self.decoder_layer, Tuple)
+            or isinstance(self.decoder_layer, Type)
+        ):
             err_msg += f"Model configuration error: the specified decoder layer is not a type ({self.decoder_layer}).\n"
 
         # Wrapping policy
@@ -125,10 +128,16 @@ class ModelInfo(ABC):
             logger.debug(
                 f"Automatically setting the wrap policy to the default one based on {self.decoder_layer}."
             )
-            self.wrapping_policy = functools.partial(
-                wrap.transformer_auto_wrap_policy,
-                transformer_layer_cls={self.decoder_layer},
-            )
+            if isinstance(self.decoder_layer, Type):
+                self.wrapping_policy = functools.partial(
+                    wrap.transformer_auto_wrap_policy,
+                    transformer_layer_cls={self.decoder_layer},  # type: ignore
+                )
+            else:
+                self.wrapping_policy = functools.partial(
+                    wrap.transformer_auto_wrap_policy,
+                    transformer_layer_cls={_cls for _cls in self.decoder_layer},
+                )
 
         # Activation Checkpointing
         if self.activation_checkpointing is not None:
@@ -432,6 +441,8 @@ class XFFLConfig(ABC):
     :type federated: Optional[int | Sequence[int]], optional
     :param federated_batches: Specified after how many local batches the aggregation between the federated groups should be run, defaults to None
     :type federated_batches: Optional[int], optional
+    :param federated_layer: Model's layer that will be updated through federated learning, defatuls to None
+    :type federated_layer: Optional[Tuple[Type, ...]], optional
     :param cuda_streams: Number of CUDA streams to instantiate in case FederatedScaling is setup, defaults to None
     :type cuda_streams: Optional[int], optional
     :param epochs: Number of epochs, defaults to None
@@ -440,6 +451,8 @@ class XFFLConfig(ABC):
     :type scale_learning_rate: Optional[bool], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
+    :param classification: If the learning task is a classification, defaults to False
+    :type classification: Optional[bool], optional
     :param output_folder: Output folder path where to save the trained model, defaults to None
     :type output_folder: Optional[Path], optional
     :param output_model: Saving name for the trained model, defaults to None
@@ -462,12 +475,14 @@ class XFFLConfig(ABC):
     hsdp: Optional[int] = None
     federated: Optional[int | Sequence[int]] = None
     federated_batches: Optional[int] = None
+    federated_layer: Optional[Tuple[Type, ...]] = None
     cuda_streams: Optional[int] = None
 
     # Learning
     epochs: Optional[int] = None
     scale_learning_rate: Optional[bool] = None
     criterion: Optional[nn.Module] = None
+    classification: Optional[bool] = False
 
     # Output
     output_folder: Optional[Path] = None
@@ -543,6 +558,13 @@ class XFFLConfig(ABC):
             ):
                 err_msg += f"xFFL configuration error: the provided federated batches value is not valid ({self.federated_batches}).\n"
 
+        # Federated layer
+        if self.federated_layer is not None and not (
+            isinstance(self.federated_layer, Tuple)
+            or isinstance(self.federated_layer, Type)
+        ):
+            err_msg += f"Model configuration error: the specified federated layer is not a type ({self.federated_layer}).\n"
+
         # CUDA streams
         if self.cuda_streams is not None:
             if self.federated is None:
@@ -563,11 +585,17 @@ class XFFLConfig(ABC):
         if self.scale_learning_rate is not None and not isinstance(
             self.scale_learning_rate, bool
         ):
-            err_msg += f"Model configuration error: the specified value of scale_learning_rate is not acceptable ({self.scale_learning_rate}).\n"
+            err_msg += f"xFFL configuration error: the specified value of scale_learning_rate is not acceptable ({self.scale_learning_rate}).\n"
 
         # Criterion
         if self.criterion is not None and not isinstance(self.criterion, Callable):
-            err_msg += f"Model configuration error: the specified criterion is not callable ({self.criterion}).\n"
+            err_msg += f"xFFL configuration error: the specified criterion is not callable ({self.criterion}).\n"
+
+        # Classification
+        if self.classification is not None and not isinstance(
+            self.classification, bool
+        ):
+            err_msg += f"xFFL configuration error: classification is not a bool ({self.classification}).\n"
 
         # Output folder
         if self.output_folder is not None:
@@ -580,7 +608,9 @@ class XFFLConfig(ABC):
                 self.output_folder = Path(self.output_folder)
 
             if not self.output_folder.exists():
-                err_msg += f"xFFL configuration error: the output folder path does not exists ({self.output_folder}).\n"
+                logger.debug(
+                    f"xFFL configuration error: the output folder path does not exists ({self.output_folder}) - it will be created."
+                )
 
         # Output model
         if (

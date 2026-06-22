@@ -290,7 +290,8 @@ def cleanup_distributed_process_group(
             del obj
 
     if dist.is_initialized():
-        dist.barrier(device_ids=[state.node_local_rank])
+        # assert state.node_local_rank is not None
+        # dist.barrier(device_ids=[state.node_local_rank % state.device_count])
         dist.destroy_process_group()
 
     if torch.cuda.is_available():
@@ -315,7 +316,7 @@ def _get_current_device(
     current_device: torch.device | int = torch.device("cpu")
     if torch.cuda.is_available():
         current_device = (
-            torch.device("cuda", state.node_local_rank)
+            torch.device("cuda", state.node_local_rank % state.device_count)
             if state.is_node_setup()
             else torch.device("cuda")
         )

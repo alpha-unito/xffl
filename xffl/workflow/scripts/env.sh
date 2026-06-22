@@ -10,7 +10,7 @@ Derive_env () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then # Intra-Silo
         export ROLE_NAME="default"
         export MASTER_PORT=29500
-        export LOCAL_WORLD_SIZE=$(( XFFL_WORLD_SIZE / XFFL_NUM_NODES )) # Equal allocation assumption
+        export LOCAL_WORLD_SIZE=$XFFL_LOCAL_WORLD_SIZE
         export WORLD_SIZE=$XFFL_WORLD_SIZE
         export GROUP_WORLD_SIZE=$XFFL_NUM_NODES
         export ROLE_WORLD_SIZE=$XFFL_WORLD_SIZE
@@ -90,7 +90,8 @@ Limit_PyTorch_threads () {
 # This is necessary since each process is run on only 1GPU, and some SLURM installation do not reset correctly the CUDA_VISIBLE_DEVICES variable
 Reset_visible_devices () {
     if [ "${XFFL_EXECUTION}" = "true" ] ; then
-        VISIBLE_DEVICES=$( seq -s , 0 $(( LOCAL_WORLD_SIZE - 1 )) )
+        NUM_GPUS=$(nvidia-smi --list-gpus | wc -l)
+        VISIBLE_DEVICES=$( seq -s , 0 $(( NUM_GPUS - 1 )) )
     elif command -v srun > /dev/null ; then # Check SLURM
         if [ -z "${SLURM_GPUS_PER_NODE+x}"  ]; then
           echo "SLURM_GPUS_PER_NODE is unset"

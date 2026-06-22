@@ -3,7 +3,7 @@
 from contextlib import nullcontext
 from dataclasses import dataclass
 from logging import Logger, getLogger
-from typing import Callable, ContextManager, List, Optional, Tuple
+from typing import Callable, ContextManager, List, Optional, Tuple, Type
 
 import torch
 import torch.distributed as dist
@@ -228,19 +228,32 @@ def get_average_distributed_loss(
     :rtype: Tensor
     """
 
-    _loss: Tensor = loss
-    if dist.is_initialized():
-        if state.backend == "nccl":
-            _loss: Tensor = loss.to(device=state.current_device, non_blocking=True)
+    _loss: Tensor = loss.clone()
+    if state.backend == "nccl":
+        _loss = _loss.to(device=state.current_device, non_blocking=True)
 
+    if dist.is_initialized():
         assert state.world_size is not None
 
-        scale_factor: int = state.world_size
-        group: Optional[ProcessGroup] = dist.group.WORLD
+        group: ProcessGroup
+        if state.is_federated_scaling_setup():
+            assert state.federation is not None
 
-        _loss /= tensor(total_length)
+            group = state.federation
+        else:
+            assert dist.group.WORLD is not None
+
+            group = dist.group.WORLD
+
+        length_sum: Tensor = tensor(
+            total_length, device=state.current_device, dtype=torch.long
+        )
+
         dist.all_reduce(tensor=_loss, op=dist.ReduceOp.SUM, group=group)
-        _loss /= scale_factor
+        dist.all_reduce(tensor=length_sum, op=dist.ReduceOp.SUM, group=group)
+        _loss /= length_sum
+    else:
+        _loss /= tensor(total_length, device=state.current_device, dtype=torch.long)
 
     return _loss
 
@@ -866,10 +879,13 @@ def bucket_optimized_coalesced_(
     state: DistributedState,
     use_multiple_cuda_streams: bool = False,
     use_contiguous_memory: bool = False,
+    federated_layer: Optional[Type | Tuple[Type, ...]] = None,
 ) -> None:
     """Weights averaging through a stacking-based approach
 
-    All layers are stacked into "buckets" according to their size and sent on different CUDA streams trying to divide the information sent equally between them
+    All layers are stacked into buckets according to their size and sent on
+    different CUDA streams trying to divide the information sent equally
+    between them.
 
     :param model: PyTorch model
     :type model: nn.Module
@@ -879,40 +895,84 @@ def bucket_optimized_coalesced_(
     :type use_multiple_cuda_streams: bool
     :param use_contiguous_memory: convert tensors to a contiguous memory representation, defaults to False
     :type use_contiguous_memory: bool
+    :param federated_layer: Model layer type(s) that will be updated through federated learning. If ``None``, all parameters are aggregated, defaults to None
+    :type federated_layer: Optional[Type | Tuple[Type, ...]], optional
     :returns: The Aggregation strategy configuration
     :rtype: Strategy
     """
+    stream_number: int
+    stream_index: int
+    reduce_op: dist.ReduceOp.RedOpType
+    stream_context: ContextManager
     stream_number, stream_index, reduce_op, stream_context = _setup_streams(
         use_multiple_cuda_streams=use_multiple_cuda_streams, state=state
     )
 
-    param_list: List[Tensor] = list(model.parameters())
+    # Collect parameters to aggregate
+    param_list: List[Tensor]
+    if federated_layer is None:
+        param_list = list(model.parameters())
+    else:
+        layer_types: Tuple[Type, ...] = (
+            federated_layer
+            if isinstance(federated_layer, tuple)
+            else (federated_layer,)
+        )
+        param_list = []
 
-    bucket_size: int = get_model_size(model=model, state=state) // stream_number
+        for module in model.modules():
+            if isinstance(module, layer_types):
+                param_list.extend(module.parameters())
+
+    if not param_list:
+        return
+
+    total_numel: int = sum(parameter.numel() for parameter in param_list)
+    bucket_size: int = max(1, total_numel // stream_number)
+
+    print(f"Aggregating {(total_numel / 1e6):.2f} million trainable parameters")
 
     parameter_counter: int = 0
     buckets: List[List[int]] = [[] for _ in range(stream_number)]
-    for layer_index, layer in enumerate(model.parameters()):
-        buckets[stream_index].append(layer_index)
-        parameter_counter += layer.numel()
-        if parameter_counter >= bucket_size:
+
+    for parameter_index, parameter in enumerate(param_list):
+        buckets[stream_index].append(parameter_index)
+
+        parameter_counter += parameter.numel()
+
+        if parameter_counter >= bucket_size and stream_index < stream_number - 1:
             stream_index += 1
             parameter_counter = 0
 
-    for _stream_index, bucket in enumerate(buckets):
+    for bucket_stream_index, bucket in enumerate(buckets):
+        if not bucket:
+            continue
+
+        current_stream_context: ContextManager = stream_context
+
         if use_multiple_cuda_streams:
-            stream_context = _get_stream_context(
-                state=state, stream_index=_stream_index
+            current_stream_context = _get_stream_context(
+                state=state,
+                stream_index=bucket_stream_index,
             )
-        with stream_context:
+
+        with current_stream_context:
             layer_list: List[Tensor] = [
-                (param_list[i].contiguous() if use_contiguous_memory else param_list[i])
-                for i in bucket
+                (
+                    param_list[index].contiguous()
+                    if use_contiguous_memory
+                    else param_list[index]
+                )
+                for index in bucket
             ]
+
             dist.all_reduce_coalesced(
                 tensors=layer_list,
                 op=reduce_op,
-                group=_get_federated_group(state=state, group_index=_stream_index),
+                group=_get_federated_group(
+                    state=state,
+                    group_index=bucket_stream_index,
+                ),
             )
 
 

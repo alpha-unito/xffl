@@ -65,11 +65,11 @@ if [ "${XFFL_EXECUTION}" = "true" ] ; then
 		source "${XFFL_VENV}/bin/activate"
 	fi
 
-	for _RANK in $( seq $(( XFFL_NODEID * LOCAL_WORLD_SIZE )) 1 $(( XFFL_NODEID * LOCAL_WORLD_SIZE + LOCAL_WORLD_SIZE - 1 )) ) ; do
-		RANK=$_RANK
-		LOCAL_RANK=$(( _RANK % LOCAL_WORLD_SIZE ))
-		ROLE_RANK=$_RANK
-		GROUP_RANK=$(( _RANK / LOCAL_WORLD_SIZE ))
+	for _RANK in $(seq 0 1 $(( LOCAL_WORLD_SIZE - 1 ))) ; do
+		RANK=$(( _RANK + XFFL_START_RANK))
+		LOCAL_RANK=$_RANK
+		ROLE_RANK=$RANK
+		GROUP_RANK=$XFFL_NODEID
 
 		XFFL_TASKSET="taskset --cpu-list "$(( LOCAL_RANK * OMP_NUM_THREADS ))"-"$(( LOCAL_RANK * OMP_NUM_THREADS + OMP_NUM_THREADS - 1))
 
@@ -113,7 +113,7 @@ bash -c \"python /code/$* --model /model/ --dataset /dataset/\""
 
 		# Run the local simulation process
 		eval "$COMMAND" &
-		pids[_RANK]=$!
+		pids[RANK]=$!
 	done
 
 	# Wait for all processes to terminate
