@@ -27,8 +27,9 @@ BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl")
 
 def _chunk_dataset(split: HFDataset, seq_len: int = 8192) -> HFDataset:
     merged_sequences: str = ""
+
     for line in split:
-        merged_sequences += line["sequence"]
+        merged_sequences += line["sequence"]  # type: ignore
 
     chunks: list[str] = []
 
@@ -102,12 +103,13 @@ class opengenome(DatasetInfo):
         assert config.seed is not None
 
         dataset_dict: Mapping[int, str] = {
-            1: "flye_canu",
-            0: "klebsiella",
+            0: "flye_canu",
+            1: "klebsiella",
         }
 
-        dataset_path: Path = BASE_PATH / dataset_dict[state.rank]  # type: ignore
-        split: DatasetDict = load_from_disk(dataset_path)
+        split: DatasetDict = load_from_disk(
+            dataset_path=BASE_PATH / dataset_dict[state.rank]
+        )  # type: ignore
         for key, value in split.items():
             split[key] = _chunk_dataset(split=value, seq_len=2048)
 
