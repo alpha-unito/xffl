@@ -9,7 +9,7 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 import torch
 import torch.nn.functional as F
 from datasets import Dataset as HFDataset
-from datasets import DatasetDict
+from datasets import DatasetDict, load_from_disk
 from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
 from torch.optim import AdamW
@@ -25,47 +25,22 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl")
 
 
-def _load_fasta_dataset(
-    path: Path, test_split: float = 0.2, seq_len: int = 8192, seed: int = 42
-) -> DatasetDict:
-    sequences: list[str] = []
-    current_sequence: list[str] = []
-
-    with open(path) as f:
-        for line in f:
-            line: str = line.strip()
-
-            if not line:
-                continue
-
-            if line.startswith(">"):
-                if current_sequence:
-                    sequences.append("".join(current_sequence))
-                    current_sequence = []
-            else:
-                current_sequence.append(line)
-
-        if current_sequence:
-            sequences.append("".join(current_sequence))
+def _chunk_dataset(split: HFDataset, seq_len: int = 8192) -> HFDataset:
+    merged_sequences: str = ""
+    for line in split:
+        merged_sequences += line["sequence"]
 
     chunks: list[str] = []
 
     # +1 per avere seq_len token dopo lo shift
     chunk_len = seq_len + 1
 
-    for sequence in sequences:
-        for start in range(0, len(sequence) - chunk_len + 1, seq_len):
-            chunks.append(sequence[start : start + chunk_len])
+    for start in range(0, len(merged_sequences) - chunk_len + 1, seq_len):
+        chunks.append(merged_sequences[start : start + chunk_len])
 
     dataset = HFDataset.from_dict({"sequence": chunks})
 
-    split: DatasetDict = dataset.train_test_split(
-        test_size=test_split,
-        seed=seed,
-        shuffle=True,
-    )
-
-    return split
+    return dataset
 
 
 # Model information
@@ -127,14 +102,14 @@ class opengenome(DatasetInfo):
         assert config.seed is not None
 
         dataset_dict: Mapping[int, str] = {
-            0: "flye_canu.fasta",
-            1: "klebsiella.fasta",
+            1: "flye_canu",
+            0: "klebsiella",
         }
 
-        fasta_path: Path = Path(config.dataset_info.path) / dataset_dict[state.rank]  # type: ignore
-        split: DatasetDict = _load_fasta_dataset(
-            path=fasta_path, test_split=0.2, seq_len=2048, seed=config.seed
-        )
+        dataset_path: Path = BASE_PATH / dataset_dict[state.rank]  # type: ignore
+        split: DatasetDict = load_from_disk(dataset_path)
+        for key, value in split.items():
+            split[key] = _chunk_dataset(split=value, seq_len=2048)
 
         return {
             "train": split["train"],
