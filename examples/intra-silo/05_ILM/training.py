@@ -10,7 +10,7 @@ from typing import Any, MutableMapping, Optional, Sequence
 
 import torch
 import wandb
-from config_qwen import Config
+from config import xffl_config
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -125,7 +125,7 @@ def main():
     """Argument parsing and training launch"""
 
     try:
-        pretraining(config=Config())
+        pretraining(config=xffl_config())
     except KeyboardInterrupt as e:
         logger.exception(e)
     except Exception as e:

@@ -1,239 +1,158 @@
-"""Configuration for the xFFL BabyLM pretraining example."""
-
-from __future__ import annotations
+"""Configuration file for the xFFL-ILM example"""
 
 import logging
 import os
 from dataclasses import dataclass, field
-from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence, Type
+from typing import Any, Callable, Mapping, Optional, Tuple, Type
 
+import numpy as np
 import torch
-from datasets import DatasetDict, concatenate_datasets
-from torch import Tensor, nn
+from datasets import Dataset
+from datasets import Dataset as HFDataset
+from torch import nn
 from torch.distributed.fsdp import MixedPrecision
 from torch.optim import AdamW
-from torch.utils.data import Dataset as TorchDataset
+from transformers import LlamaConfig, LlamaForCausalLM, PreTrainedTokenizerFast
+from transformers.models.llama.modeling_llama import LlamaDecoderLayer
 
 from xffl.custom.config import DatasetInfo, ModelInfo, OptimizerInfo, XFFLConfig
 from xffl.distributed.distributed_state import DistributedState
-from xffl.learning.data import load_datasets_from_disk
 from xffl.learning.optim import warmup_cosine_decay
 
-logger: Logger = getLogger(__name__)
-"""Default xFFL logger"""
+# Force HuggingFace to offline mode
+os.environ["HF_HUB_OFFLINE"] = "1"
 
-# -----------------------------------------------------------------------------
-# Paths (portable via env vars)
-# -----------------------------------------------------------------------------
+# Constants
+BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl")
 
-PROJECT_ROOT = Path("/beegfs/home/gmittone/ILM/ILM")
-DATA_ROOT = PROJECT_ROOT / "data" / "interlinguistic-language-modeling"
-MODEL_ROOT = PROJECT_ROOT / "model"
-TOKENIZER_ROOT = PROJECT_ROOT / "tokenizer" / "interlinguistic-language-modeling"
-OUTPUT_ROOT = PROJECT_ROOT / "output"
-
-# -----------------------------------------------------------------------------
-# Experiment constants
-# -----------------------------------------------------------------------------
-
-MODEL_NAME = os.getenv("ILM_MODEL", "BabyLM-130M")
-ILM_TYPE = os.getenv("ILM_TYPE")
-ILM_LANGUAGE_A = os.getenv("ILM_LANGUAGE_A")
-ILM_LANGUAGE_B = os.getenv("ILM_LANGUAGE_B")
-ILM_TOKENIZER = os.getenv("ILM_TOKENIZER")
-
-if ILM_LANGUAGE_A is None or ILM_TOKENIZER is None or ILM_TYPE is None:
-    logger.critical(
-        f"Incomplete environment configuration: language is {ILM_LANGUAGE_A} and tokenizer is {ILM_TOKENIZER}"
-    )
-    raise EnvironmentError
-
-if ILM_TYPE == "mono":
-    DATASET_NAME = f"ilm_{ILM_LANGUAGE_A}"
-    TOKENIZER_NAME = f"tokenizer_ilm_{ILM_TYPE}_{ILM_LANGUAGE_A}_{ILM_TOKENIZER}"
-else:
-    DATASET_NAME = [f"ilm_{ILM_LANGUAGE_A}", f"ilm_{ILM_LANGUAGE_B}"]
-    TOKENIZER_NAME = (
-        f"tokenizer_ilm_{ILM_TYPE}_{ILM_LANGUAGE_A}_{ILM_LANGUAGE_B}_{ILM_TOKENIZER}"
-    )
-
-EXPERIMENT_NAME = f"{MODEL_NAME}-{DATASET_NAME}-{TOKENIZER_NAME}"
-
-# -----------------------------------------------------------------------------
-# Model definition
-# -----------------------------------------------------------------------------
+TOKENIZER_DIR = "/beegfs/home/gmittone/xffl/examples/intra-silo/05_ILM/ilm_ita"
+BLOCK_SIZE = 1024  # context window (tokens)
 
 
+# Model information
 @dataclass
 class BabyLM(ModelInfo):
-    """Model configuration for BabyLM pretraining."""
 
-    name: str = MODEL_NAME
+    @staticmethod
+    # LLM loading from saved model
+    def _get_babylm_model(
+        config: XFFLConfig,
+        state: DistributedState,
+    ) -> nn.Module:
+
+        tokenizer = PreTrainedTokenizerFast.from_pretrained(TOKENIZER_DIR)
+
+        VOCAB_SIZE = len(tokenizer)
+        BOS_ID = tokenizer.bos_token_id
+        EOS_ID = tokenizer.eos_token_id
+        PAD_ID = tokenizer.pad_token_id
+
+        llama_config = LlamaConfig(
+            vocab_size=VOCAB_SIZE,  # 32 000
+            # --- dimensions ---
+            hidden_size=832,  # d_model (bumped from 768 to compensate for smaller embed table)
+            intermediate_size=2240,  # FFN inner dim (~2.7 × hidden, SwiGLU)
+            num_hidden_layers=12,  # transformer depth
+            # --- attention ---
+            num_attention_heads=8,  # MHA heads  (832 / 8 = 104 per head)
+            num_key_value_heads=8,  # GQA: set < num_attention_heads for MQA/GQA
+            # --- Llama defaults ---
+            hidden_act="silu",  # SwiGLU uses SiLU gating
+            max_position_embeddings=BLOCK_SIZE,  # RoPE base length — 1024
+            rms_norm_eps=1e-5,
+            rope_theta=10_000.0,  # RoPE base frequency (original Llama)
+            # --- regularisation ---
+            attention_dropout=0.0,  # Llama pre-training uses 0
+            # --- special tokens ---
+            bos_token_id=BOS_ID,
+            eos_token_id=EOS_ID,
+            pad_token_id=PAD_ID,
+            # --- weight tying ---
+            tie_word_embeddings=True,  # LM head shares weights with embed table
+        )
+
+        return LlamaForCausalLM(llama_config)
+
+    name: str = "BabyLM"
     attention: str = "flash_attention_2"
-    path: Path = MODEL_ROOT / MODEL_NAME
-    activation_checkpointing: bool = False
-
-    decoder_layer: Type = field(init=False)  # type: ignore
-    mixed_precision: MixedPrecision = field(init=False)  # type: ignore
-
-    def __post_init__(self) -> None:
-        from transformers.models.qwen3.modeling_qwen3 import Qwen3DecoderLayer
-
-        self.decoder_layer = Qwen3DecoderLayer
-        self.mixed_precision = MixedPrecision(
+    model: Callable = _get_babylm_model
+    mixed_precision: MixedPrecision = field(
+        default_factory=lambda: MixedPrecision(
             param_dtype=torch.bfloat16,
             reduce_dtype=torch.bfloat16,
             buffer_dtype=torch.bfloat16,
         )
+    )
+    # activation_checkpointing: bool = True
+    decoder_layer: Tuple[Type, ...] = (LlamaDecoderLayer,)
+
+
+# Dataset information
+@dataclass
+class ILMITA(DatasetInfo):
 
     @staticmethod
-    def load_model(config: XFFLConfig, state: DistributedState) -> nn.Module:
-        """Loads the pretrained model from disk."""
-        from transformers import AutoModelForCausalLM
+    def _get_dataset_splits(
+        config: XFFLConfig,
+        state: DistributedState,
+    ) -> Mapping[str, HFDataset]:
 
-        return AutoModelForCausalLM.from_pretrained(
-            str(config.model_info.path),
-            use_cache=False,
-            local_files_only=True,
-            attn_implementation=config.model_info.attention,
-            dtype=torch.bfloat16,
-            use_safetensors=True,
-            ignore_mismatched_sizes=True,
-        ).resize_token_embeddings(16000)
+        class LlamaDataset(Dataset):
+            def __init__(self, token_file: str, block_size: int, dtype=np.int32):
+                self.block_size = block_size
 
-    model: Callable = load_model
+                self.tokens = np.memmap(
+                    token_file,
+                    mode="r",
+                    dtype=dtype,
+                )
 
+                self.num_blocks = len(self.tokens) // block_size
 
-# -----------------------------------------------------------------------------
-# Dataset definition
-# -----------------------------------------------------------------------------
+            def __len__(self):
+                return self.num_blocks
 
+            def __getitem__(self, idx):
+                start = idx * self.block_size
+                end = start + self.block_size
 
-class _LazyTokenizer:
-    """Singleton tokenizer loader safe for dataloader workers."""
+                ids = torch.from_numpy(self.tokens[start:end].astype(np.int64))
 
-    _tokenizer = None
+                return {
+                    "input_ids": ids[:-1],
+                    "labels": ids[1:],
+                }
 
-    @classmethod
-    def get(cls):
-        if cls._tokenizer is None:
-            from transformers import PreTrainedTokenizerFast
-
-            tokenizer = PreTrainedTokenizerFast(
-                tokenizer_file=str(TOKENIZER_ROOT / TOKENIZER_NAME / "tokenizer.json"),
-                bos_token="[BOS]",
-                eos_token="[EOS]",
-                unk_token="[UNK]",
-                pad_token="[PAD]",
-            )
-
-            cls._tokenizer = tokenizer
-
-        return cls._tokenizer
-
-
-def build_collate_fn() -> Callable:
-    """Creates the dataloader collate function."""
-
-    tokenizer = _LazyTokenizer.get()
-
-    def collate_fn(batch: Sequence[Mapping[str, Any]]) -> Mapping[str, Tensor]:
-        texts = [item["text"] if item["text"] is not None else "" for item in batch]
-
-        tokenized = tokenizer(
-            texts,
-            padding=True,
-            truncation=True,
-            max_length=1024,
-            return_tensors="pt",
-            add_special_tokens=True,
-        )
-
-        input_ids = tokenized["input_ids"]
-        attention_mask = tokenized["attention_mask"]
-
-        labels = input_ids.clone()  # type: ignore
-        labels[labels == tokenizer.pad_token_id] = -100
+            def __getitems__(self, indices):
+                return [self.__getitem__(idx) for idx in indices]
 
         return {
-            "input_ids": input_ids,
-            "attention_mask": attention_mask,
-            "labels": labels,
-        }  # type: ignore
-
-    return collate_fn
-
-
-@dataclass
-class ILMDataset(DatasetInfo):
-    """Dataset configuration for ILM training."""
-
-    @staticmethod
-    def _get_splits(
-        config: XFFLConfig, state: DistributedState
-    ) -> Mapping[str, TorchDataset | DatasetDict]:
-        """Loads dataset splits from disk."""
-        dataset = None
-
-        if isinstance(config.dataset_info.path, Path):
-            dataset = load_datasets_from_disk(
-                splits={"train": "train"},
-                base_path=config.dataset_info.path,  # type: ignore
+            "train": LlamaDataset(
+                token_file="/beegfs/home/gmittone/xffl/examples/intra-silo/05_ILM/tokens.bin",
+                block_size=BLOCK_SIZE,
             )
-        else:
-            dataset_a = load_datasets_from_disk(
-                splits={"train": "train"},
-                base_path=config.dataset_info.path[0],  # type: ignore
-            )
-            dataset_b = load_datasets_from_disk(
-                splits={"train": "train"},
-                base_path=config.dataset_info.path[1],  # type: ignore
-            )
-            dataset = DatasetDict(
-                {
-                    "train": concatenate_datasets(
-                        [dataset_a["train"], dataset_b["train"]]
-                    ).shuffle(seed=config.seed)
-                }
-            )
+        }
 
-        return dataset  # type: ignore
-
-    name: str | Sequence[str] = (
-        DATASET_NAME
-        if isinstance(DATASET_NAME, str)
-        else f"{DATASET_NAME[0]}+{DATASET_NAME[1]}"
+    name: str = "ILM_Ita"
+    splits: Callable = _get_dataset_splits
+    workers: int = 4
+    batch_sizes: Mapping[str, int] = field(
+        default_factory=lambda: {"train": 32, "val": 32}
     )
-    path: Path | Sequence[Path] = (
-        DATA_ROOT / DATASET_NAME
-        if isinstance(DATASET_NAME, str)
-        else field(default_factory=lambda: [DATA_ROOT / dataset for dataset in DATASET_NAME])  # type: ignore
-    )
-    workers: int = 2
-    batch_sizes: int = 64
-    # subsampling: int = 512
-
-    splits: Callable = _get_splits
-    collate_fn: Callable = field(default_factory=build_collate_fn)
+    # subsampling: int = 1024
 
 
-# -----------------------------------------------------------------------------
-# Optimizer definition
-# -----------------------------------------------------------------------------
-
-
+# Optimizer information
 @dataclass
-class AdamW(OptimizerInfo):
+class AdamWConfig(OptimizerInfo):
     """Optimizer configuration for BabyLM pretraining."""
 
     optimizer: Callable = AdamW
-
     optimizer_params: Mapping[str, Any] = field(
         default_factory=lambda: {
-            "lr": 2e-3,
-            "weight_decay": 0.01,
+            "lr": 3e-4,
+            "weight_decay": 0.1,
             "betas": (0.9, 0.95),
             "fused": True,
         }
@@ -241,69 +160,45 @@ class AdamW(OptimizerInfo):
     lr_scheduler: Callable = warmup_cosine_decay
     lr_scheduler_params: Mapping[str, Any] = field(
         default_factory=lambda: {
-            "warmup_fraction": 0.01,
-            "final_lr_ratio": 0.01,
+            "warmup_fraction": 0.1,
+            "final_lr_ratio": 0.1,
         }
     )
     gradient_clipping: float = 1.0
-    # gradient_accumulation: int = 2
     # interleaved_optim: bool = True
 
 
-# -----------------------------------------------------------------------------
-# Main XFFL configuration
-# -----------------------------------------------------------------------------
-
-
+# XFFL configuration
 @dataclass
-class BabyLMConfig(XFFLConfig):
-    """Full training configuration for BabyLM pretraining."""
+class xffl_config(XFFLConfig):
 
-    # Core components
+    # Default
     model_info: ModelInfo = field(default_factory=BabyLM)
-    dataset_info: DatasetInfo = field(default_factory=ILMDataset)
-    optimizer_info: OptimizerInfo = field(default_factory=AdamW)
+    dataset_info: DatasetInfo = field(default_factory=ILMITA)
+    optimizer_info: OptimizerInfo = field(default_factory=AdamWConfig)
 
-    # Training
-    epochs: int = 1
-
-    # Reproducibility
-    seed: int = 42
+    # General
     loglevel: int = logging.INFO
+    seed: int = 42
 
-    # Output
-    save_path: Path = OUTPUT_ROOT
-    output_model_name: str = EXPERIMENT_NAME
-
-    dataset_name: str = (
-        DATASET_NAME
-        if isinstance(DATASET_NAME, str)
-        else f"{DATASET_NAME[0]}+{DATASET_NAME[1]}"
-    )
-    tokenizer_name: str = ILM_TOKENIZER
-    ilm_type: str = ILM_TYPE
+    # Learning
+    epochs: int = 5
 
     # WandB
     wandb_params: Mapping[str, Any] = field(
         default_factory=lambda: {
             "entity": "alpha-unito",
-            "project": "Interlinguistic Language Modeling - new tokenizers",
-            "group": (
-                DATASET_NAME
-                if isinstance(DATASET_NAME, str)
-                else f"{DATASET_NAME[0]}+{DATASET_NAME[1]}"
-            ),
-            "name": EXPERIMENT_NAME,
-            "tags": [
-                MODEL_NAME,
-                (
-                    DATASET_NAME
-                    if isinstance(DATASET_NAME, str)
-                    else f"{DATASET_NAME[0]}+{DATASET_NAME[1]}"
-                ),
-                TOKENIZER_NAME,
-                ILM_TYPE,
-            ],
-            "mode": "online",
+            "project": "xFFL playground",
+            "group": "BabyLM - ILM ITA - pretraining - final",
+            "name": "BabyLM - final",
+            "notes": "Example run of BabyLM on the ILM ITA dataset",
+            "tags": ["xFFL", "example", "BablyLM", "ITA"],
+            "mode": "online",  # "online" to active WandB
         }
     )
+
+    # Output
+    output_folder: Optional[Path] = Path(
+        "/beegfs/home/gmittone/xffl/examples/intra-silo/05_ILM/output"
+    )
+    output_model: Optional[str] = "BabyLM_ITA"

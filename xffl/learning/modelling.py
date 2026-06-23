@@ -249,6 +249,6 @@ def save_model(
             torch.save(obj=state_dict, f=path / f"{name}.pt")
 
         if tokenizer is not None:
-            tokenizer.save_pretrained(save_directory=save_path)
+            tokenizer.save_pretrained(save_directory=path)
 
         logger.info(f"Model saved to {path}")

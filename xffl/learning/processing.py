@@ -476,13 +476,12 @@ def distributed_training(
     __criterion: Optional[Callable] = resolve_param(
         value=criterion, config=config, attr="criterion"
     )
+    _criterion: Optional[Callable] = None
     if __criterion is not None:
         if isinstance(__criterion, nn.Module):
-            _criterion: Callable = __criterion.to(
-                device=state.current_device, non_blocking=True
-            )
+            _criterion = __criterion.to(device=state.current_device, non_blocking=True)
         elif isinstance(__criterion, Callable):
-            _criterion: Callable = __criterion(state=state)
+            _criterion = __criterion(state=state)
     _classification: Optional[bool] = resolve_param(
         value=classification, config=config, attr="classification"
     )
@@ -625,7 +624,11 @@ def distributed_training(
                         model=model, batch=batch, state=state
                     )
 
-                loss: Tensor = _criterion(output, target) if _criterion else output.loss
+                loss: Tensor = (
+                    _criterion(output, target)
+                    if _criterion is not None
+                    else output.loss
+                )
                 if scaler is not None:
                     loss = scaler.scale(loss)
 
@@ -829,7 +832,6 @@ def distributed_training(
             checkpoint_start_time = time.perf_counter()
             save_model(
                 model=model,
-                tokenizer=config.tokenizer,
                 optimizer=_optimizer,
                 path=_output_folder,
                 name=_output_model,
