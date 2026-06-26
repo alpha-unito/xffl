@@ -238,7 +238,7 @@ class XFFLOptimizer:
         gradient_accumulation: Optional[int] = None,
         interleaved_optim: Optional[bool] = None,
         lr_scheduler: Optional[Callable] = None,
-        total_steps_per_epoch: int = -1,
+        total_steps_per_epoch: Optional[int] = None,
         scaler: Optional[GradScaler] = None,
         config: Optional[XFFLConfig] = None,
     ) -> None:
@@ -259,6 +259,11 @@ class XFFLOptimizer:
             )
             _gradient_clipping: Optional[float] = resolve_param(
                 value=gradient_clipping, config=optimizer_info, attr="gradient_clipping"
+            )
+            _total_steps_per_epoch: Optional[int] = resolve_param(
+                value=total_steps_per_epoch,
+                config=optimizer_info,
+                attr="total_steps_per_epoch",
             )
             if _gradient_clipping is not None and _gradient_clipping <= 0.0:
                 logger.error(
@@ -283,6 +288,7 @@ class XFFLOptimizer:
             _optimizer_params: Optional[Mapping[str, Any]] = optimizer_params
             _interleaved_optim: Optional[bool] = interleaved_optim
             _gradient_clipping: Optional[float] = gradient_clipping
+            _total_steps_per_epoch: Optional[int] = total_steps_per_epoch
             _gradient_accumulation: Optional[int] = gradient_accumulation
             _lr_scheduler: Optional[Callable] = lr_scheduler
 
@@ -304,7 +310,9 @@ class XFFLOptimizer:
         self.lr_scheduler: Optional[
             LRScheduler | Mapping[nn.Parameter, LRScheduler]
         ] = None
-        self.total_steps_per_epoch: int = total_steps_per_epoch
+        self.total_steps_per_epoch: int = (
+            _total_steps_per_epoch if _total_steps_per_epoch else 0
+        )
         self.scaler: Optional[GradScaler] = scaler
 
         self.optimizer_step: int = 0

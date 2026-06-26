@@ -201,6 +201,7 @@ class AnemoiNativeDataset(Dataset):
         # numero di istanti temporali considerati nel segmento
         segment_len = self.end_idx - self.start_idx
         # numero di campioni validi in questo segmento
+
         self.num_samples = segment_len - multistep - rollout + 1
 
     def __len__(self):
@@ -365,11 +366,12 @@ def advance_input(x, y_pred, batch, rollout_step, multistep, data_indices):
         rollout_step: indice del passo di rollout (0-based)
         data_indices: IndexCollection
     """
+
     x = x.roll(-1, dims=1)
 
     x[:, -1, :, :, data_indices.internal_model.input.prognostic] = y_pred[
         ..., data_indices.internal_model.output.prognostic
-    ]
+    ].cpu()
 
     x[:, -1, :, :, data_indices.internal_model.input.forcing] = batch[
         :, multistep + rollout_step, :, :, data_indices.internal_data.input.forcing

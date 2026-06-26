@@ -339,6 +339,8 @@ class OptimizerInfo(ABC):
     :type gradient_accumulation: Optional[int], optional
     :param interleaved_optim: Interleave optimizer and backward phase, defaults to None
     :type interleaved_optim: Optional[bool], optional
+    :param total_steps_per_epoch: Total steps per epoch, defaults to None
+    :type total_steps_per_epoch: Optional[int], optional
     :raises ValueError: If some configuration values are incompatible with their expected characteristics
     """
 
@@ -352,6 +354,7 @@ class OptimizerInfo(ABC):
     gradient_clipping: Optional[float] = None
     gradient_accumulation: Optional[int] = None
     interleaved_optim: Optional[bool] = None
+    total_steps_per_epoch: Optional[int] = None
 
     def __post_init__(self) -> None | ValueError:
         """
@@ -403,6 +406,13 @@ class OptimizerInfo(ABC):
         ):
             err_msg += f"Model configuration error: the specified value of interleaved_optim is not acceptable ({self.interleaved_optim}).\n"
 
+        # Total steps per epoch
+        if self.total_steps_per_epoch is not None and (
+            not isinstance(self.total_steps_per_epoch, int)
+            or self.total_steps_per_epoch <= 0
+        ):
+            err_msg += f"xFFL configuration error: the provided total steps per epoch value is not valid ({self.gradient_accumulation}).\n"
+
         # Log errors, if any, and raise a ValueError exception
         if not err_msg == "":
             logger.critical(err_msg)
@@ -453,6 +463,10 @@ class XFFLConfig(ABC):
     :type criterion: Optional[Callable], optional
     :param classification: If the learning task is a classification, defaults to False
     :type classification: Optional[bool], optional
+    :param pre_train_hook: Pre training hook, defaults to None
+    :type pre_train_hook: Optional[callable], optional
+    :param pre_process_hook: Pre process hook, defaults to None
+    :type pre_process_hook: Optional[callable], optional
     :param output_folder: Output folder path where to save the trained model, defaults to None
     :type output_folder: Optional[Path], optional
     :param output_model: Saving name for the trained model, defaults to None
@@ -483,6 +497,11 @@ class XFFLConfig(ABC):
     scale_learning_rate: Optional[bool] = None
     criterion: Optional[nn.Module] = None
     classification: Optional[bool] = False
+
+    # Hooks
+    pre_train_hook: Optional[Callable] = None
+    pre_process_hook: Optional[Callable] = None
+    post_rollout_hook: Optional[Callable] = None
 
     # Output
     output_folder: Optional[Path] = None

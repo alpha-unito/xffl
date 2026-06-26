@@ -117,7 +117,7 @@ def load_datasets_from_disk(
 
 def create_dataloaders(
     state: DistributedState,
-    dataset: Optional[MutableMapping[str, Dataset]] = None,
+    dataset: Optional[Callable | Mapping[str, Dataset]] = None,
     filters: Optional[
         Callable
         | Sequence[Callable]
@@ -140,8 +140,8 @@ def create_dataloaders(
 
     :param state: xFFL distributed state
     :type state: DistributedState
-    :param dataset: Dictionary associating split name with the relative dataset instances, defaults to None
-    :type dataset: Optional[MutableMapping[str, Dataset]], optional
+    :param dataset: Dictionary associating split name with the relative dataset instances or callable producing it, defaults to None
+    :type dataset:  Optional[Callable | Mapping[str, Dataset]], optional
     :param filters: Functions to be applied to the dataset splits before instantiating the dataloaders, defaults to None
     :type filters: Optional[Callable | Sequence[Callable] | Mapping[str, Callable] | Mapping[str, Sequence[Callable]]], optional
     :param subsampling: Number of samples to extract from the dataset splits, defaults to None
@@ -169,14 +169,17 @@ def create_dataloaders(
     if config is not None:
         dataset_info: DatasetInfo = config.dataset_info
 
-        if dataset is None:
-            __dataset: Optional[Callable] = resolve_param(
-                value=dataset, config=dataset_info, attr="splits"
-            )
-            if __dataset is not None:
-                _dataset: Optional[MutableMapping[str, Dataset]] = __dataset(
+        __dataset: Optional[Callable | Mapping[str, Dataset]] = resolve_param(
+            value=dataset, config=dataset_info, attr="splits"
+        )
+        if __dataset is not None:
+            if isinstance(__dataset, Callable):
+                _dataset: Optional[Mapping[str, Dataset]] = __dataset(
                     config=config, state=state
                 )
+            else:
+                _dataset: Optional[Mapping[str, Dataset]] = __dataset
+
         _filters: Optional[
             Callable
             | Sequence[Callable]
@@ -196,7 +199,7 @@ def create_dataloaders(
             value=workers, config=dataset_info, attr="workers"
         )
     else:
-        _dataset: Optional[MutableMapping[str, Dataset]] = dataset
+        _dataset: Optional[Mapping[str, Dataset]] = dataset
         _filters: Optional[
             Callable
             | Sequence[Callable]

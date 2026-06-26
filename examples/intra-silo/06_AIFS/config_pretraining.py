@@ -90,14 +90,15 @@ class ERA5(DatasetInfo):
         config: XFFLConfig,
         state: DistributedState,
     ) -> Mapping[str, HFDataset]:
-        return get_dataset_splits(ctx=ctx_dict[state.rank])  # type: ignore
+        splits, _ = get_dataset_splits(
+            ctx=ctx_dict[state.rank], batch_size=config.dataset_info.batch_sizes  # type: ignore
+        )
+        return splits  # type: ignore
 
     name: str = "ERA5"
     splits: Callable = _get_dataset_splits
     workers: int = 2
-    batch_sizes: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 16, "val": 16}
-    )
+    batch_sizes: int = 16
     # subsampling: int = 64
 
 
@@ -135,7 +136,7 @@ class xffl_config(XFFLConfig):
     optimizer_info: OptimizerInfo = field(default_factory=AdamWConfig)
 
     # General
-    loglevel: int = logging.DEBUG
+    loglevel: int = logging.INFO
     seed: int = 42
 
     # Learning
@@ -162,9 +163,9 @@ class xffl_config(XFFLConfig):
 
     @staticmethod
     def _pre_process_hook(
-        model: nn.Module, batch: Any, state: DistributedState
+        model: nn.Module, batch: Any, state: DistributedState, **kwargs
     ) -> Tuple[Tensor, Tensor]:
-        return pre_process_hook(model, batch, state, ctx_dict[state.rank])  # type: ignore
+        return pre_process_hook(model=model, batch=batch, state=state, ctx=ctx_dict[state.rank])  # type: ignore
 
     pre_process_hook: Callable = _pre_process_hook
 
@@ -177,7 +178,7 @@ class xffl_config(XFFLConfig):
             "name": "Rank",
             "notes": "Example run of xFFL with AIFS for climate",
             "tags": ["xFFL", "example", "AIFS"],
-            "mode": "online",  # "online" to active WandB
+            "mode": "disabled",  # "online" to active WandB
         }
     )
 
