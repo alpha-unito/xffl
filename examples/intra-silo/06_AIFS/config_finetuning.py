@@ -4,13 +4,12 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
 
 import torch
-
-# from anemoi.models.layers.block import (  # GraphTransformerMapperBlock,
-#     TransformerProcessorBlock,
-# )
+from anemoi.models.layers.block import (  # GraphTransformerMapperBlock,
+    TransformerProcessorBlock,
+)
 from datasets import Dataset as HFDataset
 from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
@@ -93,8 +92,6 @@ class AIFS(ModelInfo):
 
         return model
 
-        return
-
     name: str = "AIFS"
     attention: str = "flash_attention_2"
     model: Callable = _load_aifs_from_checkpoint
@@ -134,7 +131,7 @@ class AdamWConfig(OptimizerInfo):
     optimizer: Callable = AdamW
     optimizer_params: Mapping[str, Any] = field(
         default_factory=lambda: {
-            "lr": 1e-4,  # TODO: update for finetuning
+            "lr": 0,  # TODO: update for finetuning
             "weight_decay": 0.1,
             "betas": (0.9, 0.95),
             "fused": True,
@@ -160,13 +157,13 @@ class xffl_config(XFFLConfig):
     optimizer_info: OptimizerInfo = field(default_factory=AdamWConfig)
 
     # General
-    loglevel: int = logging.DEBUG
+    loglevel: int = logging.INFO
     seed: int = 42
 
     # Learning
-    # federated: int = 1
-    # federated_batches: int = 1
-    # federated_layer: Tuple[Type, ...] = (TransformerProcessorBlock,)
+    federated: int = 1
+    federated_batches: int = 1
+    federated_layer: Tuple[Type, ...] = (TransformerProcessorBlock,)
     epochs: int = 6
 
     # Custom criterion
@@ -199,15 +196,19 @@ class xffl_config(XFFLConfig):
         assert ctx.rollout_max is not None
 
         if epoch > 0:
-            ctx.rollout_start = min(
-                ctx.rollout_start + ctx.rollout_increment, ctx.rollout_max
-            )
+            assert ctx.current_rollout is not None
 
-        splits, _ = get_dataset_splits(ctx=ctx, batch_size=config.dataset_info.batch_sizes, rollout=ctx.rollout_start)  # type: ignore
+            ctx.current_rollout = min(
+                ctx.current_rollout + ctx.rollout_increment, ctx.rollout_max
+            )
+        else:
+            ctx.current_rollout = ctx.rollout_start
+
+        splits, _ = get_dataset_splits(ctx=ctx, batch_size=config.dataset_info.batch_sizes, rollout=ctx.current_rollout)  # type: ignore
         dataloaders: Mapping[str, DataLoader] = create_dataloaders(
             state=state, dataset=splits, config=config
         )
-        return dataloaders["train"], dataloaders["val"], ctx.rollout_start
+        return dataloaders["train"], dataloaders["val"], ctx.current_rollout
 
     pre_train_hook: Callable = _pre_train_hook
 
@@ -216,26 +217,14 @@ class xffl_config(XFFLConfig):
         batch: Any,
         model: nn.Module,
         state: DistributedState,
-        rstep: int,
-        rollout: int,
-        output: Tensor,
+        rstep: Optional[int] = None,
+        rollout: Optional[int] = None,
+        output: Optional[Tensor] = None,
+        prev_data: Optional[Tensor] = None,
     ) -> Tuple[Tensor, Tensor]:
-        return finetuning_pre_process_hook(model=model, batch=batch, state=state, rstep=rstep, rollout=rollout, output=output, ctx=ctx_dict[state.rank])  # type: ignore
+        return finetuning_pre_process_hook(model=model, batch=batch, state=state, rstep=rstep, rollout=rollout, output=output, prev_data=prev_data, ctx=ctx_dict[state.rank])  # type: ignore
 
     pre_process_hook: Callable = _pre_process_hook
-
-    # @staticmethod
-    # def _post_rollout_hook(
-    #     batch: Any,
-    #     model: nn.Module,
-    #     state: DistributedState,
-    #     rstep: int,
-    #     rollout: int,
-    #     output: Tensor,
-    # ) -> Tuple[Tensor, Tensor]:
-    #     return post_rollout_hook(batch=batch, rstep=rstep, rollout=rollout, output=output, ctx=ctx_dict[state.rank], device=state.current_device)  # type: ignore
-
-    # post_rollout_hook: Callable = _post_rollout_hook
 
     # WandB
     wandb_params: Mapping[str, Any] = field(

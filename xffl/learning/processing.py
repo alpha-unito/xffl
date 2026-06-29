@@ -3,6 +3,7 @@
 import logging
 import os
 import time
+from contextlib import nullcontext
 from logging import Logger, getLogger
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type
@@ -117,27 +118,18 @@ def _get_processing_function(
         return output, None
 
     def criterion_processing(
-        model: nn.Module,
-        batch: Tuple[Any, Any],
-        state: DistributedState,
-        rstep: Optional[int] = 0,
-        rollout: Optional[int] = 1,
-        output: Optional[Tensor] = None,
-    ) -> Tuple[Any, Optional[Tensor]]:
+        model: nn.Module, batch: Tuple[Any, Any], state: DistributedState, **kwargs
+    ) -> Tuple[Any, Optional[Tensor], Tensor]:
+
         data: Tensor
         target: Tensor
 
         if _pre_process_hook is not None:
-            batch = _pre_process_hook(
-                model=model,
-                batch=batch,
-                state=state,
-                rstep=rstep,
-                rollout=rollout,
-                output=output,
+            data, target = _pre_process_hook(
+                model=model, batch=batch, state=state, **kwargs
             )
 
-        data, target = batch
+        # data, target = batch
         data, target = data.to(
             device=state.current_device,
             non_blocking=True,
@@ -146,7 +138,7 @@ def _get_processing_function(
             non_blocking=True,
         )
         _output: Tensor = model(data)
-        return _output, target
+        return _output, target, data
 
     if isinstance(batch, Mapping):
         if "labels" not in batch.keys():
@@ -342,6 +334,116 @@ def _setup_amp(
             )
 
     return default_precision, scaler
+
+
+def _rollout_forward(
+    model: nn.Module,
+    batch: Any,
+    train_function: Callable,
+    state: DistributedState,
+    rollout: int,
+    criterion: Optional[nn.Module | Callable] = None,
+    default_precision: Optional[torch.dtype] = None,
+) -> Tensor:
+    """Rollout forward phase
+
+    :param model: Model to train
+    :type model: nn.Module
+    :param batch: Data batch
+    :type batch: Any
+    :param train_function: Training function
+    :type train_function: Callable
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param rollout: Number of rollout steps to do
+    :type rollout: int
+    :param criterion: Loss function, defaults to None
+    :type criterion: Optional[nn.Module | Callable], optional
+    :param default_precision: Default numerical precision to use, defaults to None
+    :type default_precision: Optional[torch.dtype], optional
+    :return: Averaged loss among the rollout steps
+    :rtype: Tensor
+    """
+    pbar_r: tqdm = tqdm(
+        colour="cyan",
+        desc="Rollout phase",
+        total=rollout,
+        dynamic_ncols=True,
+        disable=state.rank != 0,
+    )
+
+    prev_output: Optional[Tensor] = None
+    prev_data: Optional[Tensor] = None
+    rollout_loss: Tensor = tensor(0.0).to(device=state.current_device)
+    for rstep in range(rollout):
+        rollout_kwargs = {
+            "rollout": rollout,
+            "rstep": rstep,
+            "output": prev_output,
+            "prev_data": prev_data,
+        }
+        output, target, data = _forward(
+            model=model,
+            batch=batch,
+            state=state,
+            train_function=train_function,
+            default_precision=default_precision,
+            **rollout_kwargs,
+        )
+
+        rollout_loss += criterion(output, target) if criterion else output.loss  # type: ignore
+
+        prev_data = data.clone().detach()
+        prev_output = output.clone().detach()
+
+        pbar_r.update(1)
+        pbar_r.set_description(
+            f"Rollout step {rstep+1}/{rollout} completed (loss: {rollout_loss.float().item():.4f})",
+            refresh=True,
+        )
+
+    pbar_r.close()
+
+    return rollout_loss / rollout
+
+
+def _forward(
+    model: nn.Module,
+    batch: Any,
+    state: DistributedState,
+    train_function: Callable,
+    default_precision: Optional[torch.dtype] = None,
+    **kwargs,
+) -> Tuple[Tensor, ...]:
+    """Forward function
+
+    :param model: Model to train
+    :type model: nn.Module | FullyShardedDataParallel
+    :param batch: Data batch
+    :type batch: Tuple[Tensor, Tensor]
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param train_function: Training function
+    :type train_function: Callable
+    :param default_precision: Default numerical precision to use, defaults to None
+    :type default_precision: Optional[torch.dtype], optional
+    :return: Forward pass output, target, and eventually the data inputs to the model
+    :rtype: Tensor
+    """
+
+    with (
+        torch.autocast(device_type=str(state.device_type), dtype=default_precision)
+        if default_precision is not None
+        else nullcontext()
+    ):
+        if "rollout" in kwargs:
+            output, target, data = train_function(
+                model=model, batch=batch, state=state, **kwargs
+            )
+            return output, target, data
+        else:
+            output, target, _ = train_function(model=model, batch=batch, state=state)
+            return output, target
 
 
 # --------------------------------------------------------------------------- #
@@ -617,7 +719,8 @@ def distributed_training(
 
         model.train()
 
-        rollout: int = 0
+        # Pre-training hook
+        rollout: Optional[int] = None
         if _pre_train_hook is not None:
             train_dataloader, val_dataloader, rollout = _pre_train_hook(
                 model=model, state=state, config=config, epoch=epoch
@@ -638,7 +741,7 @@ def distributed_training(
 
         # Batch training cycle
         step: int
-        batch: Dict[str, Any]
+        batch: Any
         for step, batch in enumerate(train_dataloader):
             with nvtx.range("forward"):
                 if logging.root.level == logging.DEBUG:
@@ -648,81 +751,27 @@ def distributed_training(
 
                 output: Any
                 target: Tensor
-                if rollout > 0:
+                if rollout is not None:
                     # Rollout forward
-
-                    pbar_r: tqdm = tqdm(
-                        colour="cyan",
-                        desc=f"Rollout epoch: {epoch+1}",
-                        total=rollout,
-                        dynamic_ncols=True,
-                        disable=state.rank != 0,
+                    loss: Tensor = _rollout_forward(
+                        model=model,
+                        batch=batch,
+                        state=state,
+                        rollout=rollout,
+                        train_function=train_function,
+                        criterion=_criterion,
+                        default_precision=default_precision,
                     )
-
-                    rollout_loss: Tensor = tensor(0.0).to(device=state.current_device)
-                    prev_output: Optional[Tensor] = None
-                    for rstep in range(rollout):
-
-                        if default_precision is not None:
-                            with torch.autocast(
-                                device_type=str(state.device_type),
-                                dtype=default_precision,
-                            ):
-                                output, target = train_function(
-                                    model=model,
-                                    batch=batch,
-                                    state=state,
-                                    rstep=rstep,
-                                    rollout=rollout,
-                                    output=prev_output,
-                                )
-                        else:
-                            output, target = train_function(
-                                model=model,
-                                batch=batch,
-                                state=state,
-                                rstep=rstep,
-                                rollout=rollout,
-                                output=prev_output,
-                            )
-
-                        prev_output = output.clone().detach()
-                        rollout_loss += (
-                            _criterion(output, target) if _criterion else output.loss
-                        )
-                        if _post_rollout_hook is not None:
-                            batch = _post_rollout_hook(
-                                batch=batch,
-                                model=model,
-                                state=state,
-                                rstep=rstep,
-                                rollout=rollout,
-                                output=output,
-                            )
-
-                        pbar_r.update(1)
-                        pbar_r.set_description(
-                            f"Rollout Epoch: {epoch + 1}/{_epochs}, step {rstep+1}/{rollout} completed (loss: {rollout_loss.float().item():.4f})",
-                            refresh=True,
-                        )
-
-                    pbar_r.close()
-                    loss = rollout_loss / rollout
-
                 else:
                     # Standard forward
-                    if default_precision is not None:
-                        with torch.autocast(
-                            device_type=str(state.device_type), dtype=default_precision
-                        ):
-                            output, target = train_function(
-                                model=model, batch=batch, state=state
-                            )
-                    else:
-                        output, target = train_function(
-                            model=model, batch=batch, state=state
-                        )
-
+                    output, target = _forward(
+                        model=model,
+                        batch=batch,
+                        state=state,
+                        train_function=train_function,
+                        criterion=_criterion,
+                        default_precision=default_precision,
+                    )
                     loss: Tensor = (
                         _criterion(output, target) if _criterion else output.loss
                     )
@@ -1039,18 +1088,16 @@ def validation(
 
             output: Any
             target: Tensor
-            if default_precision is not None:
-                with torch.autocast(
-                    device_type=str(state.device_type), dtype=default_precision
-                ):
-                    output, target = val_function(model=model, batch=batch, state=state)
-            else:
-                output, target = val_function(model=model, batch=batch, state=state)
 
-            if criterion:
-                loss: Tensor = criterion(output, target)
-            else:
-                loss: Tensor = output.loss
+            output, target = _forward(
+                model=model,
+                batch=batch,
+                state=state,
+                train_function=val_function,
+                criterion=criterion,
+                default_precision=default_precision,
+            )
+            loss: Tensor = criterion(output, target) if criterion else output.loss
 
             if scaler is not None:
                 loss = scaler.scale(loss)

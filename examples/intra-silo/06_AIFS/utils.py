@@ -94,6 +94,7 @@ class AnemoiContext:
     multistep: int
     warmup_steps: Optional[int] = None
     boundary_mask: Optional[bool] = None
+    current_rollout: Optional[int] = None
     rollout_start: Optional[int] = None
     rollout_increment: Optional[int] = None
     rollout_max: Optional[int] = None
@@ -202,11 +203,19 @@ def get_dataset_splits(
         )
         steps_per_epoch_est = (initial_samples + batch_size - 1) // batch_size
 
+    if not ctx.finetuning:
+        _rollout = ctx.config.training.rollout
+    else:
+        if rollout is None:
+            _rollout = ctx.config.training.rollout.start
+        else:
+            _rollout = rollout
+
     return {
         split_name: AnemoiNativeDataset(
             ctx.dataset,
             multistep=ctx.multistep,
-            rollout=ctx.config.training.rollout.start if rollout is None else rollout,
+            rollout=_rollout,
             start_idx=start_idx,
             end_idx=end_idx,
         )
@@ -331,9 +340,10 @@ def finetuning_pre_process_hook(
     batch: Tensor,
     state: DistributedState,
     ctx: AnemoiContext,
-    rstep: int = 0,
-    rollout: int = 1,
+    rstep: Optional[int] = None,
+    rollout: Optional[int] = None,
     output: Optional[Tensor] = None,
+    prev_data: Optional[Tensor] = None,
 ) -> tuple[Tensor, Tensor]:
     """
     Convert a raw batch into model inputs and prediction targets.
@@ -352,27 +362,34 @@ def finetuning_pre_process_hook(
     input_idx = ctx.data_indices.internal_data.input.full
     output_idx = ctx.data_indices.internal_data.output.full
 
-    inputs = batch[:, : ctx.multistep, ..., input_idx]
+    batch = batch.to(
+        device=state.current_device,
+        non_blocking=True,
+    )
+
+    batch = model.pre_processors(
+        batch,
+        in_place=False,
+    )
+
+    if rstep is None:
+        rstep = 0
+    if rollout is None:
+        rollout = 1
+
     targets = batch[:, ctx.multistep + rstep, ..., output_idx]
 
     if rstep == 0:
-        batch = batch.to(
-            device=state.current_device,
-            non_blocking=True,
-        )
-
-        batch = model.pre_processors(
-            batch,
-            in_place=False,
-        )
-    elif rstep < rollout - 1:
+        inputs = batch[:, : ctx.multistep, ..., input_idx]
+    elif 0 < rstep <= rollout - 1:
         inputs = advance_input(
-            inputs, output, batch, rstep, ctx.multistep, ctx.data_indices
+            prev_data, output, batch, rstep - 1, ctx.multistep, ctx.data_indices
         )
-        next_ts = ctx.multistep + rstep + 1
+        next_ts = ctx.multistep + rstep
         inputs[:, -1, :, ctx.boundary_mask, :] = batch[
             :, next_ts, :, ctx.boundary_mask, :
-        ][:, :, :, input_idx]
+        ][:, :, :, input_idx].to(device="cuda:0")
+
     return inputs, targets
 
 
