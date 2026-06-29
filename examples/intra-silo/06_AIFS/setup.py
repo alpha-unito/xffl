@@ -375,7 +375,7 @@ def advance_input(x, y_pred, batch, rollout_step, multistep, data_indices):
 
     x[:, -1, :, :, data_indices.internal_model.input.forcing] = batch[
         :, multistep + rollout_step, :, :, data_indices.internal_data.input.forcing
-    ].to(device="cuda:0")
+    ]
 
     return x
 

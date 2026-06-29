@@ -120,7 +120,7 @@ class ERA5(DatasetInfo):
     splits: Callable = _get_dataset_splits
     workers: int = 2
     batch_sizes: int = 16
-    # subsampling: int = 64
+    subsampling: int = 64
 
 
 # Optimizer information

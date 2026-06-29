@@ -364,6 +364,7 @@ def finetuning_pre_process_hook(
 
     batch = batch.to(
         device=state.current_device,
+        dtype=torch.bfloat16,
         non_blocking=True,
     )
 
@@ -382,13 +383,20 @@ def finetuning_pre_process_hook(
     if rstep == 0:
         inputs = batch[:, : ctx.multistep, ..., input_idx]
     elif 0 < rstep <= rollout - 1:
+        assert output is not None
+
         inputs = advance_input(
-            prev_data, output, batch, rstep - 1, ctx.multistep, ctx.data_indices
+            x=prev_data,
+            y_pred=output.to(torch.bfloat16),
+            batch=batch,
+            rollout_step=rstep - 1,
+            multistep=ctx.multistep,
+            data_indices=ctx.data_indices,
         )
         next_ts = ctx.multistep + rstep
         inputs[:, -1, :, ctx.boundary_mask, :] = batch[
             :, next_ts, :, ctx.boundary_mask, :
-        ][:, :, :, input_idx].to(device="cuda:0")
+        ][:, :, :, input_idx]
 
     return inputs, targets
 
