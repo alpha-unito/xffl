@@ -128,8 +128,9 @@ def _get_processing_function(
             data, target = _pre_process_hook(
                 model=model, batch=batch, state=state, **kwargs
             )
+        else:
+            data, target = batch
 
-        # data, target = batch
         data, target = data.to(
             device=state.current_device,
             non_blocking=True,
