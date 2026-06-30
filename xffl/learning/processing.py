@@ -962,6 +962,7 @@ def distributed_training(
                 default_precision=default_precision,
                 scaler=scaler,
                 pre_process_hook=_pre_process_hook,
+                rollout=rollout,
             )
             val_step_loss.extend(_val_step_loss)
             val_step_perplexity.extend(_val_step_perplexity)
@@ -1035,6 +1036,7 @@ def validation(
     default_precision: Optional[torch.dtype] = None,
     scaler: Optional[GradScaler] = None,
     pre_process_hook: Optional[Callable] = None,
+    rollout: Optional[int] = None,
 ) -> Tuple[Tensor, Tensor, List[float], List[float], float, Optional[float]]:
     """Generic evaluation cycle for FSDP models
 
@@ -1054,6 +1056,8 @@ def validation(
     :type scaler: Optional[GradScaler], optional
     :param pre_process_hook: Data pre-process hook before forward pass, defaults to None
     :type pre_process_hook: Optional[Callable], optional
+    :param rollout: Forward rollout steps, defaults to None
+    :type rollout: Optional[int], optional
     :return: Total epoch loss, total epoch perplexity, per-step loss, per-step perplexity, overall accuracy
     :rtype: Tuple[Tensor, Tensor, List[float], List[float], Optional[float]]
     """
@@ -1089,16 +1093,28 @@ def validation(
 
             output: Any
             target: Tensor
-
-            output, target = _forward(
-                model=model,
-                batch=batch,
-                state=state,
-                train_function=val_function,
-                criterion=criterion,
-                default_precision=default_precision,
-            )
-            loss: Tensor = criterion(output, target) if criterion else output.loss
+            if rollout is not None:
+                # Rollout forward
+                loss: Tensor = _rollout_forward(
+                    model=model,
+                    batch=batch,
+                    state=state,
+                    rollout=rollout,
+                    train_function=val_function,
+                    criterion=criterion,
+                    default_precision=default_precision,
+                )
+            else:
+                # Standard forward
+                output, target = _forward(
+                    model=model,
+                    batch=batch,
+                    state=state,
+                    train_function=val_function,
+                    criterion=criterion,
+                    default_precision=default_precision,
+                )
+                loss: Tensor = criterion(output, target) if criterion else output.loss
 
             if scaler is not None:
                 loss = scaler.scale(loss)
