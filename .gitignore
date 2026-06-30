@@ -155,3 +155,6 @@ CIFAR10/
 models/
 output/
 old/
+*.slurm
+*.bin
+_*
