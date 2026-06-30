@@ -139,10 +139,10 @@ dmypy.json
 *.out
 *.err
 logs
-data/*
-model/*
-dataset/*
-images/*
+data/
+model/
+dataset/
+images/
 *.csv
 *.pstats
 .bash_history
@@ -153,3 +153,5 @@ project/
 MNIST/
 CIFAR10/
 models/
+output/
+old/
