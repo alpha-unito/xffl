@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable, Dict, Mapping, MutableMapping, Optional, Sequence
 
 import torch
+import torch.distributed as dist
 from datasets import DatasetDict, load_from_disk
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.distributed import DistributedSampler
@@ -129,8 +130,8 @@ def create_dataloaders(
     workers: Optional[int] = None,
     config: Optional[XFFLConfig] = None,
     collate_fn: Optional[Callable | Mapping[str, Callable]] = None,
-    shuffle_train_split: bool = True,
-    distributed_sampling: bool = True,
+    shuffle_train_split: Optional[bool] = None,
+    distributed_sampler: Optional[DistributedSampler] = None,
     generator: Optional[torch.Generator] = None,
 ) -> MutableMapping[str, DataLoader]:
     """Create PyTorch dataloaders based on the provided xFFL configuration or parameters.
@@ -156,8 +157,8 @@ def create_dataloaders(
     :type collate_fn: Optional[Callable | Mapping[str, Callable]], optional
     :param shuffle_train_split: If to shuffle the "train" split, defaults to True
     :type shuffle_train_split: bool, optional
-    :param distributed_sampling: If to instantiate a DistributedSampler, required if all processes are fed from the same data pool, defaults to True
-    :type distributed_sampling: bool, optional
+    :param distributed_sampler: Distributed data sampler, defaults to None
+    :type distributed_sampler: Optional[DistributedSampler], optional
     :param generator: PyTorch RNG state, required for reproducibility, defaults to None
     :type generator: Optional[torch.Generator], optional
     :raises ValueError: If no valid dataset is provided
@@ -198,6 +199,12 @@ def create_dataloaders(
         _workers: Optional[int] = resolve_param(
             value=workers, config=dataset_info, attr="workers"
         )
+        _shuffle_train_split: Optional[bool] = resolve_param(
+            value=shuffle_train_split, config=dataset_info, attr="shuffle_train_split"
+        )
+        _distributed_sampler: Optional[DistributedSampler] = resolve_param(
+            value=distributed_sampler, config=dataset_info, attr="distributed_sampler"
+        )
     else:
         _dataset: Optional[Mapping[str, Dataset]] = dataset
         _filters: Optional[
@@ -210,10 +217,18 @@ def create_dataloaders(
         _subsampling: Optional[int | Mapping[str, int]] = subsampling
         _batch_sizes: Optional[int | Mapping[str, int]] = batch_sizes
         _workers: Optional[int] = workers
+        _shuffle_train_split: Optional[bool] = shuffle_train_split
+        _distributed_sampler: Optional[DistributedSampler] = distributed_sampler
 
     if _dataset is None:
         logger.critical("Impossible setting up the dataloaders: no dataset provided.")
         raise ValueError("Impossible setting up the dataloaders: no dataset provided.")
+
+    if _shuffle_train_split is None:
+        _shuffle_train_split = True
+        logger.warning(
+            "shuffle_train_split has not been specified - setting it to True."
+        )
 
     # Dataloaders creation
     dataloaders: MutableMapping[str, DataLoader] = {}
@@ -253,25 +268,51 @@ def create_dataloaders(
             else:
                 __collate_fn = _collate_fn[key]
 
+        if _distributed_sampler is None:
+            if not dist.is_initialized():
+                _distributed_sampler = None
+                logger.info(
+                    "No distributed setup is found - no DistributedSampler will be instantiated."
+                )
+            else:
+                if state.is_federated_scaling_setup():
+                    assert state.federated_rank is not None
+                    assert state.federated_local_size is not None
+                    assert state.federated_local_rank is not None
+
+                    _distributed_sampler = DistributedSampler(
+                        dataset=split,
+                        num_replicas=state.federated_local_size[state.federated_rank],
+                        rank=state.federated_local_rank,
+                        shuffle=(_shuffle_train_split and key == "train"),
+                        seed=(
+                            config.seed
+                            if config is not None and config.seed is not None
+                            else random.randint(0, 100)
+                        ),
+                        drop_last=True,
+                    )
+                else:
+                    assert state.world_size is not None
+                    assert state.rank is not None
+
+                    _distributed_sampler = DistributedSampler(
+                        dataset=split,
+                        num_replicas=state.world_size,
+                        rank=state.rank,
+                        shuffle=(_shuffle_train_split and key == "train"),
+                        seed=(
+                            config.seed
+                            if config is not None and config.seed is not None
+                            else random.randint(0, 100)
+                        ),
+                        drop_last=True,
+                    )
+
         dataloaders[key] = DataLoader(
             dataset=split,
             batch_size=_batch_size,
-            sampler=(
-                DistributedSampler(
-                    dataset=split,
-                    num_replicas=state.world_size,  # TODO: this should be a parameter or a function of FL
-                    rank=state.rank,
-                    shuffle=(shuffle_train_split and key == "train"),
-                    seed=(
-                        config.seed
-                        if config is not None and config.seed is not None
-                        else random.randint(0, 100)
-                    ),
-                    drop_last=True,
-                )
-                if distributed_sampling
-                else None
-            ),
+            sampler=_distributed_sampler,
             num_workers=_workers if _workers else 0,
             collate_fn=__collate_fn,
             pin_memory=True if state.device_type == torch.device("cuda") else False,

@@ -15,6 +15,7 @@ import torch
 from torch import nn
 from torch.distributed.distributed_c10d import Backend
 from torch.distributed.fsdp import MixedPrecision, wrap
+from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoTokenizer
 
 from xffl.distributed.distributed_state import DistributedState
@@ -192,6 +193,10 @@ class DatasetInfo(ABC):
     :type collate_fn: Optional[Callable | Mapping[str, Callable]], optional
     :param filters: Filter functions to apply before creating the dataloaders, defaults to None
     :type filters: Optional[Callable | Sequence[Callable] | Mapping[str, Callable] | Mapping[str, Sequence[Callable]]], optional
+    :param shuffle_train_split: If to shuffle the "train" split, defaults to True
+    :type shuffle_train_split: bool, optional
+    :param distributed_sampler: Distributed data sampler, defaults to None
+    :type distributed_sampler: Optional[DistributedSampler], optional
     :raises ValueError: If some configuration values are incompatible with their expected characteristics
     """
 
@@ -211,6 +216,8 @@ class DatasetInfo(ABC):
         | Mapping[str, Callable]
         | Mapping[str, Sequence[Callable]]
     ] = None
+    shuffle_train_split: Optional[bool] = None
+    distributed_sampler: Optional[DistributedSampler] = None
 
     def __post_init__(self) -> None | ValueError:
         """
@@ -312,6 +319,14 @@ class DatasetInfo(ABC):
                     or all(isinstance(fil, Sequence) for fil in self.filters.values())
                 ):
                     err_msg += f"Dataset configuration error: the specified filters map is not a mapping of split names and callables or sequence of callables ({self.filters}).\n"
+
+        if self.shuffle_train_split is not None:
+            if not isinstance(self.shuffle_train_split, bool):
+                err_msg += f"Dataset configuration error: the specified shuffle_train_split is not a bool ({self.shuffle_train_split}).\n"
+
+        if self.distributed_sampler is not None:
+            if not isinstance(self.distributed_sampler, DistributedSampler):
+                err_msg += f"Dataset configuration error: the specified distributed sampler is no a DistributedSampler ({self.distributed_sampler}).\n"
 
         # Log errors, if any, and raise a ValueError exception
         if not err_msg == "":
