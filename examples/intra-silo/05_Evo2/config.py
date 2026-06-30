@@ -108,7 +108,7 @@ class opengenome(DatasetInfo):
         }
 
         split: DatasetDict = load_from_disk(
-            dataset_path=BASE_PATH / dataset_dict[state.rank]
+            dataset_path=Path(config.dataset_info.path) / dataset_dict[state.rank]
         )  # type: ignore
         for key, value in split.items():
             split[key] = _chunk_dataset(split=value, seq_len=2048)
