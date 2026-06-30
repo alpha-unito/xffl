@@ -153,3 +153,8 @@ project/
 MNIST/
 CIFAR10/
 models/
+*.slurm
+old/
+output/
+*.bin
+_*
