@@ -90,6 +90,8 @@ class DistributedState:
     # DEVICE
     device_type: Optional[torch.device] = None
     """Chosen deployment device"""
+    device_count: int = torch.cuda.device_count()
+    """Number of available devices"""
     current_device: Optional[torch.device] = None
     """Specific device currently in use by the process"""
     init_device: Optional[torch.device] = None
@@ -149,6 +151,7 @@ class DistributedState:
                     Federation\t\t\t{federation}
         DEVICE --------------------------------------------------
                     Device type\t\t\t{self.device_type}
+                    Device count\t\t\t{self.device_count}
                     Current device\t\t{self.current_device}
                     Initialization device\t{self.init_device}
                     Meta initialization\t\t{self.meta_initialization}
@@ -315,11 +318,11 @@ class DistributedState:
                 f"Impossible setting up distributed environment on local node with local rank {node_local_rank} and local world size {node_local_size}"
             )
         elif (
-            self.world_size is None
-            or self.world_size is None
-            or self.world_size % node_local_size != 0
-            or self.world_size // node_local_size != node_world_size
-        ):
+            self.world_size
+            is None
+            # or self.world_size % node_local_size != 0
+            # or self.world_size // node_local_size != node_world_size
+        ):  # Checks deactivated to allow single-process asymmetric deployments
             logger.error(
                 f"Impossible setting up distributed environment on local node with global world size {self.world_size} and local world size {node_local_size}: global world size is not divisible by the local world size into {node_world_size} nodes"
             )

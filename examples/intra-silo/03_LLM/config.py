@@ -150,7 +150,7 @@ class cleanmc4it(DatasetInfo):
 
 # Optimizer information
 @dataclass
-class AdamW(OptimizerInfo):
+class AdamWConfig(OptimizerInfo):
     """Optimizer configuration for BabyLM pretraining."""
 
     optimizer: Callable = AdamW
@@ -180,7 +180,7 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=llama)
     dataset_info: DatasetInfo = field(default_factory=cleanmc4it)
-    optimizer_info: OptimizerInfo = field(default_factory=AdamW)
+    optimizer_info: OptimizerInfo = field(default_factory=AdamWConfig)
 
     # General
     loglevel: int = logging.DEBUG

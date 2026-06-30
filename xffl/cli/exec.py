@@ -154,6 +154,28 @@ def _get_facilitator_path() -> FileLike:
     return FileLike(workflow_dir / "scripts" / "facilitator.sh")
 
 
+def compute_allocation(world_size: int, num_nodes: int) -> List[int]:
+    """
+    Compute a balanced rank allocation across nodes.
+
+    :param world_size: Total number of ranks.
+    :type world_size: int
+    :param num_nodes: Number of nodes.
+    :type num_nodes: int
+    :return: List containing the ranks assigned to each node.
+    :rtype: List[list[int]]
+    """
+    base: int = world_size // num_nodes
+    remainder: int = world_size % num_nodes
+
+    allocation: List[int] = []
+    for node_id in range(num_nodes):
+        node_size: int = base + (1 if node_id < remainder else 0)
+        allocation.append(node_size)
+
+    return sorted(allocation, reverse=True)
+
+
 # --------------------------------------------------------------------------- #
 #                             Main Execution                                  #
 # --------------------------------------------------------------------------- #
@@ -170,7 +192,6 @@ def exec(args: Namespace) -> int:
 
     args.num_nodes = len(args.nodelist)
     args.masteraddr = args.nodelist[0]
-    args.world_size = args.num_nodes * args.processes_per_node
 
     try:
         env: Dict[str, Any] = _setup_execution_env(args=args)
@@ -179,6 +200,11 @@ def exec(args: Namespace) -> int:
         raise
 
     facilitator_script: FileLike = _get_facilitator_path()
+
+    # Calculate rank distribution among nodes
+    local_world_sizes: List[int] = compute_allocation(
+        world_size=args.world_size, num_nodes=args.num_nodes
+    )
 
     # Federated scaling
     if args.federated_scaling is not None:
@@ -203,32 +229,35 @@ def exec(args: Namespace) -> int:
     return_code = 0
     try:
         for index, node in enumerate(args.nodelist):
-            ssh_command = [
-                "ssh",
-                "-oStrictHostKeyChecking=no",
-                node,
-                '"',
-                " ".join(
-                    [
-                        env_str,
-                        f"XFFL_NODEID={index}",
-                        str(facilitator_script),
-                        str(args.executable),
-                    ]
-                ),
-                '"',
-            ]
-            logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))
+            if local_world_sizes[index] > 0:
+                ssh_command = [
+                    "ssh",
+                    "-oStrictHostKeyChecking=no",
+                    node,
+                    '"',
+                    " ".join(
+                        [
+                            env_str,
+                            f"XFFL_NODEID={index}",
+                            f"XFFL_START_RANK={sum(local_world_sizes[:index])}",
+                            f"XFFL_LOCAL_WORLD_SIZE={local_world_sizes[index]}",
+                            str(facilitator_script),
+                            str(args.executable),
+                        ]
+                    ),
+                    '"',
+                ]
+                logger.debug("Execution command on %s: %s", node, " ".join(ssh_command))
 
-            processes.append(
-                subprocess.Popen(
-                    " ".join(ssh_command),
-                    stdout=sys.stdout,
-                    stderr=sys.stderr,
-                    shell=True,
-                    universal_newlines=True,
+                processes.append(
+                    subprocess.Popen(
+                        " ".join(ssh_command),
+                        stdout=sys.stdout,
+                        stderr=sys.stderr,
+                        shell=True,
+                        universal_newlines=True,
+                    )
                 )
-            )
 
         for process in processes:
             return_code += process.wait()

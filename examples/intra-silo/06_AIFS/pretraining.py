@@ -10,7 +10,7 @@ from typing import Any, MutableMapping, Optional, Sequence
 
 import torch
 import wandb
-from config import xffl_config
+from config_pretraining import xffl_config
 from torch import nn
 from torch.utils.data import DataLoader
 

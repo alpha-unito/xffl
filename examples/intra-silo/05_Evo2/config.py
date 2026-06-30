@@ -4,12 +4,12 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 import torch
 import torch.nn.functional as F
 from datasets import Dataset as HFDataset
-from datasets import load_dataset
+from datasets import DatasetDict, load_from_disk
 from torch import Tensor, nn
 from torch.distributed.fsdp import MixedPrecision
 from torch.optim import AdamW
@@ -25,10 +25,29 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 BASE_PATH: Path = Path("/beegfs/home/gmittone/xffl")
 
 
+def _chunk_dataset(split: HFDataset, seq_len: int = 8192) -> HFDataset:
+    merged_sequences: str = ""
+
+    for line in split:
+        merged_sequences += line["sequence"]  # type: ignore
+
+    chunks: list[str] = []
+
+    # +1 per avere seq_len token dopo lo shift
+    chunk_len = seq_len + 1
+
+    for start in range(0, len(merged_sequences) - chunk_len + 1, seq_len):
+        chunks.append(merged_sequences[start : start + chunk_len])
+
+    dataset = HFDataset.from_dict({"sequence": chunks})
+
+    return dataset
+
+
 # Model information
 @dataclass
 class evo_2(ModelInfo):
-    from StripedHyena2 import AttentionBlock
+    from StripedHyena2 import AttentionBlock, ParallelGatedConvBlock
 
     @staticmethod
     # LLM loading from saved model
@@ -48,9 +67,9 @@ class evo_2(ModelInfo):
         model: nn.Module = StripedHyena(
             evo2_config, current_device=state.current_device
         )
-        model.load_state_dict(
+        model.custom_load_state_dict(
             torch.load(
-                config.model_info.path / "evo2_1b_base.pt",
+                str(config.model_info.path) + f"/{config.model_info.name}.pt",
                 weights_only=False,
                 map_location="cpu",
             ),
@@ -62,8 +81,6 @@ class evo_2(ModelInfo):
     name: str = "evo2_1b_base"
     attention: str = "flash_attention_2"
     model: Callable = _load_evo2_from_checkpoint
-    decoder_layer: Type = AttentionBlock
-    activation_checkpointing: bool = True
     mixed_precision: MixedPrecision = field(
         default_factory=lambda: MixedPrecision(
             param_dtype=torch.bfloat16,
@@ -82,28 +99,36 @@ class opengenome(DatasetInfo):
     def _get_dataset_splits(
         config: XFFLConfig, state: DistributedState
     ) -> Mapping[str, HFDataset]:
+        assert state.rank is not None
+        assert config.seed is not None
+
+        dataset_dict: Mapping[int, str] = {
+            0: "flye_canu",
+            1: "klebsiella",
+        }
+
+        split: DatasetDict = load_from_disk(
+            dataset_path=BASE_PATH / dataset_dict[state.rank]
+        )  # type: ignore
+        for key, value in split.items():
+            split[key] = _chunk_dataset(split=value, seq_len=2048)
+
         return {
-            "train": load_dataset(
-                "parquet",
-                data_dir=str(config.dataset_info.path) + "/data",
-                split="train",
-            ),
-            "val": load_dataset(
-                "parquet",
-                data_dir=str(config.dataset_info.path) + "/data",
-                split="validation",
-            ),
-        }  # type: ignore
+            "train": split["train"],
+            "val": split["test"],
+        }
 
     @staticmethod
     def _get_collate_fn() -> Callable:
         from vortex.model.tokenizer import CharLevelTokenizer
 
-        tokenizer: CharLevelTokenizer = CharLevelTokenizer(512)
+        vocab_size: int = 512
+        tokenizer: CharLevelTokenizer = CharLevelTokenizer(vocab_size)
 
-        def _collate_fn(batch: Sequence[Mapping[str, Any]]) -> Tuple[Tensor, Tensor]:
-            enc: Tensor = torch.tensor(
-                tokenizer.tokenize_batch([sample["text"] for sample in batch]),
+        def _collate_fn(batch: Sequence[dict[str, Any]]) -> tuple[Tensor, Tensor]:
+
+            enc = torch.tensor(
+                tokenizer.tokenize_batch([sample["sequence"] for sample in batch]),
                 dtype=torch.long,
             )
 
@@ -114,14 +139,12 @@ class opengenome(DatasetInfo):
 
         return _collate_fn
 
-    name: str = "opengenome2-metagenomes-plantcad2-c4096"
+    name: str = "genome"
     splits: Callable = _get_dataset_splits
     batch_sizes: Mapping[str, int] = field(
         default_factory=lambda: {"train": 4, "val": 1}
     )
-    subsampling: Mapping[str, int] = field(
-        default_factory=lambda: {"train": 1000, "val": 20}
-    )
+    # subsampling: int = 64
     collate_fn: Callable = field(default_factory=_get_collate_fn)
     workers: int = 2
     path: Path = BASE_PATH / "dataset" / name
@@ -129,7 +152,7 @@ class opengenome(DatasetInfo):
 
 # Optimizer information
 @dataclass
-class AdamW(OptimizerInfo):
+class AdamWConfig(OptimizerInfo):
     """Optimizer configuration for BabyLM pretraining."""
 
     optimizer: Callable = AdamW
@@ -160,23 +183,30 @@ class xffl_config(XFFLConfig):
     # Default
     model_info: ModelInfo = field(default_factory=evo_2)
     dataset_info: DatasetInfo = field(default_factory=opengenome)
-    optimizer_info: OptimizerInfo = field(default_factory=AdamW)
+    optimizer_info: OptimizerInfo = field(default_factory=AdamWConfig)
 
     # General
     loglevel: int = logging.DEBUG
     seed: int = 42
 
     # Learning
+    federated: int = 1
+    federated_batches: int = 8
     epochs: int = 1
 
     # Custom criterion
     @staticmethod
-    def _evo2_CrossEntropy(output: Tensor, target: Tensor) -> Tensor:
-        return F.cross_entropy(
-            output.reshape(-1, output.size(-1)), target.reshape(-1), ignore_index=0
-        )
+    def _get_weighted_mse_loss(
+        state: DistributedState,
+    ) -> Callable[[Tensor, Tensor], Tensor]:
+        def _evo2_CrossEntropy(output: Tensor, target: Tensor) -> Tensor:
+            return F.cross_entropy(
+                output.reshape(-1, output.size(-1)), target.reshape(-1), ignore_index=0
+            )
 
-    criterion: Callable = _evo2_CrossEntropy
+        return _evo2_CrossEntropy
+
+    criterion: Callable = _get_weighted_mse_loss
 
     # WandB
     wandb_params: Mapping[str, Any] = field(

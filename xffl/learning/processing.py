@@ -3,9 +3,10 @@
 import logging
 import os
 import time
+from contextlib import nullcontext
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Type
 
 import torch
 import torch.cuda.nvtx as nvtx
@@ -61,23 +62,31 @@ def _move_opt_to(
 
 
 def _get_processing_function(
-    batch: Any,
+    batch: Any, pre_process_hook: Optional[Callable]
 ) -> Callable[[nn.Module, Any, DistributedState], Tuple[Tensor, Tensor]]:
     """Returns the appropriate processing function for the provided batch data type.
 
     :param batch: An exemplary data batch from a dataloader
     :type batch: Mapping[Any, Any] | Tuple[Any, Any]
+    :param pre_process_hook: Data pre-process hook before forward pass, defaults to None
+    :type pre_process_hook: Optional[Callable], optional
     :return: A function with parameters model, batch, state, returning the processing output and eventual target
     :rtype: Callable[[nn.Module, Any, DistributedState], Tuple[Tensor, Tensor]]
     """
 
     train_function: Callable
+    _pre_process_hook: Optional[Callable] = (
+        pre_process_hook if pre_process_hook else None
+    )
 
     def dict_processing_no_labels(
         model: nn.Module,
         batch: Any,
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
+
+        if _pre_process_hook is not None:
+            batch = _pre_process_hook(model=model, batch=batch, state=state)
 
         for key in batch.keys():
             batch[key] = batch[key].to(
@@ -96,6 +105,10 @@ def _get_processing_function(
         batch: Dict[str, Any],
         state: DistributedState,
     ) -> Tuple[Any, Optional[Tensor]]:
+
+        if _pre_process_hook is not None:
+            batch = _pre_process_hook(model=model, batch=batch, state=state)
+
         for key in batch.keys():
             batch[key] = batch[key].to(
                 device=state.current_device,
@@ -105,13 +118,18 @@ def _get_processing_function(
         return output, None
 
     def criterion_processing(
-        model: nn.Module,
-        batch: Tuple[Any, Any],
-        state: DistributedState,
-    ) -> Tuple[Any, Optional[Tensor]]:
+        model: nn.Module, batch: Tuple[Any, Any], state: DistributedState, **kwargs
+    ) -> Tuple[Any, Optional[Tensor], Tensor]:
+
         data: Tensor
         target: Tensor
-        data, target = batch
+
+        if _pre_process_hook is not None:
+            data, target = _pre_process_hook(
+                model=model, batch=batch, state=state, **kwargs
+            )
+
+        # data, target = batch
         data, target = data.to(
             device=state.current_device,
             non_blocking=True,
@@ -119,8 +137,8 @@ def _get_processing_function(
             device=state.current_device,
             non_blocking=True,
         )
-        output: Tensor = model(data)
-        return output, target
+        _output: Tensor = model(data)
+        return _output, target, data
 
     if isinstance(batch, Mapping):
         if "labels" not in batch.keys():
@@ -318,6 +336,116 @@ def _setup_amp(
     return default_precision, scaler
 
 
+def _rollout_forward(
+    model: nn.Module,
+    batch: Any,
+    train_function: Callable,
+    state: DistributedState,
+    rollout: int,
+    criterion: Optional[nn.Module | Callable] = None,
+    default_precision: Optional[torch.dtype] = None,
+) -> Tensor:
+    """Rollout forward phase
+
+    :param model: Model to train
+    :type model: nn.Module
+    :param batch: Data batch
+    :type batch: Any
+    :param train_function: Training function
+    :type train_function: Callable
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param rollout: Number of rollout steps to do
+    :type rollout: int
+    :param criterion: Loss function, defaults to None
+    :type criterion: Optional[nn.Module | Callable], optional
+    :param default_precision: Default numerical precision to use, defaults to None
+    :type default_precision: Optional[torch.dtype], optional
+    :return: Averaged loss among the rollout steps
+    :rtype: Tensor
+    """
+    pbar_r: tqdm = tqdm(
+        colour="cyan",
+        desc="Rollout phase",
+        total=rollout,
+        dynamic_ncols=True,
+        disable=state.rank != 0,
+    )
+
+    prev_output: Optional[Tensor] = None
+    prev_data: Optional[Tensor] = None
+    rollout_loss: Tensor = tensor(0.0).to(device=state.current_device)
+    for rstep in range(rollout):
+        rollout_kwargs = {
+            "rollout": rollout,
+            "rstep": rstep,
+            "output": prev_output,
+            "prev_data": prev_data,
+        }
+        output, target, data = _forward(
+            model=model,
+            batch=batch,
+            state=state,
+            train_function=train_function,
+            default_precision=default_precision,
+            **rollout_kwargs,
+        )
+
+        rollout_loss += criterion(output, target) if criterion else output.loss  # type: ignore
+
+        prev_data = data.clone().detach()
+        prev_output = output.clone().detach()
+
+        pbar_r.update(1)
+        pbar_r.set_description(
+            f"Rollout step {rstep+1}/{rollout} completed (loss: {rollout_loss.float().item():.4f})",
+            refresh=True,
+        )
+
+    pbar_r.close()
+
+    return rollout_loss / rollout
+
+
+def _forward(
+    model: nn.Module,
+    batch: Any,
+    state: DistributedState,
+    train_function: Callable,
+    default_precision: Optional[torch.dtype] = None,
+    **kwargs,
+) -> Tuple[Tensor, ...]:
+    """Forward function
+
+    :param model: Model to train
+    :type model: nn.Module | FullyShardedDataParallel
+    :param batch: Data batch
+    :type batch: Tuple[Tensor, Tensor]
+    :param state: xFFL distributed state
+    :type state: DistributedState
+    :param train_function: Training function
+    :type train_function: Callable
+    :param default_precision: Default numerical precision to use, defaults to None
+    :type default_precision: Optional[torch.dtype], optional
+    :return: Forward pass output, target, and eventually the data inputs to the model
+    :rtype: Tensor
+    """
+
+    with (
+        torch.autocast(device_type=str(state.device_type), dtype=default_precision)
+        if default_precision is not None
+        else nullcontext()
+    ):
+        if "rollout" in kwargs:
+            output, target, data = train_function(
+                model=model, batch=batch, state=state, **kwargs
+            )
+            return output, target, data
+        else:
+            output, target, _ = train_function(model=model, batch=batch, state=state)
+            return output, target
+
+
 # --------------------------------------------------------------------------- #
 #                               Training methods                              #
 # --------------------------------------------------------------------------- #
@@ -333,13 +461,18 @@ def distributed_training(
     fedopt: Optional[bool] = None,
     epochs: Optional[int] = None,
     federated_batches: Optional[int] = None,
-    save_path: Optional[Path] = None,
-    output_model_name: Optional[str] = None,
+    output_folder: Optional[Path] = None,
+    output_model: Optional[str] = None,
     fedopt_lr_scheduler: Optional[LRScheduler] = None,
     fedopt_optimizer: Optional[Optimizer] = None,
     criterion: Optional[nn.Module] = None,
+    classification: Optional[bool] = False,
     gradient_clipping: Optional[float] = None,
     gradient_accumulation: Optional[int] = None,
+    pre_train_hook: Optional[Callable] = None,
+    pre_process_hook: Optional[Callable] = None,
+    post_rollout_hook: Optional[Callable] = None,
+    federated_layer: Optional[Tuple[Type, ...]] = None,
     config: Optional[XFFLConfig] = None,
 ) -> Mapping[str, float]:
     """Generic training cycle for FSDP models.
@@ -365,10 +498,10 @@ def distributed_training(
     :type epochs: int, optional
     :param federated_batches: Number of training batched to process between two federated averaging, defaults to None
     :type federated_batches: Optional[int]
-    :param save_path: Path where to save the trained model, defaults to None
-    :type save_path: Optional[Path], optional
-    :param output_model_name: Name to use for the saved trained model, defaults to None
-    :type output_model_name: Optional[str], optional
+    :param output_folder: Path where to save the trained model, defaults to None
+    :type output_folder: Optional[Path], optional
+    :param output_model: Name to use for the saved trained model, defaults to None
+    :type output_model: Optional[str], optional
     :param fedopt_lr_scheduler: Learning rate scheduler for the FedOpt optimizer, defaults to None
     :type fedopt_lr_scheduler: Optional[LRScheduler], optional
     :param fedopt_optimizer: FedOpt optimizer, defaults to None
@@ -377,10 +510,20 @@ def distributed_training(
     :type wandb_run: Optional[wandb.Run], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
+    :param classification: If the learning task is a classification, defaults to False
+    :type classification: Optional[bool], optional
     :param gradient_clipping: Gradient clipping value, defaults to None
     :type gradient_clipping: Optional[float], optional
     :param gradient_accumulation: Gradient accumulation steps, defaults to None
     :type gradient_accumulation: Optional[int], optional
+    :param pre_train_hook: Data loaders pre-process hook before training, defaults to None
+    :type pre_train_hook: Optional[Callable], optional
+    :param pre_process_hook: Data pre-process hook before forward pass, defaults to None
+    :type pre_process_hook: Optional[Callable], optional
+    :param post_rollout_hook: Data post-process hook at the end of the rollout pass, defaults to None
+    :type post_rollout_hook: Optional[Callable], optional
+    :param federated_layer: Model's layer that will be updated through federated learning, defatuls to None
+    :type federated_layer: Optional[Tuple[Type, ...]], optional
     :param config: XFFL configuration
     :type config: Optional[XFFLConfig], defaults to None
     :return: Dictionary of metrics names and achieved values
@@ -406,27 +549,27 @@ def distributed_training(
         logger.warning(
             "Federated batches is setup, but FederatedScaling is not: running FederatedScaling with a single model replica."
         )
-    _save_path: Optional[Path] = resolve_param(
-        value=save_path, config=config, attr="save_path"
+    _output_folder: Optional[Path] = resolve_param(
+        value=output_folder, config=config, attr="output_folder"
     )
-    if _save_path is not None and (
-        not os.path.exists(_save_path) or not os.path.isdir(_save_path)
-    ):
-        logger.warning(
-            f"Impossible saving the trained model with save dir {_save_path}: saving disabled."
-        )
-        _save_path = None
-    _output_model_name: Optional[str] = resolve_param(
-        value=output_model_name, config=config, attr="output_model_name"
+    if _output_folder is not None:
+        _output_folder.mkdir(parents=True, exist_ok=True)
+        if not os.path.exists(_output_folder) or not os.path.isdir(_output_folder):
+            logger.warning(
+                f"Impossible saving the trained model with save dir {_output_folder}: saving disabled."
+            )
+            _output_folder = None
+    _output_model: Optional[str] = resolve_param(
+        value=output_model, config=config, attr="output_model"
     )
-    if _save_path is not None and _output_model_name is None:
+    if _output_folder is not None and _output_model is None:
         logger.warning("No output model name specified - defaulting to 'output'.")
-        _output_model_name = "output"
-    elif _save_path is None and _output_model_name is not None:
+        _output_model = "output"
+    elif _output_folder is None and _output_model is not None:
         logger.error(
             "Output model name is provided, but save path is not - disabling model saving."
         )
-        _output_model_name = None
+        _output_model = None
     _fedopt_optimizer: Optional[Optimizer] = resolve_param(
         value=fedopt_optimizer, config=config, attr="fedopt_optimizer"
     )
@@ -448,12 +591,19 @@ def distributed_training(
             "A FedOpt learning rate scheduler is specified, but FedOpt and/or the FedOpt optimizer are not setup; it will be ignored."
         )
         _fedopt_lr_scheduler = None
-    _criterion: Optional[nn.Module] = resolve_param(
+    __criterion: Optional[Callable] = resolve_param(
         value=criterion, config=config, attr="criterion"
     )
-    if _criterion is not None:
-        if isinstance(_criterion, nn.Module):
-            _criterion.to(device=state.current_device, non_blocking=True)
+    if __criterion is not None:
+        if isinstance(__criterion, nn.Module):
+            _criterion: Callable = __criterion.to(
+                device=state.current_device, non_blocking=True
+            )
+        elif isinstance(__criterion, Callable):
+            _criterion: Callable = __criterion(state=state)
+    _classification: Optional[bool] = resolve_param(
+        value=classification, config=config, attr="classification"
+    )
     _gradient_clipping: Optional[float] = resolve_param(
         value=gradient_clipping, config=config, attr="gradient_clipping"
     )
@@ -470,6 +620,46 @@ def distributed_training(
             f"Gradient accumulation steps is set to {_gradient_accumulation}, which is not acceptable. Defaulting to 1."
         )
         _gradient_accumulation = 1
+    _pre_train_hook: Optional[Callable] = resolve_param(
+        value=pre_train_hook, config=config, attr="pre_train_hook"
+    )
+    if _pre_train_hook and not isinstance(_pre_train_hook, Callable):
+        logger.warning(
+            f"A pre-process hook is specified, but is not callable ({_pre_train_hook})"
+        )
+    _pre_process_hook: Optional[Callable] = resolve_param(
+        value=pre_process_hook, config=config, attr="pre_process_hook"
+    )
+    if _pre_process_hook and not isinstance(_pre_process_hook, Callable):
+        logger.warning(
+            f"A pre-process hook is specified, but is not callable ({_pre_process_hook})"
+        )
+    _post_rollout_hook: Optional[Callable] = resolve_param(
+        value=post_rollout_hook, config=config, attr="post_rollout_hook"
+    )
+    if _post_rollout_hook and not isinstance(_post_rollout_hook, Callable):
+        logger.warning(
+            f"A post-process hook is specified, but is not callable ({_post_rollout_hook})"
+        )
+    _federated_layer: Optional[Tuple[Type, ...]] = resolve_param(
+        value=federated_layer, config=config, attr="federated_layer"
+    )
+    if _federated_layer is not None:
+        if not state.is_federated_scaling_setup():
+            logger.warning(
+                "A federated layer is specified, but federated scaling is not setup. Ignoring the federated layer specification."
+            )
+        elif not (
+            isinstance(_federated_layer, Tuple) or isinstance(_federated_layer, Type)
+        ):
+            logger.error(
+                f"Model configuration error: the specified federated layer is not a type ({_federated_layer}).\n"
+            )
+        else:
+            if state.rank == 0:
+                logger.info(
+                    f"Applying FederatedScaling only to the following layer(s): {_federated_layer}"
+                )
 
     # Clear GPU cache and reset peak memory stats
     cuda_reset_memory_stats_and_empty_cache()
@@ -517,7 +707,6 @@ def distributed_training(
 
     # Epoch training cycle
     epoch: int
-    train_function: Callable = _get_processing_function(next(iter(train_dataloader)))
     for epoch in range(_epochs):
         epoch_start_time: float = time.perf_counter()
         if state.rank == 0:
@@ -529,6 +718,16 @@ def distributed_training(
         val_step_perplexity: List[float] = []
 
         model.train()
+
+        # Pre-training hook
+        rollout: Optional[int] = None
+        if _pre_train_hook is not None:
+            train_dataloader, val_dataloader, rollout = _pre_train_hook(
+                model=model, state=state, config=config, epoch=epoch
+            )
+        train_function: Callable = _get_processing_function(
+            next(iter(train_dataloader)), pre_process_hook=_pre_process_hook
+        )
 
         train_epoch_loss: Tensor = tensor(0.0)
         total_length: int = len(train_dataloader)
@@ -542,7 +741,7 @@ def distributed_training(
 
         # Batch training cycle
         step: int
-        batch: Dict[str, Any]
+        batch: Any
         for step, batch in enumerate(train_dataloader):
             with nvtx.range("forward"):
                 if logging.root.level == logging.DEBUG:
@@ -550,22 +749,34 @@ def distributed_training(
                     step_start_time: float = time.perf_counter()
                     start_time: float = time.perf_counter()
 
-                # Forward
                 output: Any
                 target: Tensor
-                if default_precision is not None:
-                    with torch.autocast(
-                        device_type=str(state.device_type), dtype=default_precision
-                    ):
-                        output, target = train_function(
-                            model=model, batch=batch, state=state
-                        )
-                else:
-                    output, target = train_function(
-                        model=model, batch=batch, state=state
+                if rollout is not None:
+                    # Rollout forward
+                    loss: Tensor = _rollout_forward(
+                        model=model,
+                        batch=batch,
+                        state=state,
+                        rollout=rollout,
+                        train_function=train_function,
+                        criterion=_criterion,
+                        default_precision=default_precision,
                     )
-
-                loss: Tensor = _criterion(output, target) if _criterion else output.loss
+                else:
+                    # Standard forward
+                    output, target = _forward(
+                        model=model,
+                        batch=batch,
+                        state=state,
+                        train_function=train_function,
+                        criterion=_criterion,
+                        default_precision=default_precision,
+                    )
+                    loss: Tensor = (
+                        _criterion(output, target) if _criterion else output.loss
+                    )
+                if scaler is not None:
+                    loss = scaler.scale(loss)
 
             with nvtx.range("Backward"):
                 if logging.root.level == logging.DEBUG:
@@ -577,10 +788,7 @@ def distributed_training(
                 if _gradient_accumulation is not None:
                     loss /= _gradient_accumulation
 
-                if scaler is not None:
-                    scaler.scale(loss).backward()
-                else:
-                    loss.backward()
+                loss.backward()
 
             with nvtx.range("Optimizer"):
                 if logging.root.level == logging.DEBUG:
@@ -615,6 +823,7 @@ def distributed_training(
                                 state=state,
                                 use_multiple_cuda_streams=False,
                                 use_contiguous_memory=False,
+                                federated_layer=_federated_layer,
                             )
                             if _fedopt:
                                 assert _fedopt_optimizer is not None
@@ -748,6 +957,10 @@ def distributed_training(
                 epochs=_epochs,
                 wandb_run=wandb_run,
                 criterion=_criterion,
+                classification=bool(_classification),
+                default_precision=default_precision,
+                scaler=scaler,
+                pre_process_hook=_pre_process_hook,
             )
             val_step_loss.extend(_val_step_loss)
             val_step_perplexity.extend(_val_step_perplexity)
@@ -759,15 +972,15 @@ def distributed_training(
                 val_acc.append(_val_acc)
 
         # Model saving
-        if _output_model_name is not None and _save_path is not None:
+        if _output_model is not None and _output_folder is not None:
             assert state.rank is not None
 
             checkpoint_start_time = time.perf_counter()
             save_model(
                 model=model,
                 optimizer=_optimizer,
-                path=_save_path,
-                name=_output_model_name,
+                path=_output_folder,
+                name=_output_model,
                 rank=state.rank,
                 epoch=epoch,
             )
@@ -816,7 +1029,11 @@ def validation(
     epoch: int,
     epochs: int,
     wandb_run: Optional[Run] = None,
-    criterion: Optional[nn.Module] = None,
+    criterion: Optional[Callable] = None,
+    classification: bool = False,
+    default_precision: Optional[torch.dtype] = None,
+    scaler: Optional[GradScaler] = None,
+    pre_process_hook: Optional[Callable] = None,
 ) -> Tuple[Tensor, Tensor, List[float], List[float], float, Optional[float]]:
     """Generic evaluation cycle for FSDP models
 
@@ -830,6 +1047,12 @@ def validation(
     :type wandb_run: Optional[wandb.Run], optional
     :param criterion: Loss function, defaults to None
     :type criterion: Optional[Callable], optional
+    :param default_precision: Data precision used, defaults to None
+    :type default_precision: Optional[torch.dtype], optional
+    :param scaler: Precision scaler for AMP, defaults to None
+    :type scaler: Optional[GradScaler], optional
+    :param pre_process_hook: Data pre-process hook before forward pass, defaults to None
+    :type pre_process_hook: Optional[Callable], optional
     :return: Total epoch loss, total epoch perplexity, per-step loss, per-step perplexity, overall accuracy
     :rtype: Tuple[Tensor, Tensor, List[float], List[float], Optional[float]]
     """
@@ -841,7 +1064,9 @@ def validation(
     val_epoch_loss: Tensor = tensor(0.0)
     correct: Optional[int] = None
 
-    val_function: Callable = _get_processing_function(next(iter(val_dataloader)))
+    val_function: Callable = _get_processing_function(
+        next(iter(val_dataloader)), pre_process_hook=pre_process_hook
+    )
     total_length: int = len(val_dataloader)
 
     pbar: tqdm = tqdm(
@@ -860,19 +1085,28 @@ def validation(
         step: int
         batch: Dict[str, Any]
         for step, batch in enumerate(val_dataloader):
+
             output: Any
             target: Tensor
-            output, target = val_function(model=model, batch=batch, state=state)
-            if criterion:
-                loss: Tensor = criterion(output, target)
-            else:
-                loss: Tensor = output.loss
+
+            output, target = _forward(
+                model=model,
+                batch=batch,
+                state=state,
+                train_function=val_function,
+                criterion=criterion,
+                default_precision=default_precision,
+            )
+            loss: Tensor = criterion(output, target) if criterion else output.loss
+
+            if scaler is not None:
+                loss = scaler.scale(loss)
 
             # Metrics
             val_epoch_loss += loss.detach().float().cpu()
             val_step_perplexity.append(float(torch.exp(loss.detach().float().cpu())))
             val_step_loss.append(loss.detach().float().cpu().item())
-            if target is not None:
+            if target is not None and classification:
                 pred: Tensor = output.argmax(
                     dim=1, keepdim=True
                 )  # get the index of the max log-probability

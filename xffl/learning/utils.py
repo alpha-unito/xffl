@@ -8,7 +8,7 @@ import sys
 from dataclasses import asdict
 from logging import Logger, getLogger
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, Type
+from typing import Any, Dict, Mapping, Optional, Sequence, Type
 
 import numpy
 import torch
@@ -98,6 +98,8 @@ def get_model_size(model: nn.Module, state: DistributedState) -> int:
 
     :param model: PyTorch model
     :type model: nn.Module
+    :param state: xFFL distributed state, defaults to None
+    :type state: DistributedState, optional
     :return: Number of trainable parameters
     :rtype: int
     """
@@ -260,6 +262,9 @@ def cuda_sync() -> None:
 def barrier(state: DistributedState) -> None:
     """Implements a barrier.
     This method has no effect if the distributed backend is not initialized
+
+    :param state: xFFL distributed state
+    :type state: DistributedState
     """
     if torch.distributed.is_initialized():
         dist.barrier(device_ids=[state.node_local_rank])
@@ -268,6 +273,8 @@ def barrier(state: DistributedState) -> None:
 def wandb_setup(
     wandb_params: Optional[Mapping[str, Any]] = None,
     config: Optional[XFFLConfig] = None,
+    state: Optional[DistributedState] = None,
+    override_name_with_rank: bool = True,
 ) -> Optional[Any]:
     """Initializes a WandB run.
 
@@ -275,16 +282,23 @@ def wandb_setup(
     :type wandb_params: Optional[Mapping[str, Any]], optional
     :param config: xFFL configuration, defaults to None
     :type config: Optional[XFFLConfig], optional
+    :param state: xFFL distributed state, defaults to None
+    :type state: DistributedState, optional
+    :param override_name_with_rank: Override the given run name with the process rank, defaults to True
+    :type override_name_with_rank: bool
     :return: An instantiated WandB run, defaults to None
     :rtype: Optional[Any], optional
     """
     # Resolve parameters
-    _wandb_params: Optional[Mapping[str, Any]] = resolve_param(
+    _wandb_params: Optional[Dict[str, Any]] = resolve_param(
         value=wandb_params, config=config, attr="wandb_params"
     )
 
     wandb_run: Optional[Any] = None
     if _wandb_params is not None:
+        if override_name_with_rank and state is not None:
+            _wandb_params["name"] = f"Rank {state.rank}"
+
         logger.info("Setting up WandB")
         wandb_run = wandb.init(
             **_wandb_params,

@@ -233,9 +233,17 @@ def build_parser() -> Tuple[ArgumentParser, _SubParsersAction]:
     exec_parser.add_argument(
         "-ppn",
         "--processes-per-node",
-        help="Number of GPUs or processes available per compute node. Default is 1.",
+        help="Number of GPUs or processes available per compute node. Default is the number of GPUs on the current node.",
         type=int,
         default=_get_default_ppn(),
+    )
+
+    exec_parser.add_argument(
+        "-ws",
+        "--world-size",
+        help="Number of globally instantiated processes. Default is the number of GPUs on the current node multiplied by the number of available nodes.",
+        type=int,
+        default=_get_default_ppn() * len(_get_default_nodelist()),
     )
 
     return parser, subparsers

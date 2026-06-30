@@ -10,7 +10,7 @@ from typing import Any, MutableMapping, Optional, Sequence
 
 import torch
 import wandb
-from config import xffl_config
+from config_finetuning import xffl_config
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -25,7 +25,7 @@ logger: Logger = getLogger(__name__)
 """Default xFFL logger"""
 
 
-def pretraining(config: XFFLConfig) -> None:
+def finetuning(config: XFFLConfig) -> None:
     """Simple MLP training script
 
     :param config: xFFL configuration
@@ -123,7 +123,7 @@ def main():
     """Argument parsing and training launch"""
 
     try:
-        pretraining(config=xffl_config())
+        finetuning(config=xffl_config())
     except KeyboardInterrupt as e:
         logger.exception(e)
     except Exception as e:
