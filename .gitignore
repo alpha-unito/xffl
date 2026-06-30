@@ -154,3 +154,8 @@ MNIST/
 CIFAR10/
 models/
 .venv_*
+output/
+old/
+*.slurm
+*.bin
+_*
