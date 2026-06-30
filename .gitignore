@@ -156,6 +156,7 @@ CIFAR10/
 models/
 output/
 old/
+checkpoint/
 *.slurm
 *.bin
 _*

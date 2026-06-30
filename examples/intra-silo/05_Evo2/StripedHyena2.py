@@ -676,7 +676,7 @@ def get_block(config, layer_idx, flash_fft=None):
 
 
 class StripedHyena(nn.Module):
-    def __init__(self, config, current_device):
+    def __init__(self, config, current_device="cpu", generation: bool = False):
         super().__init__()
         if HAS_TE:
             fixup_te_workspace()  # Workaround global cublas workspaces in Transformer Engine
@@ -762,6 +762,7 @@ class StripedHyena(nn.Module):
                 self.logger.info("Ignoring tie_embeddings for now.")
             self.unembed = VocabParallelUnembedding(config)
 
+        self.generation: bool = generation
         # self.logger.info("Initialized model")
 
     def forward(self, x, inference_params_dict=None, padding_mask=None):
@@ -797,7 +798,10 @@ class StripedHyena(nn.Module):
             )
 
         x = self.unembed(x)
-        return x  # , inference_params_dict_out
+        if self.generation:
+            return x, inference_params_dict_out
+        else:
+            return x
 
     def block_idx_to_name(self, block_idx):
         if block_idx in self.config.attn_layer_idxs:
